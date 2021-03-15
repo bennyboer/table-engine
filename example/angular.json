@@ -20,6 +20,9 @@
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
+            "allowedCommonJsDependencies": [
+              "canvaskit-wasm"
+            ],
             "outputPath": "dist/example",
             "index": "src/index.html",
             "main": "src/main.ts",

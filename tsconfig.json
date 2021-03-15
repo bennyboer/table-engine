@@ -4,8 +4,9 @@
 		"module": "esnext",
 		"outDir": "./target",
 		"declaration": true,
-		"strict": true,
+		"strict": false,
 		"moduleResolution": "node",
+		"allowSyntheticDefaultImports": true,
 		"declarationMap": true,
 		"sourceMap": true,
 		"lib": [
