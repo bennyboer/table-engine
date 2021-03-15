@@ -1,0 +1,8 @@
+# IntelliJ
+/.idea
+
+# NodeJS
+node_modules
+
+# Build output
+/target
