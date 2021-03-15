@@ -1,10 +1,17 @@
 {
 	"compilerOptions": {
 		"target": "es6",
-		"module": "es6",
-		"declaration": true,
+		"module": "esnext",
 		"outDir": "./target",
-		"strict": true
+		"declaration": true,
+		"strict": true,
+		"moduleResolution": "node",
+		"declarationMap": true,
+		"sourceMap": true,
+		"lib": [
+			"esnext",
+			"dom"
+		]
 	},
 	"include": [
 		"src"

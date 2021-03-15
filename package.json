@@ -4,7 +4,7 @@
 	"description": "Library to visualize huge tables in web environments",
 	"main": "index.js",
 	"files": [
-		"lib/**/*"
+		"target/**/*"
 	],
 	"scripts": {
 		"build": "tsc",
@@ -28,6 +28,7 @@
 		"typescript": "^4.2.3"
 	},
 	"dependencies": {
-		"canvaskit-wasm": "^0.25.0"
+		"canvaskit-wasm": "^0.25.0",
+		"rxjs": "^6.6.6"
 	}
 }

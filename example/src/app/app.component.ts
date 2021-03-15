@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import {Test} from "../../../src/public";
+import {Component} from '@angular/core';
+import {TableEngine} from "../../../src/main";
 
 @Component({
   selector: 'app-root',
@@ -8,8 +8,8 @@ import {Test} from "../../../src/public";
 })
 export class AppComponent {
 
-  public test(): string {
-    return Test.test();
+  public test(): void {
+    new TableEngine();
   }
 
 }
