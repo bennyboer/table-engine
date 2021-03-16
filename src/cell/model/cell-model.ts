@@ -8,6 +8,16 @@ import {CellRangeUtil} from "../range/cell-range-util";
 export class CellModel {
 
 	/**
+	 * The default row size.
+	 */
+	private static readonly DEFAULT_ROW_SIZE: number = 25;
+
+	/**
+	 * The default column size.
+	 */
+	private static readonly DEFAULT_COLUMN_SIZE: number = 100;
+
+	/**
 	 * Size for each row.
 	 */
 	private readonly _rowSizes: number[];
@@ -135,7 +145,7 @@ export class CellModel {
 					} else {
 						// Encountered empty cell
 						const value: any = emptyCellValueSupplier(row, column);
-						if (!!value) {
+						if (value !== null && value !== undefined) {
 							cellLookup[row][column] = {
 								value,
 								range: CellRange.fromSingleRowColumn(row, column)
@@ -306,7 +316,7 @@ export class CellModel {
 			offsets[i] += sizeDiff;
 
 			if (i === nextResizeIndex) {
-				// Add/substract the size difference to/from sizeSum (when not hidden)
+				// Add/subtract the size difference to/from sizeSum (when not hidden)
 				const isHidden = hiddenIndices.has(nextResizeIndex);
 				if (!isHidden) {
 					sizeDiff += size - sizes[nextResizeIndex];
@@ -331,7 +341,281 @@ export class CellModel {
 	 * @param count of rows to insert
 	 */
 	public insertRows(insertBeforeIndex: number, count: number): void {
-		// TODO
+		this._insert(insertBeforeIndex, count, true);
+	}
+
+	/**
+	 * Insert columns before the given index.
+	 * @param insertBeforeIndex index to insert columns before
+	 * @param count of columns to insert
+	 */
+	public insertColumns(insertBeforeIndex: number, count: number): void {
+		this._insert(insertBeforeIndex, count, false);
+	}
+
+	/**
+	 * Insert rows/columns before the given index.
+	 * @param insertBeforeIndex the index to insert rows/columns before
+	 * @param count of rows/columns to insert
+	 * @param isRow whether we want to insert rows or columns
+	 */
+	private _insert(insertBeforeIndex: number, count: number, isRow: boolean): void {
+		// First and foremost collect all merged cells ranging over the new area to insert
+		const intersectingMergedAreaRanges: ICellRange[] = insertBeforeIndex > 0
+			? this._collectMergedCellsRangingOverIndex(isRow, insertBeforeIndex - 1)
+			: [];
+
+		// Split those merged cells before inserting
+		for (const range of intersectingMergedAreaRanges) {
+			this.splitCell(range.startRow, range.startColumn);
+		}
+
+		// Expand cell lookup and other collections
+		const totalAddedSize: number = this._expandModelForInsert(insertBeforeIndex, count, isRow);
+
+		// Shift hidden rows/columns
+		CellModel._shiftHidden(isRow ? this._hiddenRows : this._hiddenColumns, insertBeforeIndex + 1, count);
+
+		// Shift offsets for the old rows/columns below/after the inserted ones by the total added size
+		CellModel._shiftOffsets(isRow ? this._rowOffsets : this._columnOffsets, insertBeforeIndex + count, totalAddedSize);
+
+		// Shift cell ranges for all cells below/after the inserted ones
+		this._shiftCellRanges(isRow, insertBeforeIndex + count, count);
+
+		// Re-merge cells that have been split before inserting
+		for (const range of intersectingMergedAreaRanges) {
+			// Update range to account for the inserted rows or columns
+			if (isRow) {
+				range.endRow += count;
+			} else {
+				range.endColumn += count;
+			}
+
+			this.mergeCells(range);
+		}
+	}
+
+	/**
+	 * Shift the cell ranges of all cells on the given axis (row or column) starting from the passed index
+	 * by the given amount.
+	 * @param isRowAxis whether we want to shift on the row or column axis
+	 * @param fromIndex from which index to start shifting (inclusive)
+	 * @param by what amount to shift
+	 */
+	private _shiftCellRanges(isRowAxis: boolean, fromIndex: number, by: number): void {
+		const forEachOptions: ForEachInRangeOptions = {
+			unique: true,
+			includeHidden: true
+		};
+		if (isRowAxis) {
+			this._forEachCellInRange({
+				startRow: fromIndex,
+				endRow: this.getRowCount() - 1,
+				startColumn: 0,
+				endColumn: this.getColumnCount() - 1
+			}, (cell, row, column) => {
+				if (!!cell) {
+					// Change cell range for the cell
+					cell.range.startRow += by;
+					cell.range.endRow += by;
+				}
+			}, forEachOptions);
+		} else {
+			this._forEachCellInRange({
+				startRow: 0,
+				endRow: this.getRowCount() - 1,
+				startColumn: fromIndex,
+				endColumn: this.getColumnCount() - 1
+			}, (cell, row, column) => {
+				if (!!cell) {
+					// Change cell range for the cell
+					cell.range.startColumn += by;
+					cell.range.endColumn += by;
+				}
+			}, forEachOptions);
+		}
+	}
+
+	/**
+	 * Execute the given callback function for each cell in the passed range.
+	 * @param range to execute callback for
+	 * @param callback to execute for each cell in the range
+	 * @param options to modify the algorithm behavior (filtering cells for example)
+	 */
+	private _forEachCellInRange(
+		range: ICellRange,
+		callback: (cell: ICell | null, row, column) => void,
+		options?: ForEachInRangeOptions
+	) {
+		// Already encountered merged cells (ranging over multiple rows and/or columns).
+		const alreadyEncounteredMergedCells: Set<ICell> = new Set<ICell>();
+
+		for (let row = range.startRow; row <= range.endRow; row++) {
+			if (!options.includeHidden && this.isRowHidden(row)) {
+				continue;
+			}
+
+			for (let column = range.startColumn; column <= range.endColumn; column++) {
+				if (!options.includeHidden && this.isColumnHidden(column)) {
+					continue;
+				}
+
+				const cell: ICell = this.getCell(row, column);
+				if (options.unique && !!cell && !CellRangeUtil.isSingleRowColumnRange(cell.range)) {
+					// Check if we already processed the cell with the given range
+					if (alreadyEncounteredMergedCells.has(cell)) {
+						continue;
+					}
+
+					alreadyEncounteredMergedCells.add(cell);
+				}
+
+				// Execute callback for the cell
+				callback(cell, row, column);
+			}
+		}
+	}
+
+	/**
+	 * Shift the passed offset by the given amount starting from the given index.
+	 * @param offsets to shift
+	 * @param fromIndex from which index to start shifting
+	 * @param by the amount to shift by
+	 */
+	private static _shiftOffsets(offsets: number[], fromIndex: number, by: number): void {
+		for (let i = fromIndex; i < offsets.length; i++) {
+			offsets[i] += by;
+		}
+	}
+
+	/**
+	 * Expand the cell model as preparation for an insert operation.
+	 * @param insertBeforeIndex insert before this index (in rows or columns).
+	 * @param count of rows or columns to insert
+	 * @param isRow whether we want to insert rows or columns
+	 * @returns the total added size (height for rows, width for columns)
+	 */
+	private _expandModelForInsert(insertBeforeIndex: number, count: number, isRow: boolean): number {
+		if (isRow) {
+			return this._expandModelForInsertForRows(insertBeforeIndex, count);
+		} else {
+			return this._expandModelForInsertForColumns(insertBeforeIndex, count);
+		}
+	}
+
+	/**
+	 * Expand the cell model as preparation for a row insert operation.
+	 * @param insertBeforeIndex insert before this row index
+	 * @param count of rows to insert
+	 * @returns the height of the inserted rows
+	 */
+	private _expandModelForInsertForRows(insertBeforeIndex: number, count: number): number {
+		const rowCount: number = this.getRowCount();
+		const columnCount: number = this.getColumnCount();
+
+		// Prepare cell lookup
+		const rowsToInsert: ICell[][] = new Array(count);
+		for (let row = 0; row < count; row++) {
+			rowsToInsert[row] = new Array(columnCount);
+
+			for (let column = 0; column < columnCount; column++) {
+				rowsToInsert[row][column] = null; // Empty cell
+			}
+		}
+
+		// Prepare new row sizes
+		const defaultRowSize = rowCount > 0
+			? (insertBeforeIndex < rowCount ? this.getRowSize(insertBeforeIndex) : this.getRowSize(rowCount - 1))
+			: CellModel.DEFAULT_ROW_SIZE;
+		const rowSizesToInsert: number[] = new Array(count);
+		let totalAddedHeight: number = 0;
+		for (let i = 0; i < count; i++) {
+			rowSizesToInsert[i] = defaultRowSize;
+
+			totalAddedHeight += defaultRowSize;
+		}
+
+		// Prepare new offsets
+		let lastOffset: number = insertBeforeIndex < rowCount ? this.getRowOffset(insertBeforeIndex) : this.getHeight();
+		const offsetsToInsert: number[] = new Array(count);
+		for (let i = 0; i < count; i++) {
+			offsetsToInsert[i] = lastOffset;
+			lastOffset += rowSizesToInsert[i];
+		}
+
+		// Expand collections
+		this._cellLookup.splice(insertBeforeIndex, 0, ...rowsToInsert);
+		this._rowSizes.splice(insertBeforeIndex, 0, ...rowSizesToInsert);
+		this._rowOffsets.splice(insertBeforeIndex, 0, ...offsetsToInsert);
+
+		return totalAddedHeight;
+	}
+
+	/**
+	 * Expand the cell model as preparation for a column insert operation.
+	 * @param insertBeforeIndex insert before this column index
+	 * @param count of columns to insert
+	 * @returns the width of the inserted columns
+	 */
+	private _expandModelForInsertForColumns(insertBeforeIndex: number, count: number): number {
+		const rowCount = this.getRowCount();
+		const columnCount = this.getColumnCount();
+
+		// Prepare columns sizes
+		const defaultColumnSize = columnCount > 0
+			? (insertBeforeIndex < columnCount ? this.getColumnSize(insertBeforeIndex) : this.getColumnSize(columnCount - 1))
+			: CellModel.DEFAULT_COLUMN_SIZE;
+		const columnSizesToInsert: number[] = new Array(count);
+		let totalAddedWidth: number = 0;
+		for (let i = 0; i < count; i++) {
+			columnSizesToInsert[i] = defaultColumnSize;
+
+			totalAddedWidth += defaultColumnSize;
+		}
+
+		// Prepare offsets
+		let lastOffset: number = insertBeforeIndex < columnCount ? this.getColumnOffset(insertBeforeIndex) : this.getWidth();
+		const offsetsToInsert: number[] = new Array(count);
+		for (let i = 0; i < count; i++) {
+			offsetsToInsert[i] = lastOffset;
+			lastOffset += columnSizesToInsert[i];
+		}
+
+		// Expand cell lookup
+		for (let row = 0; row < rowCount; row++) {
+			const cellsToInsert: Array<ICell | null> = new Array(count);
+			for (let i = 0; i < cellsToInsert.length; i++) {
+				cellsToInsert[i] = null; // Empty cell
+			}
+
+			this._cellLookup[row].splice(insertBeforeIndex, 0, ...cellsToInsert);
+		}
+
+		// Expand other collections
+		this._columnSizes.splice(insertBeforeIndex, 0, ...columnSizesToInsert);
+		this._columnOffsets.splice(insertBeforeIndex, 0, ...offsetsToInsert);
+
+		return totalAddedWidth;
+	}
+
+	/**
+	 * Shift the passed hidden indices by the given offset starting with the given fromIndex.
+	 * @param hidden the set to shift indices in
+	 * @param fromIndex index to start shifting from (inclusive)
+	 * @param offset to shift indices by
+	 */
+	private static _shiftHidden(hidden: Set<number>, fromIndex: number, offset: number): void {
+		const tmp: number[] = Array.from(hidden.values());
+
+		hidden.clear();
+
+		for (const hiddenIndex of tmp) {
+			if (hiddenIndex >= fromIndex) {
+				hidden.add(hiddenIndex + offset); // Re-add with offset applied
+			} else {
+				hidden.add(hiddenIndex); // Just re-add again
+			}
+		}
 	}
 
 	/**
@@ -344,21 +628,56 @@ export class CellModel {
 	}
 
 	/**
-	 * Insert columns before the given index.
-	 * @param insertBeforeIndex index to insert columns before
-	 * @param count of columns to insert
-	 */
-	public insertColumns(insertBeforeIndex: number, count: number): void {
-		// TODO
-	}
-
-	/**
 	 * Delete columns starting with the given index.
 	 * @param fromIndex index to start deleting columns from (inclusively)
 	 * @param count of columns to delete
 	 */
 	public deleteColumns(fromIndex: number, count: number): void {
 		// TODO
+	}
+
+	/**
+	 * Find all merged cells that range over the given index.
+	 * @param overRow whether to collect merged cells over rows or over columns
+	 * @param index (row/column) index to detect merged cells for that span over it (row index when overRow is true)
+	 */
+	private _collectMergedCellsRangingOverIndex(overRow: boolean, index: number): ICellRange[] {
+		const result: ICellRange[] = [];
+
+		const maxIndex: number = overRow ? this.getRowCount() - 1 : this.getColumnCount() - 1;
+		const otherAxisMaxIndex: number = overRow ? this.getColumnCount() - 1 : this.getRowCount() - 1;
+
+		if (index >= maxIndex) {
+			return result; // Nothing to do here as there cannot be cells ranging over the max index
+		}
+
+		const alreadySeenMergedCells: Set<ICell> = new Set<ICell>();
+		for (let i = 0; i < otherAxisMaxIndex; i++) {
+			const row = overRow ? index + 1 : i;
+			const column = overRow ? i : index + 1;
+
+			const cell = this.getCell(row, column);
+			if (!!cell && !CellRangeUtil.isSingleRowColumnRange(cell.range)) {
+				if (!alreadySeenMergedCells.has(cell)) {
+					// The cell is a merged cell and has not yet been processed by this algorithm
+					alreadySeenMergedCells.add(cell);
+
+					// Check whether the merged cell ranges over the index to check
+					let isOverIndex;
+					if (overRow) {
+						isOverIndex = cell.range.startRow <= index;
+					} else {
+						isOverIndex = cell.range.startColumn <= index;
+					}
+
+					if (isOverIndex) {
+						result.push(new CellRange(cell.range)); // Make a copy of the cell range
+					}
+				}
+			}
+		}
+
+		return result;
 	}
 
 	/**
@@ -568,4 +887,23 @@ export class CellModel {
 		}
 	}
 
+}
+
+/**
+ * Options for the forEachInRange method.
+ */
+interface ForEachInRangeOptions {
+	/**
+	 * Whether cells must be unique.
+	 * When true the for each method will
+	 * only be called once for each cell, even
+	 * if they range over multiple rows and columns.
+	 */
+	unique: boolean;
+
+	/**
+	 * Whether the for each callback should be called
+	 * for hidden cells as well, otherwise they are filtered.
+	 */
+	includeHidden: boolean;
 }

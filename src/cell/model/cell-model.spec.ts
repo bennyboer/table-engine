@@ -1,5 +1,6 @@
 import {CellModel} from "./cell-model";
 import {CellRange} from "../range/cell-range";
+import {ICell} from "../cell";
 
 test("[CellModel.generate] Validate row/column sizes - I", () => {
 	const model = CellModel.generate(
@@ -101,6 +102,39 @@ test("[CellModel.generate] Validate row/column offsets and hidden rows/columns",
 
 	expect(model.getRowOffset(5)).toBe(30 * 3);
 	expect(model.getColumnOffset(5)).toBe(100 * 4);
+});
+
+test("[CellModel.generate] Validate cell values and ranges", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	for (let row = 0; row <= 5; row++) {
+		for (let column = 0; column <= 5; column++) {
+			const cell: ICell = model.getCell(row, column);
+
+			if (row === 5 && column === 5) {
+				expect(cell.value).toBe("Last cell");
+			} else {
+				expect(cell.value).toBe(row * column);
+			}
+
+			expect(cell.range.startRow).toBe(row);
+			expect(cell.range.endRow).toBe(row);
+			expect(cell.range.startColumn).toBe(column);
+			expect(cell.range.endColumn).toBe(column);
+		}
+	}
 });
 
 test("[CellModel.resize] Resize a single row and column", () => {
@@ -580,4 +614,260 @@ test("[CellModel.split] Try to split a single row column cell", () => {
 	expect(cell.range.endRow).toBe(2);
 	expect(cell.range.startColumn).toBe(2);
 	expect(cell.range.endColumn).toBe(2);
+});
+
+test("[CellModel.insert] Insert rows/columns at the beginning", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	// Insert some rows at the beginning
+	model.insertRows(0, 3);
+
+	// Verify trivial measures
+	expect(model.getRowCount()).toBe(9);
+	expect(model.getColumnCount()).toBe(6); // Unchanged!
+
+	// Verify size
+	expect(model.getHeight()).toBe(270);
+
+	// Check whether the first three rows are empty cells (null)
+	for (let row = 0; row < 3; row++) {
+		for (let column = 0; column < model.getColumnCount(); column++) {
+			expect(model.getCell(row, column)).toBe(null);
+		}
+	}
+
+	// Check whether we have the previously first row afterwards
+	const afterCell: ICell = model.getCell(3, 0);
+	expect(afterCell.value).toBe(0);
+	expect(afterCell.range.startRow).toBe(3);
+	expect(afterCell.range.endRow).toBe(3);
+	expect(afterCell.range.startColumn).toBe(0);
+	expect(afterCell.range.endColumn).toBe(0);
+
+	// Insert some columns at the beginning
+	model.insertColumns(0, 5);
+
+	// Verify trivial measures
+	expect(model.getRowCount()).toBe(9); // Unchanged!
+	expect(model.getColumnCount()).toBe(11);
+
+	// Verify size
+	expect(model.getWidth()).toBe(1100);
+
+	// Check whether the first 5 columns are empty cells (null)
+	for (let row = 0; row < model.getRowCount(); row++) {
+		for (let column = 0; column < 5; column++) {
+			expect(model.getCell(row, column)).toBe(null);
+		}
+	}
+
+	// Check whether we have the previously first column afterwards
+	const afterColumnCell: ICell = model.getCell(8, 5);
+	expect(afterColumnCell.value).toBe(0);
+	expect(afterColumnCell.range.startRow).toBe(8);
+	expect(afterColumnCell.range.endRow).toBe(8);
+	expect(afterColumnCell.range.startColumn).toBe(5);
+	expect(afterColumnCell.range.endColumn).toBe(5);
+
+	// Verify correct offsets (by one sample)
+	expect(model.getRowOffset(4)).toBe(120);
+	expect(model.getColumnOffset(7)).toBe(700);
+});
+
+test("[CellModel.insert] Insert rows/columns at the end", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	// Insert some rows at the beginning
+	model.insertRows(model.getRowCount(), 3);
+	model.insertColumns(model.getColumnCount(), 5);
+
+	// Verify trivial measures
+	expect(model.getRowCount()).toBe(9);
+	expect(model.getColumnCount()).toBe(11);
+
+	// Verify size
+	expect(model.getHeight()).toBe(270);
+	expect(model.getWidth()).toBe(1100);
+
+	// Check whether the last three rows are empty cells (null)
+	for (let row = model.getRowCount() - 3; row < model.getRowCount(); row++) {
+		for (let column = 0; column < model.getColumnCount(); column++) {
+			expect(model.getCell(row, column)).toBe(null);
+		}
+	}
+
+	// Check whether the last 5 columns are empty cells (null)
+	for (let row = 0; row < model.getRowCount(); row++) {
+		for (let column = model.getColumnCount() - 5; column < model.getColumnCount(); column++) {
+			expect(model.getCell(row, column)).toBe(null);
+		}
+	}
+
+	// Check the state of the cell with content "Last cell"
+	const lastCell: ICell = model.getCell(5, 5);
+	expect(lastCell.value).toBe("Last cell");
+	expect(lastCell.range.startRow).toBe(5);
+	expect(lastCell.range.endRow).toBe(5);
+	expect(lastCell.range.startColumn).toBe(5);
+	expect(lastCell.range.endColumn).toBe(5);
+});
+
+test("[CellModel.insert] Insert rows/columns somewhere in between", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	// Insert some rows at the beginning
+	model.insertRows(3, 3);
+	model.insertColumns(3, 5);
+
+	// Verify trivial measures
+	expect(model.getRowCount()).toBe(9);
+	expect(model.getColumnCount()).toBe(11);
+
+	// Verify size
+	expect(model.getHeight()).toBe(270);
+	expect(model.getWidth()).toBe(1100);
+
+	// Check whether the three rows are empty cells (null)
+	for (let row = 3; row < 6; row++) {
+		for (let column = 0; column < model.getColumnCount(); column++) {
+			expect(model.getCell(row, column)).toBe(null);
+		}
+	}
+
+	// Check whether the 5 columns are empty cells (null)
+	for (let row = 0; row < model.getRowCount(); row++) {
+		for (let column = 3; column < 8; column++) {
+			expect(model.getCell(row, column)).toBe(null);
+		}
+	}
+});
+
+test("[CellModel.insert] Insert rows/columns with hidden rows/columns", () => {
+	const hiddenRows: Set<number> = new Set<number>();
+	const hiddenColumns: Set<number> = new Set<number>();
+
+	hiddenRows.add(2);
+	hiddenRows.add(4);
+
+	hiddenColumns.add(0);
+	hiddenColumns.add(1);
+
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		hiddenRows,
+		hiddenColumns
+	);
+
+	// Insert some rows
+	model.insertRows(2, 3);
+	model.insertColumns(2, 5);
+
+	// Verify trivial measures
+	expect(model.getRowCount()).toBe(9);
+	expect(model.getColumnCount()).toBe(11);
+
+	// Verify table size
+	expect(model.getWidth()).toBe(900);
+	expect(model.getHeight()).toBe(210);
+});
+
+test("[CellModel.insert] Insert rows/columns with merged cells and hidden rows/columns", () => {
+	const hiddenRows: Set<number> = new Set<number>();
+	const hiddenColumns: Set<number> = new Set<number>();
+
+	hiddenRows.add(2);
+	hiddenRows.add(4);
+
+	hiddenColumns.add(0);
+	hiddenColumns.add(1);
+
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		hiddenRows,
+		hiddenColumns
+	);
+
+	// Merge a cell
+	model.mergeCells({
+		startRow: 1,
+		endRow: 4,
+		startColumn: 1,
+		endColumn: 4
+	});
+
+	// Insert some rows
+	model.insertRows(3, 3);
+	model.insertColumns(3, 3);
+
+	// Verify trivial measures
+	expect(model.getRowCount()).toBe(9);
+	expect(model.getColumnCount()).toBe(9);
+
+	// Verify table size
+	expect(model.getWidth()).toBe(700);
+	expect(model.getHeight()).toBe(210);
+
+	// Verify offsets due to hidden rows/columns
+	expect(model.getColumnOffset(0)).toBe(0);
+	expect(model.getColumnOffset(1)).toBe(0);
+	expect(model.getColumnOffset(2)).toBe(0);
+	expect(model.getColumnOffset(3)).toBe(100);
+	expect(model.getRowOffset(2)).toBe(60);
+	expect(model.getRowOffset(3)).toBe(60);
+
+	// The following two row offsets are shifted due to a shifted hidden row (from initially 4 to position 7)
+	expect(model.getRowOffset(4 + 3)).toBe(180);
+	expect(model.getRowOffset(4 + 4)).toBe(180);
 });

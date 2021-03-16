@@ -1,4 +1,5 @@
 import {ICellRange} from "./cell-range";
+import {ICell} from "../cell";
 
 /**
  * Utility methods that are cell range related.
