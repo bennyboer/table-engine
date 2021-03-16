@@ -1,5 +1,6 @@
 import {ICell} from "../cell";
 import {CellRange, ICellRange} from "../range/cell-range";
+import {last} from "rxjs/operators";
 
 /**
  * Model managing cells and their position and size in the table.
@@ -164,29 +165,47 @@ export class CellModel {
 
 		let currentOffset = 0;
 		for (let i = 0; i < sizes.length; i++) {
+			result[i] = currentOffset;
+
 			const isHidden = hidden.has(i);
 			if (!isHidden) {
 				currentOffset += sizes[i];
 			}
-
-			result[i] = currentOffset;
 		}
 
 		return result;
 	}
 
 	/**
+	 * Get the number of rows in the model.
+	 */
+	public getRowCount(): number {
+		return this._rowSizes.length;
+	}
+
+	/**
+	 * Get the number of columns in the model.
+	 */
+	public getColumnCount(): number {
+		return this._columnSizes.length;
+	}
+
+	/**
 	 * Get the total width of the table.
 	 */
 	public getWidth(): number {
-		return this._columnOffsets[this._columnOffsets.length - 1];
+		const lastColumnIndex: number = this.getColumnCount() - 1;
+
+		return this._columnOffsets[lastColumnIndex] + (this.isColumnHidden(lastColumnIndex) ? 0.0 : this.getColumnSize(lastColumnIndex));
 	}
 
 	/**
 	 * Get the total height of the table.
 	 */
 	public getHeight(): number {
-		return this._rowOffsets[this._rowOffsets.length - 1];
+		const lastRowIndex: number = this.getRowCount() - 1;
+
+		return this._rowOffsets[lastRowIndex] + (this.isRowHidden(lastRowIndex) ? 0.0 : this.getRowSize(lastRowIndex));
 	}
 
 	/**
@@ -227,11 +246,7 @@ export class CellModel {
 	 * @param index to get offset for
 	 */
 	private static _getOffset(offsets: number[], index: number): number {
-		if (index === 0) {
-			return 0.0;
-		}
-
-		return offsets[index - 1];
+		return offsets[index];
 	}
 
 	/**
@@ -275,27 +290,17 @@ export class CellModel {
 		// Sort indices first from lower to higher
 		indices.sort((n1, n2) => n1 - n2);
 
-		let sizeSum: number = 0; // Total size added/subtracted until now
-		let resizedCount = 1; // Total count of indices resized (of the given indices to resize array)
+		let sizeDiff: number = 0; // Total size added/subtracted until now
+		let resizedCount = 0; // Total count of indices resized (of the given indices to resize array)
+		let nextResizeIndex = indices[resizedCount];
+		for (let i = nextResizeIndex; i < offsets.length; i++) {
+			offsets[i] += sizeDiff;
 
-		// Resize first index as preparation
-		if (!hiddenIndices.has(indices[0])) {
-			sizeSum += size - sizes[indices[0]]
-		}
-		sizes[indices[0]] = size;
-
-		// Iterate over all offset indices and update offsets lookup
-		let nextResizeIndex = indices.length > resizedCount ? indices[resizedCount] : -1; // Next index in the indices to resize array
-		for (let i = indices[0]; i < offsets.length; i++) {
-			// Update offsets
-			offsets[i] += sizeSum;
-
-			// Check if i is the next index to resize
-			if (i + 1 === nextResizeIndex) {
+			if (i === nextResizeIndex) {
 				// Add/substract the size difference to/from sizeSum (when not hidden)
 				const isHidden = hiddenIndices.has(nextResizeIndex);
 				if (!isHidden) {
-					sizeSum += size - sizes[nextResizeIndex];
+					sizeDiff += size - sizes[nextResizeIndex];
 				}
 
 				// Update the actual sizes array
@@ -369,38 +374,95 @@ export class CellModel {
 	}
 
 	/**
-	 * Hide the given range of rows.
-	 * @param fromIndex index to start hiding rows from (inclusively)
-	 * @param count of rows to hide
+	 * Check whether the row with the given index is hidden.
+	 * @param index to check row for
 	 */
-	public hideRows(fromIndex: number, count: number): void {
+	public isRowHidden(index: number): boolean {
+		return this._hiddenRows.has(index);
+	}
+
+	/**
+	 * Check whether the column with the given index is hidden.
+	 * @param index to check column for
+	 */
+	public isColumnHidden(index: number): boolean {
+		return this._hiddenColumns.has(index);
+	}
+
+	/**
+	 * Hide rows with the given indices.
+	 * @param rowIndices indices to hide rows for
+	 */
+	public hideRows(rowIndices: number[]): void {
+		CellModel._hide(rowIndices, this._rowOffsets, this._hiddenRows, this._rowSizes);
+	}
+
+	/**
+	 * Hide the columns with the given indices.
+	 * @param columnIndices to hide columns for
+	 */
+	public hideColumns(columnIndices: number[]): void {
+		CellModel._hide(columnIndices, this._columnOffsets, this._hiddenColumns, this._columnSizes);
+	}
+
+	/**
+	 * Hide the given indices of rows or columns.
+	 * @param indices to hide
+	 * @param offsets to adjust (for rows or columns)
+	 * @param hidden lookup of hidden rows or columns
+	 * @param sizes lookup for the indices
+	 */
+	private static _hide(indices: number[], offsets: number[], hidden: Set<number>, sizes: number[]): void {
+		// Add indices to the hidden collection first
+		const adjustOffsetsIndices: number[] = [];
+		for (const index of indices) {
+			const isAlreadyHidden = hidden.has(index);
+			if (!isAlreadyHidden) {
+				hidden.add(index);
+
+				// We need to adjust the offset array later
+				adjustOffsetsIndices.push(index);
+			}
+		}
+
+		if (adjustOffsetsIndices.length > 0) {
+			// Sort offset indices to adjust
+			adjustOffsetsIndices.sort((n1, n2) => n1 - n2);
+
+			// Adjust offsets
+			let toDecrease = sizes[adjustOffsetsIndices[0]];
+			let alreadyHiddenCount = 1;
+			let nextHideIndex = adjustOffsetsIndices.length > alreadyHiddenCount ? adjustOffsetsIndices[alreadyHiddenCount] : -1;
+			for (let i = adjustOffsetsIndices[0] + 1; i < offsets.length; i++) {
+				offsets[i] -= toDecrease;
+
+				if (i === nextHideIndex) {
+					toDecrease += sizes[nextHideIndex];
+					alreadyHiddenCount++;
+
+					if (adjustOffsetsIndices.length > alreadyHiddenCount) {
+						nextHideIndex = adjustOffsetsIndices[alreadyHiddenCount];
+					} else {
+						nextHideIndex = -1;
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Show hidden rows with the passed indices.
+	 * @param rowIndices indices of rows to show
+	 */
+	public showRows(rowIndices: number[]): void {
 		// TODO
 	}
 
 	/**
-	 * Show hidden rows in the given range of rows.
-	 * @param fromIndex index to start showing hidden rows from (inclusively)
-	 * @param count of rows to show
+	 * Show hidden columns with the passed indices.
+	 * @param columnIndices indices of columns to show
 	 */
-	public showRows(fromIndex: number, count: number): void {
-		// TODO
-	}
-
-	/**
-	 * Hide the given range of columns.
-	 * @param fromIndex index to start hiding columns from (inclusively)
-	 * @param count of columns to hide
-	 */
-	public hideColumns(fromIndex: number, count: number): void {
-		// TODO
-	}
-
-	/**
-	 * Show hidden columns in the given range of columns.
-	 * @param fromIndex index to start showing hidden columns from (inclusively)
-	 * @param count of columns to show
-	 */
-	public showColumns(fromIndex: number, count: number): void {
+	public showColumns(columnIndices: number[]): void {
 		// TODO
 	}
 

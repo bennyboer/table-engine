@@ -67,6 +67,9 @@ test("[CellModel.generate] Validate row/column offsets", () => {
 		new Set<number>()
 	);
 
+	expect(model.getRowOffset(0)).toBe(0);
+	expect(model.getColumnOffset(0)).toBe(0);
+
 	expect(model.getRowOffset(4)).toBe(30 * 4);
 	expect(model.getColumnOffset(3)).toBe(100 * 3);
 });
@@ -203,4 +206,70 @@ test("[CellModel.resize] Resize rows and columns with hidden rows/columns", () =
 	expect(model.getColumnSize(2)).toBe(50);
 	expect(model.getWidth()).toBe(100 * 5 - 50);
 	expect(model.getHeight()).toBe(30 * 4 + 60);
+});
+
+test("[CellModel.hide] Hide rows and columns", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	model.hideRows([2, 1, 5]);
+	model.hideColumns([0, 3]);
+
+	expect(model.isRowHidden(1)).toBe(true);
+	expect(model.isRowHidden(2)).toBe(true);
+	expect(model.isRowHidden(5)).toBe(true);
+	expect(model.isColumnHidden(0)).toBe(true);
+	expect(model.isColumnHidden(3)).toBe(true);
+	expect(model.isColumnHidden(1)).toBe(false);
+	expect(model.getHeight()).toBe(90);
+	expect(model.getWidth()).toBe(400);
+	expect(model.getRowOffset(3)).toBe(30);
+	expect(model.getColumnOffset(1)).toBe(0);
+});
+
+test("[CellModel.hide] Hide rows and columns - with already hidden rows/columns", () => {
+	const hiddenRows = new Set<number>();
+	hiddenRows.add(1);
+	hiddenRows.add(3);
+
+	const hiddenColumns = new Set<number>();
+	hiddenColumns.add(2);
+
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		hiddenRows,
+		hiddenColumns
+	);
+
+	model.hideRows([2, 1, 5]);
+	model.hideColumns([0, 3]);
+
+	expect(model.isRowHidden(1)).toBe(true);
+	expect(model.isRowHidden(2)).toBe(true);
+	expect(model.isRowHidden(5)).toBe(true);
+	expect(model.isColumnHidden(0)).toBe(true);
+	expect(model.isColumnHidden(3)).toBe(true);
+	expect(model.isColumnHidden(2)).toBe(true);
+	expect(model.isColumnHidden(5)).toBe(false);
+	expect(model.getHeight()).toBe(60);
+	expect(model.getWidth()).toBe(300);
 });
