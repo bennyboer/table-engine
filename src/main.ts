@@ -6,12 +6,12 @@ import CanvasKitInit, {CanvasKit, Surface} from "canvaskit-wasm";
  */
 export class TableEngine {
 	constructor(canvasElement: HTMLCanvasElement) {
-		const worker: TestWorker = new TestWorker();
-
-		worker.postMessage("What are you doing?");
+		// const worker: TestWorker = new TestWorker();
+		//
+		// worker.postMessage("What are you doing?");
 
 		(CanvasKitInit as any)({
-			locateFile: (file: string) => 'https://unpkg.com/canvaskit-wasm@0.25.0/bin/' + file,
+			locateFile: (file: string) => 'https://unpkg.com/canvaskit-wasm@0.25.0/bin/' + file, // TODO This needs to be done in a better way
 		}).then((canvasKit: CanvasKit) => {
 			const surface: any = canvasKit.MakeCanvasSurface(canvasElement);
 
