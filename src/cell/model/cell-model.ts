@@ -1,5 +1,6 @@
 import {ICell} from "../cell";
 import {CellRange, ICellRange} from "../range/cell-range";
+import {CellRangeUtil} from "../range/cell-range-util";
 
 /**
  * Model managing cells and their position and size in the table.
@@ -173,6 +174,15 @@ export class CellModel {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Get a cell at the given coordinates.
+	 * @param rowIndex to get cell at
+	 * @param columnIndex to get cell at
+	 */
+	public getCell(rowIndex: number, columnIndex: number): ICell | null {
+		return this._cellLookup[rowIndex][columnIndex];
 	}
 
 	/**
@@ -359,7 +369,35 @@ export class CellModel {
 	 * @returns whether the cells could be merged
 	 */
 	public mergeCells(range: ICellRange): boolean {
-		return true; // TODO
+		// Check whether we can merge the cell range
+		for (let row = range.startRow; row <= range.endRow; row++) {
+			for (let column = range.startColumn; column <= range.endColumn; column++) {
+				const cell = this.getCell(row, column);
+				if (!!cell) {
+					if (!CellRangeUtil.isSingleRowColumnRange(cell.range)) {
+						return false; // Cannot merge over already merged cell
+					}
+				}
+			}
+		}
+
+		// Actually merge the cell by writing cell references in the cell lookup to the most upper left corner cell
+		const cell: ICell = this.getCell(range.startRow, range.startColumn);
+		for (let row = range.startRow; row <= range.endRow; row++) {
+			for (let column = range.startColumn; column <= range.endColumn; column++) {
+				if (row === range.startRow && column === range.startColumn) {
+					continue;
+				}
+
+				this._cellLookup[row][column] = cell;
+			}
+		}
+
+		// Update cell range
+		cell.range.endRow = range.endRow;
+		cell.range.endColumn = range.endColumn;
+
+		return true;
 	}
 
 	/**
@@ -369,7 +407,26 @@ export class CellModel {
 	 * @param columnIndex index of the column the cell is at
 	 */
 	public splitCell(rowIndex: number, columnIndex: number): void {
-		// TODO
+		const cell = this.getCell(rowIndex, columnIndex);
+
+		if (CellRangeUtil.isSingleRowColumnRange(cell.range)) {
+			return;
+		}
+
+		// Reset cell lookup to empty cell for all cells but the most upper left one
+		for (let row = cell.range.startRow; row <= cell.range.endRow; row++) {
+			for (let column = cell.range.startColumn; column <= cell.range.endColumn; column++) {
+				if (row === cell.range.startRow && column === cell.range.startColumn) {
+					continue;
+				}
+
+				this._cellLookup[row][column] = null;
+			}
+		}
+
+		// Update cell range
+		cell.range.endRow = cell.range.startRow;
+		cell.range.endColumn = cell.range.startColumn;
 	}
 
 	/**

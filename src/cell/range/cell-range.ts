@@ -100,11 +100,4 @@ export class CellRange implements ICellRange {
 	set startRow(value: number) {
 		this._startRow = value;
 	}
-
-	/**
-	 * Whether the range only spans over one row and column.
-	 */
-	public isSingleRowColumnRange(): boolean {
-		return this._startRow === this._endRow && this._startColumn === this._endColumn;
-	}
 }

@@ -415,3 +415,169 @@ test("[CellModel.show] Show multiple rows and columns", () => {
 	expect(model.getColumnOffset(4)).toBe(300);
 	expect(model.getColumnOffset(5)).toBe(300);
 });
+
+test("[CellModel.getCell] Get a cell", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	const lastCell = model.getCell(5, 5);
+
+	expect(lastCell.range.startRow).toBe(5);
+	expect(lastCell.range.endRow).toBe(5);
+	expect(lastCell.range.startColumn).toBe(5);
+	expect(lastCell.range.endColumn).toBe(5);
+	expect(lastCell.value).toBe("Last cell");
+
+	const anotherCell = model.getCell(2, 3);
+
+	expect(anotherCell.range.startRow).toBe(2);
+	expect(anotherCell.range.endRow).toBe(2);
+	expect(anotherCell.range.startColumn).toBe(3);
+	expect(anotherCell.range.endColumn).toBe(3);
+	expect(anotherCell.value).toBe(2 * 3);
+});
+
+test("[CellModel.merge] Merge a cell range", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	const success = model.mergeCells({
+		startRow: 2,
+		endRow: 4,
+		startColumn: 2,
+		endColumn: 4
+	});
+
+	expect(success).toBe(true);
+
+	const cell = model.getCell(2, 2);
+	expect(cell.range.startRow).toBe(2);
+	expect(cell.range.endRow).toBe(4);
+	expect(cell.range.startColumn).toBe(2);
+	expect(cell.range.endColumn).toBe(4);
+});
+
+test("[CellModel.merge] Merge a cell range - impossible", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	model.mergeCells({
+		startRow: 2,
+		endRow: 4,
+		startColumn: 2,
+		endColumn: 4
+	});
+
+	const success = model.mergeCells({
+		startRow: 1,
+		endRow: 4,
+		startColumn: 2,
+		endColumn: 4
+	});
+
+	expect(success).toBe(false);
+
+	const cell = model.getCell(2, 2);
+	expect(cell.range.startRow).toBe(2);
+	expect(cell.range.endRow).toBe(4);
+	expect(cell.range.startColumn).toBe(2);
+	expect(cell.range.endColumn).toBe(4);
+});
+
+test("[CellModel.split] Split a cell range", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	model.mergeCells({
+		startRow: 2,
+		endRow: 4,
+		startColumn: 2,
+		endColumn: 4
+	});
+
+	model.splitCell(3, 4); // The indices do not really matter and just need to be in the merged cell range
+
+	const cell = model.getCell(2, 2);
+	expect(cell.range.startRow).toBe(2);
+	expect(cell.range.endRow).toBe(2);
+	expect(cell.range.startColumn).toBe(2);
+	expect(cell.range.endColumn).toBe(2);
+
+	for (let row = 2; row <= 4; row++) {
+		for (let column = 2; column <= 4; column++) {
+			if (row !== 2 || column !== 2) {
+				const anotherCell = model.getCell(row, column);
+				expect(anotherCell).toBe(null); // Is an empty cell!
+			}
+		}
+	}
+});
+
+test("[CellModel.split] Try to split a single row column cell", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	model.splitCell(2, 2);
+
+	// Nothing should happen
+	const cell = model.getCell(2, 2);
+	expect(cell.range.startRow).toBe(2);
+	expect(cell.range.endRow).toBe(2);
+	expect(cell.range.startColumn).toBe(2);
+	expect(cell.range.endColumn).toBe(2);
+});
