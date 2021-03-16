@@ -871,3 +871,27 @@ test("[CellModel.insert] Insert rows/columns with merged cells and hidden rows/c
 	expect(model.getRowOffset(4 + 3)).toBe(180);
 	expect(model.getRowOffset(4 + 4)).toBe(180);
 });
+
+test("[CellModel.delete] Delete rows/columns from the beginning", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	// Delete some rows from the beginning
+	model.deleteRows(0, 2);
+
+	// Verify trivial measures
+	expect(model.getRowCount()).toBe(4);
+
+	// TODO
+});

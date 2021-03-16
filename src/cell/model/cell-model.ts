@@ -1,6 +1,7 @@
 import {ICell} from "../cell";
 import {CellRange, ICellRange} from "../range/cell-range";
 import {CellRangeUtil} from "../range/cell-range-util";
+import {from} from "rxjs";
 
 /**
  * Model managing cells and their position and size in the table.
@@ -380,7 +381,7 @@ export class CellModel {
 		CellModel._shiftOffsets(isRow ? this._rowOffsets : this._columnOffsets, insertBeforeIndex + count, totalAddedSize);
 
 		// Shift cell ranges for all cells below/after the inserted ones
-		this._shiftCellRanges(isRow, insertBeforeIndex + count, count);
+		this._shiftCellRangesForInsert(isRow, insertBeforeIndex + count, count);
 
 		// Re-merge cells that have been split before inserting
 		for (const range of intersectingMergedAreaRanges) {
@@ -402,7 +403,7 @@ export class CellModel {
 	 * @param fromIndex from which index to start shifting (inclusive)
 	 * @param by what amount to shift
 	 */
-	private _shiftCellRanges(isRowAxis: boolean, fromIndex: number, by: number): void {
+	private _shiftCellRangesForInsert(isRowAxis: boolean, fromIndex: number, by: number): void {
 		const forEachOptions: ForEachInRangeOptions = {
 			unique: true,
 			includeHidden: true
@@ -624,7 +625,7 @@ export class CellModel {
 	 * @param count of rows to delete
 	 */
 	public deleteRows(fromIndex: number, count: number): void {
-		// TODO
+		this._delete(fromIndex, count, true);
 	}
 
 	/**
@@ -633,7 +634,147 @@ export class CellModel {
 	 * @param count of columns to delete
 	 */
 	public deleteColumns(fromIndex: number, count: number): void {
-		// TODO
+		this._delete(fromIndex, count, false);
+	}
+
+	/**
+	 * Delete rows/columns from the given index (inclusive).
+	 * @param fromIndex the index to delete rows/columns from (inclusively)
+	 * @param count of rows/columns to delete
+	 * @param isRow whether we want to delete rows or columns
+	 */
+	private _delete(fromIndex: number, count: number, isRow: boolean): void {
+		// Find all merged cells ranging over the first row/column to delete
+		const intersectingMergedAreaRanges: ICellRange[] = fromIndex > 0
+			? this._collectMergedCellsRangingOverIndex(isRow, fromIndex - 1)
+			: [];
+
+		const lastIndexToRemove: number = fromIndex + count - 1;
+		const totalSizeToRemove: number = isRow
+			? (this.getRowOffset(lastIndexToRemove) + (this.isRowHidden(lastIndexToRemove) ? 0.0 : this.getRowSize(lastIndexToRemove))) - this.getRowOffset(fromIndex)
+			: (this.getColumnOffset(lastIndexToRemove) + (this.isColumnHidden(lastIndexToRemove) ? 0.0 : this.getColumnSize(lastIndexToRemove))) - this.getColumnOffset(fromIndex)
+
+		// Adjust cell ranges ranging over the first row/column to delete,
+		// but not ranges that that span over the whole area to delete
+		// (Those will be adjusted in a later step).
+		for (const range of intersectingMergedAreaRanges) {
+			if (isRow) {
+				if (range.endRow <= lastIndexToRemove) {
+					const cell: ICell = this.getCell(range.startRow, range.startColumn);
+
+					cell.range.endRow = fromIndex - 1;
+				}
+			} else {
+				if (range.endColumn <= lastIndexToRemove) {
+					const cell: ICell = this.getCell(range.startRow, range.startColumn);
+
+					cell.range.endColumn = fromIndex - 1;
+				}
+			}
+		}
+
+		// Shift cell ranges for all cells in areas below (rows) or beneath (columns) of the area to remove
+		this._shiftCellRangesForDelete(isRow, fromIndex, count);
+
+		// Remove hidden rows/columns from the lookup
+		const hidden: Set<number> = isRow ? this._hiddenRows : this._hiddenColumns;
+		for (let i = fromIndex; i < fromIndex + count; i++) {
+			hidden.delete(i);
+		}
+
+		// Shift hidden rows/columns to the left as there are now less rows/columns
+		CellModel._shiftHidden(isRow ? this._hiddenRows : this._hiddenColumns, fromIndex + count, -count);
+
+		// Delete from the offset lookup
+		const offsets: number[] = isRow ? this._rowOffsets : this._columnOffsets;
+		offsets.splice(fromIndex, count); // Remove offsets for rows/columns that are now deleted
+
+		// Shift offsets by the removed size
+		for (let i = fromIndex; i < offsets.length; i++) {
+			offsets[i] -= totalSizeToRemove;
+		}
+
+		// Remove deleted rows/columns from the size lookup
+		const sizes: number[] = isRow ? this._rowSizes : this._columnSizes;
+		sizes.splice(fromIndex, count);
+
+		// Remove cells from cell lookup for the deleted rows/columns
+		if (isRow) {
+			this._cellLookup.splice(fromIndex, count);
+		} else {
+			for (const cells of this._cellLookup) {
+				cells.splice(fromIndex, count);
+			}
+		}
+	}
+
+	/**
+	 * Shift the cell ranges below or after the row/column area to delete.
+	 * @param isRowAxis whether we deal with deleting rows or columns
+	 * @param fromIndex the index rows/columns are deleted from (inclusive)
+	 * @param count of rows/columns that are deleted
+	 */
+	private _shiftCellRangesForDelete(isRowAxis: boolean, fromIndex: number, count: number): void {
+		const forEachOptions: ForEachInRangeOptions = {
+			unique: true,
+			includeHidden: true
+		};
+
+		if (isRowAxis) {
+			this._forEachCellInRange({
+				startRow: fromIndex + count,
+				endRow: this.getRowCount() - 1,
+				startColumn: 0,
+				endColumn: this.getColumnCount() - 1
+			}, (cell, row, column) => {
+				if (!!cell) {
+					if (CellRangeUtil.isSingleRowColumnRange(cell.range)) {
+						cell.range.startRow -= count;
+						cell.range.endRow -= count;
+					} else {
+						if (cell.range.startRow < fromIndex) {
+							// Case 1: Merged cell starts in row above the rows to delete
+							cell.range.endRow -= count;
+						} else if (cell.range.startRow < fromIndex + count) {
+							// Case 2: Merged cell starts in a row to delete
+							cell.range.startRow = fromIndex;
+							cell.range.endRow -= count;
+						} else {
+							// Case 3: Merged cell starts without concern to the deleted area
+							cell.range.startRow -= count;
+							cell.range.endRow -= count;
+						}
+					}
+				}
+			}, forEachOptions);
+		} else {
+			this._forEachCellInRange({
+				startRow: 0,
+				endRow: this.getRowCount() - 1,
+				startColumn: fromIndex + count,
+				endColumn: this.getColumnCount() - 1
+			}, (cell, row, column) => {
+				if (!!cell) {
+					if (CellRangeUtil.isSingleRowColumnRange(cell.range)) {
+						cell.range.startColumn -= count;
+						cell.range.endColumn -= count;
+					} else {
+						if (cell.range.startColumn < fromIndex) {
+							// Case 1: Merged cell starts in column before the columns to delete
+							cell.range.endColumn -= count;
+						} else if (cell.range.startColumn < fromIndex + count) {
+							// Case 2: Merged cell starts in a column to delete
+							cell.range.startColumn = fromIndex;
+							cell.range.endColumn -= count;
+						} else {
+							// Case 3: Merged cell starts without concern to the deleted area
+							cell.range.startColumn -= count;
+							cell.range.endColumn -= count;
+						}
+					}
+				}
+			}, forEachOptions);
+		}
 	}
 
 	/**
