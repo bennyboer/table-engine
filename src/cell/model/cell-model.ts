@@ -1,6 +1,5 @@
 import {ICell} from "../cell";
 import {CellRange, ICellRange} from "../range/cell-range";
-import {last} from "rxjs/operators";
 
 /**
  * Model managing cells and their position and size in the table.
@@ -455,7 +454,7 @@ export class CellModel {
 	 * @param rowIndices indices of rows to show
 	 */
 	public showRows(rowIndices: number[]): void {
-		// TODO
+		CellModel._show(rowIndices, this._rowOffsets, this._hiddenRows, this._rowSizes);
 	}
 
 	/**
@@ -463,14 +462,53 @@ export class CellModel {
 	 * @param columnIndices indices of columns to show
 	 */
 	public showColumns(columnIndices: number[]): void {
-		// TODO
+		CellModel._show(columnIndices, this._columnOffsets, this._hiddenColumns, this._columnSizes);
 	}
 
 	/**
-	 * Show all hidden rows and columns.
+	 * Show the given indices of rows or columns.
+	 * @param indices to show
+	 * @param offsets to adjust (for rows or columns)
+	 * @param hidden lookup of hidden rows or columns
+	 * @param sizes lookup for the indices
 	 */
-	public showAll(): void {
-		// TODO
+	private static _show(indices: number[], offsets: number[], hidden: Set<number>, sizes: number[]): void {
+		// Remove indices from the hidden collection first
+		const adjustOffsetsIndices: number[] = [];
+		for (const index of indices) {
+			// Check if the index is currently hidden
+			const isHidden = hidden.has(index);
+			if (isHidden) {
+				hidden.delete(index);
+
+				// We need to adjust the offset array later
+				adjustOffsetsIndices.push(index);
+			}
+		}
+
+		if (adjustOffsetsIndices.length > 0) {
+			// Sort offset indices to adjust
+			adjustOffsetsIndices.sort((n1, n2) => n1 - n2);
+
+			// Adjust offsets
+			let toIncrease = sizes[adjustOffsetsIndices[0]];
+			let alreadyShownCount = 1;
+			let nextShowIndex = adjustOffsetsIndices.length > alreadyShownCount ? adjustOffsetsIndices[alreadyShownCount] : -1;
+			for (let i = adjustOffsetsIndices[0] + 1; i < offsets.length; i++) {
+				offsets[i] += toIncrease;
+
+				if (i === nextShowIndex) {
+					toIncrease += sizes[nextShowIndex];
+					alreadyShownCount++;
+
+					if (adjustOffsetsIndices.length > alreadyShownCount) {
+						nextShowIndex = adjustOffsetsIndices[alreadyShownCount];
+					} else {
+						nextShowIndex = -1;
+					}
+				}
+			}
+		}
 	}
 
 }

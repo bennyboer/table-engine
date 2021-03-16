@@ -273,3 +273,145 @@ test("[CellModel.hide] Hide rows and columns - with already hidden rows/columns"
 	expect(model.getHeight()).toBe(60);
 	expect(model.getWidth()).toBe(300);
 });
+
+test("[CellModel.show] Show single row and column", () => {
+	const hiddenRows = new Set<number>();
+	hiddenRows.add(1);
+	hiddenRows.add(3);
+
+	const hiddenColumns = new Set<number>();
+	hiddenColumns.add(2);
+
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		hiddenRows,
+		hiddenColumns
+	);
+
+	model.showRows([5, 1]); // 5 is not hidden, and thus this should not have an effect
+	model.showColumns([2]);
+
+	expect(model.isRowHidden(1)).toBe(false);
+	expect(model.isRowHidden(3)).toBe(true);
+	expect(model.isRowHidden(0)).toBe(false);
+	expect(model.isColumnHidden(0)).toBe(false);
+	expect(model.isColumnHidden(3)).toBe(false);
+	expect(model.isColumnHidden(2)).toBe(false);
+	expect(model.getHeight()).toBe(150);
+	expect(model.getWidth()).toBe(600);
+	expect(model.getRowOffset(3)).toBe(90);
+	expect(model.getColumnOffset(1)).toBe(100);
+});
+
+test("[CellModel.hide] Hide all", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	model.hideRows([0, 1, 3, 2, 5, 4]);
+	model.hideColumns([0, 1, 3, 2, 5, 4]);
+
+	expect(model.getWidth()).toBe(0);
+	expect(model.getHeight()).toBe(0);
+});
+
+test("[CellModel.hide] Hide all and show all again", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	model.hideRows([0, 1, 3, 2, 5, 4]);
+	model.hideColumns([0, 1, 3, 2, 5, 4]);
+
+	expect(model.getWidth()).toBe(0);
+	expect(model.getHeight()).toBe(0);
+
+	model.showRows([0, 1, 3, 2, 5, 4]);
+	model.showColumns([0, 1, 3, 2, 5, 4]);
+
+	expect(model.getWidth()).toBe(600);
+	expect(model.getHeight()).toBe(180);
+});
+
+test("[CellModel.show] Show multiple rows and columns", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	// Hide all first
+	model.hideRows([0, 1, 3, 2, 5, 4]);
+	model.hideColumns([0, 1, 3, 2, 5, 4]);
+
+	// Show some again
+	model.showRows([3, 5]);
+	model.showColumns([0, 2, 3]);
+
+	expect(model.isRowHidden(0)).toBe(true);
+	expect(model.isRowHidden(1)).toBe(true);
+	expect(model.isRowHidden(2)).toBe(true);
+	expect(model.isRowHidden(3)).toBe(false);
+	expect(model.isRowHidden(4)).toBe(true);
+	expect(model.isRowHidden(5)).toBe(false);
+
+	expect(model.isColumnHidden(0)).toBe(false);
+	expect(model.isColumnHidden(1)).toBe(true);
+	expect(model.isColumnHidden(2)).toBe(false);
+	expect(model.isColumnHidden(3)).toBe(false);
+	expect(model.isColumnHidden(4)).toBe(true);
+	expect(model.isColumnHidden(5)).toBe(true);
+
+	expect(model.getWidth()).toBe(300);
+	expect(model.getHeight()).toBe(60);
+
+	expect(model.getRowOffset(0)).toBe(0);
+	expect(model.getRowOffset(1)).toBe(0);
+	expect(model.getRowOffset(2)).toBe(0);
+	expect(model.getRowOffset(3)).toBe(0);
+	expect(model.getRowOffset(4)).toBe(30);
+	expect(model.getRowOffset(5)).toBe(30);
+
+	expect(model.getColumnOffset(0)).toBe(0);
+	expect(model.getColumnOffset(1)).toBe(100);
+	expect(model.getColumnOffset(2)).toBe(100);
+	expect(model.getColumnOffset(3)).toBe(200);
+	expect(model.getColumnOffset(4)).toBe(300);
+	expect(model.getColumnOffset(5)).toBe(300);
+});
