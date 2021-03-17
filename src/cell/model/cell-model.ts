@@ -1,7 +1,6 @@
 import {ICell} from "../cell";
 import {CellRange, ICellRange} from "../range/cell-range";
 import {CellRangeUtil} from "../range/cell-range-util";
-import {from} from "rxjs";
 
 /**
  * Model managing cells and their position and size in the table.

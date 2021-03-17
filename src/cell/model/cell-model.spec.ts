@@ -887,11 +887,432 @@ test("[CellModel.delete] Delete rows/columns from the beginning", () => {
 		new Set<number>()
 	);
 
-	// Delete some rows from the beginning
+	// Delete some rows/columns from the beginning
 	model.deleteRows(0, 2);
+	model.deleteColumns(0, 2);
 
 	// Verify trivial measures
 	expect(model.getRowCount()).toBe(4);
+	expect(model.getColumnCount()).toBe(4);
 
-	// TODO
+	// Check the state of the rows
+	for (let row = 0; row < model.getRowCount(); row++) {
+		expect(model.getRowOffset(row)).toBe(row * 30);
+		expect(model.getRowSize(row)).toBe(30);
+
+		for (let column = 0; column < model.getColumnCount(); column++) {
+			expect(model.getColumnOffset(column)).toBe(column * 100);
+			expect(model.getColumnSize(column)).toBe(100);
+
+			const cell: ICell = model.getCell(row, column);
+
+			if (row === model.getRowCount() - 1 && column === model.getColumnCount() - 1) {
+				expect(cell.value).toBe("Last cell");
+			} else {
+				expect(cell.value).toBe((row + 2) * (column + 2));
+			}
+			expect(cell.range.startRow).toBe(row);
+			expect(cell.range.endRow).toBe(row);
+			expect(cell.range.startColumn).toBe(column);
+			expect(cell.range.endColumn).toBe(column);
+		}
+	}
+});
+
+test("[CellModel.delete] Delete rows/columns at the end", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	// Delete some rows/columns from the beginning
+	model.deleteRows(model.getRowCount() - 2, 2);
+	model.deleteColumns(model.getColumnCount() - 2, 2);
+
+	// Verify trivial measures
+	expect(model.getRowCount()).toBe(4);
+	expect(model.getColumnCount()).toBe(4);
+
+	// Check the state of the rows
+	for (let row = 0; row < model.getRowCount(); row++) {
+		expect(model.getRowOffset(row)).toBe(row * 30);
+		expect(model.getRowSize(row)).toBe(30);
+
+		for (let column = 0; column < model.getColumnCount(); column++) {
+			expect(model.getColumnOffset(column)).toBe(column * 100);
+			expect(model.getColumnSize(column)).toBe(100);
+
+			const cell: ICell = model.getCell(row, column);
+			expect(cell.value).toBe(row * column);
+			expect(cell.range.startRow).toBe(row);
+			expect(cell.range.endRow).toBe(row);
+			expect(cell.range.startColumn).toBe(column);
+			expect(cell.range.endColumn).toBe(column);
+		}
+	}
+});
+
+test("[CellModel.delete] Delete rows/columns in between", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	// Delete some rows/columns from the beginning
+	model.deleteRows(2, 2);
+	model.deleteColumns(2, 2);
+
+	// Verify trivial measures
+	expect(model.getRowCount()).toBe(4);
+	expect(model.getColumnCount()).toBe(4);
+
+	// Check the state of the rows
+	for (let row = 0; row < model.getRowCount(); row++) {
+		expect(model.getRowOffset(row)).toBe(row * 30);
+		expect(model.getRowSize(row)).toBe(30);
+
+		const rowValue: number = row < 2 ? row : row + 2;
+
+		for (let column = 0; column < model.getColumnCount(); column++) {
+			expect(model.getColumnOffset(column)).toBe(column * 100);
+			expect(model.getColumnSize(column)).toBe(100);
+
+			const columnValue: number = column < 2 ? column : column + 2;
+
+			const cell: ICell = model.getCell(row, column);
+			if (row === model.getRowCount() - 1 && column === model.getColumnCount() - 1) {
+				expect(cell.value).toBe("Last cell");
+			} else {
+				expect(cell.value).toBe(rowValue * columnValue);
+			}
+			expect(cell.range.startRow).toBe(row);
+			expect(cell.range.endRow).toBe(row);
+			expect(cell.range.startColumn).toBe(column);
+			expect(cell.range.endColumn).toBe(column);
+		}
+	}
+});
+
+test("[CellModel.delete] Delete rows/columns with hidden rows/columns", () => {
+	const hiddenRows: Set<number> = new Set<number>();
+	const hiddenColumns: Set<number> = new Set<number>();
+
+	hiddenRows.add(4);
+	hiddenColumns.add(1);
+	hiddenColumns.add(5);
+
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		hiddenRows,
+		hiddenColumns
+	);
+
+	// Delete some rows/columns from the beginning
+	model.deleteRows(2, 2);
+	model.deleteColumns(2, 2);
+
+	// Verify trivial measures
+	expect(model.getRowCount()).toBe(4);
+	expect(model.getColumnCount()).toBe(4);
+
+	// Check the state of the rows
+	for (let row = 0; row < model.getRowCount(); row++) {
+		expect(model.getRowOffset(row)).toBe(row * 30 - (row > 2 ? 30 : 0));
+		expect(model.getRowSize(row)).toBe(30);
+		expect(model.isRowHidden(row)).toBe(row === 2);
+
+		const rowValue: number = row < 2 ? row : row + 2;
+
+		for (let column = 0; column < model.getColumnCount(); column++) {
+			expect(model.getColumnOffset(column)).toBe(column * 100 - (column > 1 ? 100 : 0));
+			expect(model.getColumnSize(column)).toBe(100);
+			expect(model.isColumnHidden(column)).toBe(column === 1 || column === 3);
+
+			const columnValue: number = column < 2 ? column : column + 2;
+
+			const cell: ICell = model.getCell(row, column);
+			if (row === model.getRowCount() - 1 && column === model.getColumnCount() - 1) {
+				expect(cell.value).toBe("Last cell");
+			} else {
+				expect(cell.value).toBe(rowValue * columnValue);
+			}
+			expect(cell.range.startRow).toBe(row);
+			expect(cell.range.endRow).toBe(row);
+			expect(cell.range.startColumn).toBe(column);
+			expect(cell.range.endColumn).toBe(column);
+		}
+	}
+});
+
+test("[CellModel.delete] Delete rows/columns with merged cells - I", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	model.mergeCells({
+		startRow: 0,
+		endRow: model.getRowCount() - 1,
+		startColumn: 0,
+		endColumn: 0
+	});
+	model.mergeCells({
+		startRow: 1,
+		endRow: 2,
+		startColumn: 1,
+		endColumn: 4,
+	});
+
+	// Delete some rows/columns from the beginning
+	model.deleteRows(2, 2);
+	model.deleteColumns(2, 2);
+
+	// Verify trivial measures
+	expect(model.getRowCount()).toBe(4);
+	expect(model.getColumnCount()).toBe(4);
+
+	// Check the state of the cell matrix
+	const expectedValues: any[][] = [
+		[0, 0, 0, 0],
+		[0, 1, 1, 5],
+		[0, 4, 16, 20],
+		[0, 5, 20, "Last cell"]
+	];
+	for (let row = 0; row < model.getRowCount(); row++) {
+		for (let column = 0; column < model.getColumnCount(); column++) {
+			const cell: ICell = model.getCell(row, column);
+			expect(cell.value).toBe(expectedValues[row][column]);
+		}
+	}
+
+	// Check cell ranges of merged cells
+	let cell: ICell = model.getCell(3, 0);
+	expect(cell.range.startRow).toBe(0);
+	expect(cell.range.endRow).toBe(3);
+	expect(cell.range.startColumn).toBe(0);
+	expect(cell.range.endColumn).toBe(0);
+
+	cell = model.getCell(1, 2);
+	expect(cell.range.startRow).toBe(1);
+	expect(cell.range.endRow).toBe(1);
+	expect(cell.range.startColumn).toBe(1);
+	expect(cell.range.endColumn).toBe(2);
+});
+
+test("[CellModel.delete] Delete rows/columns with merged cells - II", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	// Merge cell starting in the row to delete
+	model.mergeCells({
+		startRow: 2,
+		endRow: model.getRowCount() - 1,
+		startColumn: 1,
+		endColumn: 1
+	});
+	// Merge cell starting under the in the row to delete
+	model.mergeCells({
+		startRow: 4,
+		endRow: model.getRowCount() - 1,
+		startColumn: 2,
+		endColumn: 2
+	});
+	// Merge cell ranging over the row to delete
+	model.mergeCells({
+		startRow: 0,
+		endRow: model.getRowCount() - 1,
+		startColumn: 3,
+		endColumn: 3
+	});
+	// Merge cell ranging only to the first row to delete
+	model.mergeCells({
+		startRow: 0,
+		endRow: 2,
+		startColumn: 4,
+		endColumn: 4
+	});
+
+	// Delete some rows/columns from the beginning
+	model.deleteRows(2, 1);
+
+	// Verify trivial measures
+	expect(model.getRowCount()).toBe(5);
+
+	// Check the state of the cell matrix
+	const expectedValues: any[][] = [
+		[0, 0, 0, 0, 0, 0],
+		[0, 1, 2, 0, 0, 5],
+		[0, 2, 6, 0, 12, 15],
+		[0, 2, 8, 0, 16, 20],
+		[0, 2, 8, 0, 20, "Last cell"]
+	];
+	for (let row = 0; row < model.getRowCount(); row++) {
+		for (let column = 0; column < model.getColumnCount(); column++) {
+			const cell: ICell = model.getCell(row, column);
+			expect(cell.value).toBe(expectedValues[row][column]);
+		}
+	}
+
+	// Check cell ranges of merged cells
+	let cell: ICell = model.getCell(4, 1);
+	expect(cell.range.startRow).toBe(2);
+	expect(cell.range.endRow).toBe(4);
+	expect(cell.range.startColumn).toBe(1);
+	expect(cell.range.endColumn).toBe(1);
+
+	cell = model.getCell(4, 2);
+	expect(cell.range.startRow).toBe(3);
+	expect(cell.range.endRow).toBe(4);
+	expect(cell.range.startColumn).toBe(2);
+	expect(cell.range.endColumn).toBe(2);
+
+	cell = model.getCell(2, 3);
+	expect(cell.range.startRow).toBe(0);
+	expect(cell.range.endRow).toBe(4);
+	expect(cell.range.startColumn).toBe(3);
+	expect(cell.range.endColumn).toBe(3);
+
+	cell = model.getCell(0, 4);
+	expect(cell.range.startRow).toBe(0);
+	expect(cell.range.endRow).toBe(1);
+	expect(cell.range.startColumn).toBe(4);
+	expect(cell.range.endColumn).toBe(4);
+});
+
+test("[CellModel.delete] Delete rows/columns with merged cells - III", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	// Merge cell starting in the column to delete
+	model.mergeCells({
+		startRow: 1,
+		endRow: 1,
+		startColumn: 2,
+		endColumn: model.getColumnCount() - 1
+	});
+	// Merge cell starting next to the column to delete
+	model.mergeCells({
+		startRow: 2,
+		endRow: 2,
+		startColumn: 4,
+		endColumn: model.getColumnCount() - 1
+	});
+	// Merge cell ranging over the column to delete
+	model.mergeCells({
+		startRow: 3,
+		endRow: 3,
+		startColumn: 0,
+		endColumn: model.getColumnCount() - 1
+	});
+	// Merge cell ranging only to the first column to delete
+	model.mergeCells({
+		startRow: 4,
+		endRow: 4,
+		startColumn: 0,
+		endColumn: 2
+	});
+
+	// Delete some rows/columns from the beginning
+	model.deleteColumns(2, 1);
+
+	// Verify trivial measures
+	expect(model.getColumnCount()).toBe(5);
+
+	// Check the state of the cell matrix
+	const expectedValues: any[][] = [
+		[0, 0, 0, 0, 0],
+		[0, 1, 2, 2, 2],
+		[0, 2, 6, 8, 8],
+		[0, 0, 0, 0, 0],
+		[0, 0, 12, 16, 20],
+		[0, 5, 15, 20, "Last cell"]
+	];
+	for (let row = 0; row < model.getRowCount(); row++) {
+		for (let column = 0; column < model.getColumnCount(); column++) {
+			const cell: ICell = model.getCell(row, column);
+			expect(cell.value).toBe(expectedValues[row][column]);
+		}
+	}
+
+	// Check cell ranges of merged cells
+	let cell: ICell = model.getCell(1, 4);
+	expect(cell.range.startRow).toBe(1);
+	expect(cell.range.endRow).toBe(1);
+	expect(cell.range.startColumn).toBe(2);
+	expect(cell.range.endColumn).toBe(4);
+
+	cell = model.getCell(2, 4);
+	expect(cell.range.startRow).toBe(2);
+	expect(cell.range.endRow).toBe(2);
+	expect(cell.range.startColumn).toBe(3);
+	expect(cell.range.endColumn).toBe(4);
+
+	cell = model.getCell(3, 2);
+	expect(cell.range.startRow).toBe(3);
+	expect(cell.range.endRow).toBe(3);
+	expect(cell.range.startColumn).toBe(0);
+	expect(cell.range.endColumn).toBe(4);
+
+	cell = model.getCell(4, 0);
+	expect(cell.range.startRow).toBe(4);
+	expect(cell.range.endRow).toBe(4);
+	expect(cell.range.startColumn).toBe(0);
+	expect(cell.range.endColumn).toBe(1);
 });
