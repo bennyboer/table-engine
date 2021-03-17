@@ -2,9 +2,8 @@
 	"name": "table-engine",
 	"version": "0.0.1",
 	"description": "Library to visualize huge tables in web environments",
-	"main": "index.js",
 	"files": [
-		"target/**/*"
+		"lib/**/*"
 	],
 	"scripts": {
 		"build": "tsc",

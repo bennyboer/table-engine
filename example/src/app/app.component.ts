@@ -1,10 +1,10 @@
-import {ChangeDetectionStrategy, Component, ElementRef, ViewChild} from '@angular/core';
-import {TableEngine} from "../../../src/main";
+import {ChangeDetectionStrategy, Component, ElementRef, ViewChild} from "@angular/core";
+import {TableEngine} from "table-engine/table-engine";
 
 @Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss'],
+  selector: "app-root",
+  templateUrl: "./app.component.html",
+  styleUrls: ["./app.component.scss"],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AppComponent {
@@ -13,7 +13,11 @@ export class AppComponent {
   public canvasElement!: ElementRef;
 
   public test(): void {
-    new TableEngine(this.canvasElement.nativeElement as HTMLCanvasElement);
+    console.log("Test!");
+
+    const engine = new TableEngine(this.canvasElement.nativeElement as HTMLCanvasElement);
+
+    console.log(engine.getCellModel().getWidth());
   }
 
 }

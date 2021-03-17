@@ -2,11 +2,12 @@ import {ICell} from "../cell";
 import {CellRange, ICellRange} from "../range/cell-range";
 import {CellRangeUtil} from "../range/cell-range-util";
 import {IRectangle} from "../../util/rect";
+import {ICellModel} from "./cell-model.interface";
 
 /**
  * Model managing cells and their position and size in the table.
  */
-export class CellModel {
+export class CellModel implements ICellModel {
 
 	/**
 	 * The default row size.
@@ -213,7 +214,7 @@ export class CellModel {
 			includeHidden: false
 		});
 
-		// Adjust result list length that may not be correct due to merged cells
+		// Adjust result list length that may not be correct due to merged cells or empty (null) cells
 		cells.length = cellCount;
 
 		return cells;

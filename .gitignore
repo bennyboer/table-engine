@@ -5,4 +5,4 @@
 node_modules
 
 # Build output
-/target
+/lib
