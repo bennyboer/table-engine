@@ -1,6 +1,7 @@
 import {ICell} from "../cell";
 import {CellRange, ICellRange} from "../range/cell-range";
 import {CellRangeUtil} from "../range/cell-range-util";
+import {IRectangle} from "../../util/rect";
 
 /**
  * Model managing cells and their position and size in the table.
@@ -196,6 +197,114 @@ export class CellModel {
 	}
 
 	/**
+	 * Get all cells in the provided range.
+	 * @param range to get cells in
+	 */
+	public getCells(range: ICellRange): ICell[] {
+		const cells: ICell[] = new Array((range.endRow - range.startRow + 1) * (range.endColumn - range.startColumn + 1));
+
+		let cellCount: number = 0;
+		this._forEachCellInRange(range, (cell, row, column) => {
+			if (!!cell) {
+				cells[cellCount++] = cell;
+			}
+		}, {
+			unique: true,
+			includeHidden: false
+		});
+
+		// Adjust result list length that may not be correct due to merged cells
+		cells.length = cellCount;
+
+		return cells;
+	}
+
+	/**
+	 * Get a list of cells in the provided rectangle (metric is pixel).
+	 * @param rect rectangle to get cells in (metric is pixel)
+	 */
+	public getCellsForRect(rect: IRectangle): ICell[] {
+		const cellRange: ICellRange = this._calculateCellRangeForRect(rect);
+
+		return this.getCells(cellRange);
+	}
+
+	/**
+	 * Get a cell at the given offset (metric is pixel points).
+	 * @param x offset from left (horizontal)
+	 * @param y offset from top (vertical)
+	 */
+	public getCellAtOffset(x: number, y: number): ICell | null {
+		const row: number = CellModel._calculateIndexForOffset(y, this._rowOffsets, this._rowSizes, this._hiddenRows);
+		const column: number = CellModel._calculateIndexForOffset(x, this._columnOffsets, this._columnSizes, this._hiddenColumns);
+
+		return this.getCell(row, column);
+	}
+
+	/**
+	 * Calculate a cell range corresponding to the passed rectangle.
+	 * @param rect to calculate cell range for
+	 */
+	private _calculateCellRangeForRect(rect: IRectangle): ICellRange {
+		return {
+			startRow: CellModel._calculateIndexForOffset(rect.top, this._rowOffsets, this._rowSizes, this._hiddenRows),
+			endRow: CellModel._calculateIndexForOffset(rect.top + rect.height, this._rowOffsets, this._rowSizes, this._hiddenRows),
+			startColumn: CellModel._calculateIndexForOffset(rect.left, this._columnOffsets, this._columnSizes, this._hiddenColumns),
+			endColumn: CellModel._calculateIndexForOffset(rect.left + rect.width, this._columnOffsets, this._columnSizes, this._hiddenColumns),
+		};
+	}
+
+	/**
+	 * Calculate the nearest index for the given offset.
+	 * @param offset to get nearest row/column index for
+	 * @param offsets to calculate nearest index with
+	 * @param sizes to calculate nearest index with
+	 * @param hidden set of hidden rows/columns
+	 */
+	private static _calculateIndexForOffset(
+		offset: number,
+		offsets: number[],
+		sizes: number[],
+		hidden: Set<number>
+	): number {
+		const indexCount: number = sizes.length;
+		if (indexCount === 0) {
+			throw new Error(`There are no indices yet. Do you have any rows/columns yet in the cell model?`);
+		}
+
+		const maxIndex: number = indexCount - 1;
+		const maxOffset: number = offsets[maxIndex] + (hidden.has(maxIndex) ? 0.0 : sizes[maxIndex]);
+
+		// Guess a possible index
+		let currentIndex: number = Math.round(Math.min(maxOffset / indexCount, maxIndex));
+
+		// Calculate the lower and upper offsets of the index
+		let lowerOffsetBound: number = offsets[currentIndex];
+		let upperOffsetBound: number = lowerOffsetBound + (hidden.has(currentIndex) ? 0.0 : sizes[currentIndex]);
+
+		// Determine the direction we need to walk (next or previous index?)
+		const direction: number = offset < lowerOffsetBound ? -1 : 1;
+
+		// Iterate until we find the nearest index
+		while (offset < lowerOffsetBound || offset > upperOffsetBound) {
+			currentIndex += direction;
+
+			// Early return if the current index is at the ends of the possible index range
+			if (currentIndex <= 0) {
+				return 0;
+			} else if (currentIndex >= maxIndex) {
+				return maxIndex;
+			}
+
+			// Calculate new lower and upper offsets for the index
+			lowerOffsetBound = offsets[currentIndex];
+			upperOffsetBound = lowerOffsetBound + (hidden.has(currentIndex) ? 0.0 : sizes[currentIndex]);
+		}
+
+		return currentIndex;
+	}
+
+	/**
 	 * Get the number of rows in the model.
 	 */
 	public getRowCount(): number {
@@ -248,7 +357,7 @@ export class CellModel {
 	 * @param index of the row
 	 */
 	public getRowOffset(index: number): number {
-		return CellModel._getOffset(this._rowOffsets, index);
+		return this._rowOffsets[index];
 	}
 
 	/**
@@ -256,16 +365,7 @@ export class CellModel {
 	 * @param index of the column
 	 */
 	public getColumnOffset(index: number): number {
-		return CellModel._getOffset(this._columnOffsets, index);
-	}
-
-	/**
-	 * Get the offset at the given index for the passed offset collection.
-	 * @param offsets to get offset in
-	 * @param index to get offset for
-	 */
-	private static _getOffset(offsets: number[], index: number): number {
-		return offsets[index];
+		return this._columnOffsets[index];
 	}
 
 	/**

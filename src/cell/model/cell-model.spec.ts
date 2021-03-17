@@ -1316,3 +1316,78 @@ test("[CellModel.delete] Delete rows/columns with merged cells - III", () => {
 	expect(cell.range.startColumn).toBe(0);
 	expect(cell.range.endColumn).toBe(1);
 });
+
+test("[CellModel.get] Get cell at offset", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	let cell = model.getCellAtOffset(99, 29);
+	expect(cell.range.startRow).toBe(0);
+	expect(cell.range.startColumn).toBe(0);
+
+	cell = model.getCellAtOffset(100, 30);
+	expect(cell.range.startRow).toBe(1);
+	expect(cell.range.startColumn).toBe(1);
+
+	cell = model.getCellAtOffset(300, 90);
+	expect(cell.range.startRow).toBe(3);
+	expect(cell.range.startColumn).toBe(3);
+
+	// Try offsets out of range
+	cell = model.getCellAtOffset(9129312, 234234);
+	expect(cell.range.startRow).toBe(5);
+	expect(cell.range.startColumn).toBe(5);
+
+	cell = model.getCellAtOffset(-234, -3242);
+	expect(cell.range.startRow).toBe(0);
+	expect(cell.range.startColumn).toBe(0);
+});
+
+test("[CellModel.get] Get cells for rectangle", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	let cells = model.getCellsForRect({
+		left: 150,
+		top: 130,
+		width: 200,
+		height: 100
+	});
+
+	const expectedValues: Set<any> = new Set<any>();
+	expectedValues.add(4);
+	expectedValues.add(8);
+	expectedValues.add(12);
+	expectedValues.add(5);
+	expectedValues.add(10);
+	expectedValues.add(15);
+
+	expect(cells.length).toBe(6);
+	for (const cell of cells) {
+		expect(expectedValues.has(cell.value)).toBe(true);
+		expectedValues.delete(cell.value);
+	}
+	expect(expectedValues.size).toBe(0);
+});
