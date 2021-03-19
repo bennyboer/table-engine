@@ -1,5 +1,8 @@
-import {ChangeDetectionStrategy, Component, ElementRef, ViewChild} from "@angular/core";
-import {TableEngine} from "table-engine/table-engine";
+import {AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, ViewChild} from "@angular/core";
+import {ICellModel} from "../../../src/cell/model/cell-model.interface";
+import {CellModel} from "../../../src/cell/model/cell-model";
+import {CellRange} from "../../../src/cell/range/cell-range";
+import {TableEngine} from "../../../src/table-engine";
 
 @Component({
   selector: "app-root",
@@ -7,17 +10,45 @@ import {TableEngine} from "table-engine/table-engine";
   styleUrls: ["./app.component.scss"],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AppComponent {
+export class AppComponent implements AfterViewInit {
 
-  @ViewChild("canvas")
-  public canvasElement!: ElementRef;
+  @ViewChild("tableContainer")
+  public tableContainer!: ElementRef;
+
+  /**
+   * Table engine reference.
+   */
+  private engine: TableEngine;
 
   public test(): void {
-    console.log("Test!");
+    console.log(this.engine.getCellModel().getWidth());
+  }
 
-    const engine = new TableEngine(this.canvasElement.nativeElement as HTMLCanvasElement);
+  /**
+   * Called after the view is initialized.
+   */
+  public ngAfterViewInit(): void {
+    const cellModel = AppComponent.initializeCellModel();
+    this.engine = new TableEngine(this.tableContainer.nativeElement, cellModel);
+  }
 
-    console.log(engine.getCellModel().getWidth());
+  /**
+   * Initialize the cell model to use for displaying a table.
+   */
+  private static initializeCellModel(): ICellModel {
+    return CellModel.generate(
+      [
+        {
+          range: CellRange.fromSingleRowColumn(5, 5),
+          value: "Last cell"
+        }
+      ],
+      (row, column) => row * column,
+      (row) => 30,
+      (column) => 100,
+      new Set<number>(),
+      new Set<number>()
+    );
   }
 
 }
