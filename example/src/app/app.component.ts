@@ -20,8 +20,8 @@ export class AppComponent implements AfterViewInit {
    */
   private engine: TableEngine;
 
-  public test(): void {
-    console.log(this.engine.getCellModel().getWidth());
+  public repaint(): void {
+    this.engine.repaint();
   }
 
   /**
@@ -36,11 +36,11 @@ export class AppComponent implements AfterViewInit {
    * Initialize the cell model to use for displaying a table.
    */
   private static initializeCellModel(): ICellModel {
-    return CellModel.generate(
+    const model = CellModel.generate(
       [
         {
-          range: CellRange.fromSingleRowColumn(5, 5),
-          value: "Last cell"
+          range: CellRange.fromSingleRowColumn(20, 20),
+          value: "Last cell with more text than normally"
         }
       ],
       (row, column) => row * column,
@@ -49,6 +49,15 @@ export class AppComponent implements AfterViewInit {
       new Set<number>(),
       new Set<number>()
     );
+
+    model.mergeCells({
+      startRow: 2,
+      endRow: 4,
+      startColumn: 2,
+      endColumn: 3
+    });
+
+    return model;
   }
 
 }

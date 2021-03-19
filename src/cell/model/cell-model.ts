@@ -243,6 +243,24 @@ export class CellModel implements ICellModel {
 	}
 
 	/**
+	 * Get bounds for the given range.
+	 * @param range to get bounds for
+	 */
+	public getBounds(range: ICellRange): IRectangle {
+		const top: number = this.getRowOffset(range.startRow);
+		const left: number = this.getColumnOffset(range.startColumn);
+		const bottom: number = this.getRowOffset(range.endRow) + (this.isRowHidden(range.endRow) ? 0.0 : this.getRowSize(range.endRow));
+		const right: number = this.getColumnOffset(range.endColumn) + (this.isColumnHidden(range.endColumn) ? 0.0 : this.getColumnSize(range.endColumn));
+
+		return {
+			top,
+			left,
+			height: bottom - top,
+			width: right - left
+		}
+	}
+
+	/**
 	 * Calculate a cell range corresponding to the passed rectangle.
 	 * @param rect to calculate cell range for
 	 */

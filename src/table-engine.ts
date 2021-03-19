@@ -55,14 +55,14 @@ export class TableEngine {
 				type: TableEngineEventType.RENDERER_READY
 			});
 
-			this._repaint();
+			this.repaint();
 		});
 	}
 
 	/**
-	 * Repaint the current state of the table.
+	 * Repaint the table manually.
 	 */
-	private _repaint(): void {
+	public repaint(): void {
 		this._renderer.render();
 	}
 
@@ -84,6 +84,8 @@ export class TableEngine {
 	 * Cleanup the table engine when no more needed.
 	 */
 	public cleanup(): void {
+		this._renderer.cleanup();
+
 		this._events.complete();
 	}
 

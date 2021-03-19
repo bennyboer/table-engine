@@ -20,4 +20,9 @@ export interface ITableEngineRenderer {
 	 */
 	render(): void;
 
+	/**
+	 * Cleanup the renderer when no more needed.
+	 */
+	cleanup(): void;
+
 }

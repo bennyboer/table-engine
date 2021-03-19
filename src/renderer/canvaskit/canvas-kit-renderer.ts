@@ -1,7 +1,14 @@
 import {ITableEngineRenderer} from "../renderer";
 import {IRendererOptions} from "../options";
 import {ICellModel} from "../../cell/model/cell-model.interface";
-import CanvasKitInit, {CanvasKit, Surface, Canvas} from "canvaskit-wasm";
+import CanvasKitInit, {CanvasKit, Surface, Canvas, FontMgr} from "canvaskit-wasm";
+import {IRectangle} from "../../util/rect";
+import {ICell} from "../../cell/cell";
+
+/**
+ * Declaration of FontFace as this is currently not supported by the TypeScript lib.
+ */
+declare const FontFace: any;
 
 /**
  * Renderer of the table engine leveraging Skia CanvasKit.
@@ -37,6 +44,8 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 	 * CanvasKit surface we're able to draw on.
 	 */
 	private _surface: Surface;
+
+	private _test_font_mgr: FontMgr;
 
 	/**
 	 * Set the given width and height to the passed canvas HTML element.
@@ -77,6 +86,11 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 
 		this._initializeRenderingCanvasElement();
 		await this._initializeCanvasKit();
+
+		// TODO Remove - the next code lines are just for testing
+		const response = await fetch('https://storage.googleapis.com/skia-cdn/google-web-fonts/Roboto-Regular.ttf');
+		const fontData = await response.arrayBuffer();
+		this._test_font_mgr = this._canvasKit.FontMgr.FromData(fontData);
 	}
 
 	/**
@@ -120,16 +134,61 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 
 		// TODO Draw a table!
 
-		const paint = new kit.Paint();
-		paint.setColor(kit.Color4f(0.9, 0, 0, 1.0));
-		paint.setStyle(kit.PaintStyle.Stroke);
-		paint.setAntiAlias(true);
-		const rr = kit.RRectXY(kit.LTRBRect(10, 60, 210, 260), 25, 15);
+		const viewPort: IRectangle = {
+			top: 0,
+			left: 0,
+			width: this._canvasElement.width,
+			height: this._canvasElement.height
+		};
+		const cells = this._cellModel.getCellsForRect(viewPort);
+		const cellBounds: IRectangle[] = new Array(cells.length);
+		for (let i = 0; i < cells.length; i++) {
+			cellBounds[i] = this._cellModel.getBounds(cells[i].range);
+		}
 
-		(surface as any).drawOnce(function draw(canvas: Canvas) {
-			canvas.clear(kit.WHITE);
-			canvas.drawRRect(rr, paint);
+		const paragraphStyle = new kit.ParagraphStyle({
+			textStyle: {
+				color: kit.BLACK,
+				fontFamilies: ['Roboto'],
+				fontSize: 11,
+			},
+			textAlign: kit.TextAlign.Left,
+			ellipsis: '...',
 		});
+
+		const time = window.performance.now();
+		this._requestAnimationFrame((canvas: Canvas) => {
+			canvas.clear(kit.WHITE);
+
+			for (let i = 0; i < cells.length; i++) {
+				const cell: ICell = cells[i];
+				const bounds: IRectangle = cellBounds[i];
+
+				const paragraphBuilder = kit.ParagraphBuilder.Make(paragraphStyle, this._test_font_mgr);
+				paragraphBuilder.addText(`${cell.value}`);
+				const paragraph = paragraphBuilder.build();
+
+				paragraph.layout(bounds.width);
+				canvas.drawParagraph(paragraph, bounds.left, bounds.top);
+			}
+		});
+		console.log(`Rendering took ${window.performance.now() - time}ms`);
+	}
+
+	/**
+	 * Draw once with the provided function.
+	 * @param drawFct to execute
+	 */
+	private _requestAnimationFrame(drawFct: (Canvas) => void): void {
+		(this._surface as any).requestAnimationFrame(drawFct);
+	}
+
+	/**
+	 * Cleanup the renderer when no more needed.
+	 */
+	public cleanup(): void {
+		this._surface.dispose();
+		this._surface.delete();
 	}
 
 }

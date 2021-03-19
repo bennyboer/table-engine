@@ -12,6 +12,9 @@
 		"lib": [
 			"esnext",
 			"dom"
+		],
+		"typeRoots": [
+			"./node_modules/@types"
 		]
 	},
 	"include": [

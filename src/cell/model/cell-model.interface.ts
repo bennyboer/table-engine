@@ -34,6 +34,12 @@ export interface ICellModel {
 	getCellAtOffset(x: number, y: number): ICell | null;
 
 	/**
+	 * Get bounds for the given range.
+	 * @param range to get bounds for
+	 */
+	getBounds(range: ICellRange): IRectangle;
+
+	/**
 	 * Get the number of rows in the model.
 	 */
 	getRowCount(): number;

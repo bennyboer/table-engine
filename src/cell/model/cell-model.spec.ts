@@ -1,6 +1,8 @@
 import {CellModel} from "./cell-model";
 import {CellRange} from "../range/cell-range";
 import {ICell} from "../cell";
+import {IRect} from "canvaskit-wasm";
+import {IRectangle} from "../../util/rect";
 
 test("[CellModel.generate] Validate row/column sizes - I", () => {
 	const model = CellModel.generate(
@@ -1390,4 +1392,57 @@ test("[CellModel.get] Get cells for rectangle", () => {
 		expectedValues.delete(cell.value);
 	}
 	expect(expectedValues.size).toBe(0);
+});
+
+test("[CellModel.getBounds] Get bounds of a cell", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	model.mergeCells({
+		startRow: 1,
+		endRow: 4,
+		startColumn: 1,
+		endColumn: 3
+	});
+
+	let bounds: IRectangle = model.getBounds(model.getCell(0, 0).range);
+	expect(bounds.top).toBe(0);
+	expect(bounds.left).toBe(0);
+	expect(bounds.height).toBe(30);
+	expect(bounds.width).toBe(100);
+
+	bounds = model.getBounds(model.getCell(5, 5).range);
+	expect(bounds.top).toBe(150);
+	expect(bounds.left).toBe(500);
+	expect(bounds.height).toBe(30);
+	expect(bounds.width).toBe(100);
+
+	// Test merged cell bounds
+	bounds = model.getBounds(model.getCell(1, 1).range);
+	expect(bounds.top).toBe(30);
+	expect(bounds.left).toBe(100);
+	expect(bounds.height).toBe(120);
+	expect(bounds.width).toBe(300);
+
+	// Hide a row and column in the merged cell
+	model.hideRows([3]);
+	model.hideColumns([1]);
+
+	// Test again
+	bounds = model.getBounds(model.getCell(1, 1).range);
+	expect(bounds.top).toBe(30);
+	expect(bounds.left).toBe(100);
+	expect(bounds.height).toBe(90);
+	expect(bounds.width).toBe(200);
 });
