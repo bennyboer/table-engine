@@ -143,7 +143,7 @@ export class CellModel implements ICellModel {
 						// Fill cell into lookup
 						for (let r = cell.range.startRow; r <= cell.range.endRow; r++) {
 							for (let c = cell.range.startColumn; c <= cell.range.endColumn; c++) {
-								cellLookup[row][column] = cell;
+								cellLookup[r][c] = cell;
 							}
 						}
 					} else {

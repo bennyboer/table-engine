@@ -3,6 +3,9 @@ import {ICellModel} from "../../../src/cell/model/cell-model.interface";
 import {CellModel} from "../../../src/cell/model/cell-model";
 import {CellRange} from "../../../src/cell/range/cell-range";
 import {TableEngine} from "../../../src/table-engine";
+import {ICanvasCellRenderer} from "../../../src/renderer/canvas/cell/canvas-cell-renderer";
+import {ICell} from "../../../src/cell/cell";
+import {IRectangle} from "../../../src/util/rect";
 
 @Component({
   selector: "app-root",
@@ -30,6 +33,8 @@ export class AppComponent implements AfterViewInit {
   public ngAfterViewInit(): void {
     const cellModel = AppComponent.initializeCellModel();
     this.engine = new TableEngine(this.tableContainer.nativeElement, cellModel);
+    this.engine.registerCellRenderer(new TestCellRenderer());
+    this.engine.initialize();
   }
 
   /**
@@ -38,6 +43,16 @@ export class AppComponent implements AfterViewInit {
   private static initializeCellModel(): ICellModel {
     const model = CellModel.generate(
       [
+        {
+          range: {
+            startRow: 15,
+            endRow: 18,
+            startColumn: 8,
+            endColumn: 9
+          },
+          rendererName: "custom",
+          value: "Hello world!"
+        },
         {
           range: CellRange.fromSingleRowColumn(1000, 1000),
           rendererName: "base",
@@ -60,6 +75,25 @@ export class AppComponent implements AfterViewInit {
     });
 
     return model;
+  }
+
+}
+
+class TestCellRenderer implements ICanvasCellRenderer {
+  after(ctx: CanvasRenderingContext2D): void {
+  }
+
+  before(ctx: CanvasRenderingContext2D): void {
+  }
+
+  getName(): string {
+    return "custom";
+  }
+
+  render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
+    ctx.fillStyle = `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
+
+    ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
   }
 
 }

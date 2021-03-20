@@ -5,6 +5,7 @@ import {RendererFactory} from "./renderer/renderer-factory";
 import {Observable, Subject} from "rxjs";
 import {ITableEngineEvent} from "./event/event";
 import {TableEngineEventType} from "./event/event-type";
+import {ICellRenderer} from "./renderer/cell/cell-renderer";
 
 /**
  * Entry point of the table engine library.
@@ -50,13 +51,20 @@ export class TableEngine {
 
 		// Initialize renderer
 		this._renderer = RendererFactory.getRendererInstance(this._options.renderer.type);
-		this._renderer.initialize(container, this._cellModel, this._options.renderer).then(() => {
-			this._events.next({
-				type: TableEngineEventType.RENDERER_READY
-			});
+	}
 
-			this.repaint();
+	/**
+	 * Initialize the table engine.
+	 * This will start rendering the table.
+	 */
+	public async initialize(): Promise<void> {
+		await this._renderer.initialize(this._container, this._cellModel, this._options.renderer);
+
+		this._events.next({
+			type: TableEngineEventType.RENDERER_READY
 		});
+
+		this.repaint();
 	}
 
 	/**
@@ -78,6 +86,14 @@ export class TableEngine {
 	 */
 	public getEventsObservable(): Observable<ITableEngineEvent> {
 		return this._events.asObservable();
+	}
+
+	/**
+	 * Register a cell renderer.
+	 * @param renderer to register
+	 */
+	public registerCellRenderer(renderer: ICellRenderer<any>): void {
+		this._renderer.registerCellRenderer(renderer);
 	}
 
 	/**

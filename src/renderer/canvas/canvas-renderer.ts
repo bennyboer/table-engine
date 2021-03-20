@@ -364,12 +364,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const scrollDelta: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, event);
 
 		if (scrollVertically) {
-			this._scrollToY(this._scrollOffset.y + scrollDelta);
+			if (!this._scrollToY(this._scrollOffset.y + scrollDelta)) {
+				this._lazyRenderingSchedulerSubject.next();
+			}
 		} else {
-			this._scrollToX(this._scrollOffset.x + scrollDelta);
+			if (!this._scrollToX(this._scrollOffset.x + scrollDelta)) {
+				this._lazyRenderingSchedulerSubject.next();
+			}
 		}
-
-		this._lazyRenderingSchedulerSubject.next();
 	}
 
 	/**
