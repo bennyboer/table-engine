@@ -66,6 +66,21 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _wheelListener: (WheelEvent) => void;
 
 	/**
+	 * Registered listener to mouse down events.
+	 */
+	private _mouseDownListener: (MouseEvent) => void;
+
+	/**
+	 * Registered listener to mouse move events.
+	 */
+	private _mouseMoveListener: (MouseEvent) => void;
+
+	/**
+	 * Registered listener to mouse up events.
+	 */
+	private _mouseUpListener: (MouseEvent) => void;
+
+	/**
 	 * Resize observer observing size changes on the container HTML element.
 	 */
 	private _resizeObserver: ResizeObserver;
@@ -82,6 +97,16 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * ID of the currently requested animation frame or null.
 	 */
 	private _requestAnimationFrameID: number | null = null;
+
+	/**
+	 * The last rendering context.
+	 */
+	private _lastRenderingContext: IRenderContext;
+
+	/**
+	 * Context of the current mouse scroll dragging.
+	 */
+	private _mouseScrollDragStart: IMouseScrollDragContext | null = null;
 
 	/**
 	 * Cleanup the renderer when no more needed.
@@ -126,6 +151,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			passive: true
 		});
 
+		this._mouseDownListener = (event) => this._onMouseDown(event);
+		this._canvasElement.addEventListener("mousedown", this._mouseDownListener);
+
+		this._mouseMoveListener = (event) => this._onMouseMove(event);
+		window.addEventListener("mousemove", this._mouseMoveListener);
+
+		this._mouseUpListener = (event) => this._onMouseUp(event);
+		window.addEventListener("mouseup", this._mouseUpListener);
+
 		// Listen for size changes on the container HTML element
 		this._resizeObserver = new ResizeObserver((resizeEntries) => this._onResize(resizeEntries));
 		this._resizeObserver.observe(this._container);
@@ -159,9 +193,109 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		if (!!this._wheelListener) {
 			this._canvasElement.removeEventListener("wheel", this._wheelListener);
 		}
+		if (!!this._mouseDownListener) {
+			this._canvasElement.removeEventListener("mousedown", this._mouseDownListener);
+		}
+		if (!!this._mouseMoveListener) {
+			window.removeEventListener("mousemove", this._mouseMoveListener);
+		}
+		if (!!this._mouseUpListener) {
+			window.removeEventListener("mouseup", this._mouseUpListener);
+		}
 		if (!!this._resizeObserver) {
 			this._resizeObserver.disconnect();
 		}
+	}
+
+	/**
+	 * Called when a mouse down event on the canvas has been registered.
+	 * @param event that occurred
+	 */
+	private _onMouseDown(event: MouseEvent): void {
+		if (!!this._lastRenderingContext) {
+			const [x, y] = this._getMouseOffset(event);
+
+			// Check if mouse if over a scroll bar
+			const isOverVerticalScrollBar: boolean = CanvasRenderer._isMouseOverScrollBar(x, y, true, this._lastRenderingContext.scrollBar.vertical);
+			const isOverHorizontalScrollBar: boolean = CanvasRenderer._isMouseOverScrollBar(x, y, false, this._lastRenderingContext.scrollBar.horizontal);
+			if (isOverVerticalScrollBar || isOverHorizontalScrollBar) {
+				const scrollVertically: boolean = isOverVerticalScrollBar;
+
+				this._mouseScrollDragStart = {
+					scrollHorizontally: !scrollVertically,
+					scrollVertically,
+					startX: x,
+					startY: y,
+					startScrollOffset: {
+						x: this._scrollOffset.x,
+						y: this._scrollOffset.y
+					}
+				};
+			}
+		}
+	}
+
+	/**
+	 * Get the mouse events offset on the canvas.
+	 * @param event to get offset for
+	 */
+	private _getMouseOffset(event: MouseEvent): [number, number] {
+		const rect = this._canvasElement.getBoundingClientRect();
+
+		return [
+			(event.clientX - rect.left) * window.devicePixelRatio,
+			(event.clientY - rect.top) * window.devicePixelRatio
+		];
+	}
+
+	/**
+	 * Check if the given mouse position signals being over the given scroll bar.
+	 * @param x position of the mouse
+	 * @param y position of the mouse
+	 * @param vertical whether to check for vertical or horizontal scroll bar
+	 * @param ctx of the scroll bar on a axis (horizontal, vertical)
+	 */
+	private static _isMouseOverScrollBar(x: number, y: number, vertical: boolean, ctx: IScrollBarAxisRenderContext): boolean {
+		const width: number = vertical ? ctx.size : ctx.length;
+		const height: number = vertical ? ctx.length : ctx.size;
+
+		return x >= ctx.x && x <= ctx.x + width
+			&& y >= ctx.y && y <= ctx.y + height;
+	}
+
+	/**
+	 * Called when a mouse move event on the canvas has been registered.
+	 * @param event that occurred
+	 */
+	private _onMouseMove(event: MouseEvent): void {
+		const isScrollBarDragging: boolean = !!this._mouseScrollDragStart;
+		if (isScrollBarDragging) {
+			const [x, y] = this._getMouseOffset(event);
+
+			// Update scroll offset accordingly
+			if (this._mouseScrollDragStart.scrollVertically) {
+				const yDiff = y - this._mouseScrollDragStart.startY;
+				const tableHeight = this._cellModel.getHeight();
+
+				this._scrollToY(this._mouseScrollDragStart.startScrollOffset.y + (yDiff / this._canvasElement.height * tableHeight));
+			}
+			if (this._mouseScrollDragStart.scrollHorizontally) {
+				const xDiff = x - this._mouseScrollDragStart.startX;
+				const tableWidth = this._cellModel.getWidth();
+
+				this._scrollToX(this._mouseScrollDragStart.startScrollOffset.x + (xDiff / this._canvasElement.width * tableWidth));
+			}
+
+			this._lazyRenderingSchedulerSubject.next();
+		}
+	}
+
+	/**
+	 * Called when a mouse up event on the canvas has been registered.
+	 * @param event that occurred
+	 */
+	private _onMouseUp(event: MouseEvent): void {
+		this._mouseScrollDragStart = null; // Reset scroll bar dragging
 	}
 
 	/**
@@ -385,6 +519,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		this._requestAnimationFrameID = window.requestAnimationFrame(() => {
 			this._requestAnimationFrameID = null; // Mark as executed
+			this._lastRenderingContext = renderingContext;
 
 			const ctx: CanvasRenderingContext2D = this._canvasContext;
 
@@ -572,5 +707,37 @@ interface IScrollOffset {
 	 * Current offset from top.
 	 */
 	y: number;
+
+}
+
+/**
+ * Context of a mouse/touch scroll dragging.
+ */
+interface IMouseScrollDragContext {
+
+	/**
+	 * Whether scrolling vertical.
+	 */
+	scrollVertically: boolean;
+
+	/**
+	 * Whether scrolling horizontally.
+	 */
+	scrollHorizontally: boolean;
+
+	/**
+	 * Start X-offset.
+	 */
+	startX: number;
+
+	/**
+	 * Start Y-offset.
+	 */
+	startY: number;
+
+	/**
+	 * Scroll offset to the start of the dragging.
+	 */
+	startScrollOffset: IScrollOffset;
 
 }

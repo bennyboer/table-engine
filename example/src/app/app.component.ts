@@ -39,7 +39,7 @@ export class AppComponent implements AfterViewInit {
     const model = CellModel.generate(
       [
         {
-          range: CellRange.fromSingleRowColumn(100, 50),
+          range: CellRange.fromSingleRowColumn(1000, 1000),
           value: "Last cell with more text than normally"
         }
       ],
