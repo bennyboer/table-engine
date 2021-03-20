@@ -1,7 +1,26 @@
-.table-container-wrapper {
-  border: 1px solid #333;
+.content-wrapper {
+  display: flex;
+  position: relative;
+  height: 100%;
+  width: 100%;
+  flex-direction: column;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
-.table-container {
-  height: 1000px;
+.table-container-wrapper {
+  flex: 1 1 auto;
+  border: 1px solid lightslategrey;
+  border-radius: 2px;
+  position: relative;
+
+  .table-container {
+    position: relative;
+    height: 100%;
+  }
 }
+
+.controls-container {
+  flex: 0 0 auto;
+}
+

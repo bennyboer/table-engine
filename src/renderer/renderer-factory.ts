@@ -1,6 +1,7 @@
 import {ITableEngineRenderer} from "./renderer";
 import {RendererType} from "./renderers";
 import {CanvasKitRenderer} from "./canvaskit/canvas-kit-renderer";
+import {CanvasRenderer} from "./canvas/canvas-renderer";
 
 /**
  * Factory for table-engine renderers.
@@ -26,6 +27,7 @@ export class RendererFactory {
 		RendererFactory._AVAILABLE_RENDERERS = new Map<RendererType, () => ITableEngineRenderer>()
 
 		// Register renderers
+		RendererFactory.registerRenderer(RendererType.CANVAS, () => new CanvasRenderer());
 		RendererFactory.registerRenderer(RendererType.CANVAS_KIT, () => new CanvasKitRenderer());
 	}
 

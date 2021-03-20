@@ -6,27 +6,14 @@ import {IRectangle} from "../../util/rect";
 import {ICell} from "../../cell/cell";
 import {asyncScheduler, Subject} from "rxjs";
 import {takeUntil, throttleTime} from "rxjs/operators";
+import {IScrollBarOptions} from "../options/scrollbar";
+import {CanvasUtil} from "../util/canvas";
+import {ScrollUtil} from "../util/scroll";
 
 /**
  * Renderer of the table engine leveraging Skia CanvasKit.
  */
 export class CanvasKitRenderer implements ITableEngineRenderer {
-
-	/**
-	 * Duration in milliseconds used to throttle high-rate events
-	 * such as scrolling that need re-rendering afterwards.
-	 */
-	private static readonly LAZY_RENDERING_THROTTLE_DURATION: number = 16;
-
-	/**
-	 * Size of the scrollbar.
-	 */
-	private static readonly SCROLLBAR_SIZE: number = 10;
-
-	/**
-	 * Offset of the scrollbar from the edges of the table.
-	 */
-	private static readonly SCROLLBAR_OFFSET: number = 2;
 
 	/**
 	 * Container the renderer should operate on.
@@ -70,6 +57,11 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 	private _lazyRenderingSchedulerSubject: Subject<void> = new Subject<void>();
 
 	/**
+	 * Subject used to throttle resize events.
+	 */
+	private _resizeThrottleSubject: Subject<void> = new Subject<void>();
+
+	/**
 	 * Registered key down listener.
 	 */
 	private _keyDownListener: (KeyboardEvent) => void;
@@ -80,6 +72,11 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 	private _wheelListener: (WheelEvent) => void;
 
 	/**
+	 * Resize observer observing size changes on the container HTML element.
+	 */
+	private _resizeObserver: ResizeObserver;
+
+	/**
 	 * Current scroll offset on the horizontal axis.
 	 */
 	private _scrollOffsetX: number = 0;
@@ -88,32 +85,6 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 	 * Current scroll offset on the vertical axis.
 	 */
 	private _scrollOffsetY: number = 0;
-
-	/**
-	 * Set the given width and height to the passed canvas HTML element.
-	 * @param element the canvas element to set the size to
-	 * @param width new width of the element to set
-	 * @param height new height of the element to set
-	 */
-	private static _setCanvasSize(element: HTMLCanvasElement, width: number, height: number): void {
-		/*
-		We honor window.devicePixelRatio here to support high-DPI screens.
-		To support High-DPI screens we will set the canvas element size twice:
-			1. As style: width and height will be the same as in the container element bounds
-			2. As attributes to the HTML canvas element: width and height need to be multiplied by
-			   window.devicePixelRatio (for example 2.0 for most SmartPhones and 4K screens).
-
-		If we don't do this the table will be rendered blurry on High-DPI screens/devices.
-		 */
-
-		const devicePixelRatio: number = window.devicePixelRatio;
-
-		element.width = width * devicePixelRatio;
-		element.height = height * devicePixelRatio;
-
-		element.style.width = `${width}px`;
-		element.style.height = `${height}px`;
-	}
 
 	/**
 	 * Initialize the renderer with the given options on the passed HTML container.
@@ -136,18 +107,33 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 	 * Bind listeners to the window or container.
 	 */
 	private _bindListeners(): void {
+		// Listen for keyboard events
 		this._keyDownListener = (event) => this._onKeyDown(event);
 		this._canvasElement.addEventListener("keydown", this._keyDownListener);
 
+		// Listen for mouse events
 		this._wheelListener = (event) => this._onWheel(event);
 		this._canvasElement.addEventListener("wheel", this._wheelListener, {
 			passive: true
 		});
 
+		// Listen for size changes on the container HTML element
+		this._resizeObserver = new ResizeObserver((resizeEntries) => this._onResize(resizeEntries));
+		this._resizeObserver.observe(this._container);
+
+		// Throttle resize events
+		this._resizeThrottleSubject.asObservable().pipe(
+			takeUntil(this._onCleanup),
+			throttleTime(this._options.canvasKit.lazyRenderingThrottleDuration, asyncScheduler, {
+				leading: false,
+				trailing: true
+			})
+		).subscribe(() => this._resizeCanvasToCurrentContainerSize());
+
 		// Repaint when necessary (for example on scrolling)
 		this._lazyRenderingSchedulerSubject.asObservable().pipe(
 			takeUntil(this._onCleanup),
-			throttleTime(CanvasKitRenderer.LAZY_RENDERING_THROTTLE_DURATION, asyncScheduler, {
+			throttleTime(this._options.canvasKit.lazyRenderingThrottleDuration, asyncScheduler, {
 				leading: false,
 				trailing: true
 			})
@@ -164,6 +150,28 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 		if (!!this._wheelListener) {
 			this._canvasElement.removeEventListener("wheel", this._wheelListener);
 		}
+		if (!!this._resizeObserver) {
+			this._resizeObserver.disconnect();
+		}
+	}
+
+	/**
+	 * Called on a resize event on the container HTML element.
+	 * @param resizeEntries that describe the resize event
+	 */
+	private _onResize(resizeEntries: ResizeObserverEntry[]): void {
+		this._resizeThrottleSubject.next();
+	}
+
+	/**
+	 * Resize the current canvas to the current container HTML element size.
+	 */
+	private _resizeCanvasToCurrentContainerSize(): void {
+		const bounds: DOMRect = this._container.getBoundingClientRect();
+		CanvasUtil.setCanvasSize(this._canvasElement, bounds.width, bounds.height);
+
+		// Schedule a repaint
+		this._lazyRenderingSchedulerSubject.next();
 	}
 
 	/**
@@ -172,23 +180,6 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 	 */
 	private _onKeyDown(event: KeyboardEvent): void {
 		console.log("Key down event!");
-
-		const scrollAmountPerSecond = 75;
-
-		let lastTimestamp = null;
-		let test;
-		test = (timestamp) => {
-			const diff = lastTimestamp !== null ? timestamp - lastTimestamp : 0;
-			lastTimestamp = timestamp;
-
-			const scrollDelta = diff * scrollAmountPerSecond / 1000;
-			if (!this._scrollToY(this._scrollOffsetY + scrollDelta)) {
-				this._lazyRenderingSchedulerSubject.next();
-				window.requestAnimationFrame(test);
-			}
-		};
-
-		window.requestAnimationFrame(test);
 	}
 
 	/**
@@ -198,7 +189,7 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 	private _onWheel(event: WheelEvent): void {
 		const scrollVertically: boolean = !event.shiftKey;
 
-		const scrollDelta: number = CanvasKitRenderer._determineScrollOffsetFromEvent(this._canvasElement, event);
+		const scrollDelta: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, event);
 
 		if (scrollVertically) {
 			this._scrollToY(this._scrollOffsetY + scrollDelta);
@@ -250,26 +241,6 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 	}
 
 	/**
-	 * Determine the amount to scroll from the given wheel event.
-	 * @param canvasElement the canvas element to draw on
-	 * @param event of the wheel
-	 */
-	private static _determineScrollOffsetFromEvent(canvasElement: HTMLCanvasElement, event: WheelEvent): number {
-		const scrollVertically: boolean = !event.shiftKey;
-
-		switch (event.deltaMode) {
-			case event.DOM_DELTA_PIXEL:
-				return event.deltaY * window.devicePixelRatio;
-			case event.DOM_DELTA_LINE: // Each deltaY means to scroll a line
-				return event.deltaY * 25 * window.devicePixelRatio;
-			case event.DOM_DELTA_PAGE: // Each deltaY means to scroll by a page (the tables height)
-				return event.deltaY * (scrollVertically ? canvasElement.height : canvasElement.width);
-			default:
-				throw new Error(`WheelEvent deltaMode unsupported`);
-		}
-	}
-
-	/**
 	 * Initialize the rendering canvas element to use.
 	 */
 	private _initializeRenderingCanvasElement(): void {
@@ -282,7 +253,10 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 
 		// Create HTML canvas element
 		this._canvasElement = document.createElement("canvas");
-		CanvasKitRenderer._setCanvasSize(this._canvasElement, bounds.width, bounds.height);
+		this._canvasElement.style.position = "absolute"; // Ignore resize events due to canvas element resizing
+
+		// Set proper size based on the container HTML element size
+		CanvasUtil.setCanvasSize(this._canvasElement, bounds.width, bounds.height);
 
 		// Make it focusable (needed for key listeners for example).
 		this._canvasElement.setAttribute("tabindex", "-1");
@@ -336,16 +310,20 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 		/*
 		LAYOUT SCROLLBARS
 		 */
-		const verticalScrollBarLength = Math.max(this._cellModel.getHeight() / this._canvasElement.height, 50);
+		const scrollBarOptions: IScrollBarOptions = this._options.canvasKit.scrollBar;
+		const scrollBarSize: number = scrollBarOptions.size * window.devicePixelRatio;
+		const minScrollBarLength: number = scrollBarOptions.minLength * window.devicePixelRatio;
+		const scrollBarOffset: number = scrollBarOptions.offset * window.devicePixelRatio;
+
+		const verticalScrollBarLength = Math.max(this._canvasElement.height / this._cellModel.getHeight() * this._canvasElement.height, minScrollBarLength);
 		const verticalScrollProgress = this._scrollOffsetY / (this._cellModel.getHeight() - this._canvasElement.height);
-		const verticalScrollBarX = this._canvasElement.width - CanvasKitRenderer.SCROLLBAR_SIZE - CanvasKitRenderer.SCROLLBAR_OFFSET;
+		const verticalScrollBarX = this._canvasElement.width - scrollBarSize - scrollBarOffset;
 		const verticalScrollBarY = (this._canvasElement.height - verticalScrollBarLength) * verticalScrollProgress;
 
-		const horizontalScrollBarLength = Math.max(this._cellModel.getWidth() / this._canvasElement.width, 50);
+		const horizontalScrollBarLength = Math.max(this._canvasElement.width / this._cellModel.getWidth() * this._canvasElement.width, minScrollBarLength);
 		const horizontalScrollProgress = this._scrollOffsetX / (this._cellModel.getWidth() - this._canvasElement.width);
-		const horizontalScrollBarY = this._canvasElement.height - CanvasKitRenderer.SCROLLBAR_SIZE - CanvasKitRenderer.SCROLLBAR_OFFSET;
+		const horizontalScrollBarY = this._canvasElement.height - scrollBarSize - scrollBarOffset;
 		const horizontalScrollBarX = (this._canvasElement.width - horizontalScrollBarLength) * horizontalScrollProgress;
-
 		fetchingTime = window.performance.now() - fetchingTime;
 
 		/*
@@ -365,7 +343,7 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 		fontPaint.setAntiAlias(true);
 
 		const scrollBarPaint = new kit.Paint();
-		scrollBarPaint.setColor(kit.Color4f(0.2, 0.2, 0.2, 0.8));
+		scrollBarPaint.setColor(kit.Color4f(...scrollBarOptions.color));
 		scrollBarPaint.setStyle(kit.PaintStyle.Fill);
 		scrollBarPaint.setAntiAlias(true);
 
@@ -385,8 +363,8 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 			}
 
 			// Draw scroll bars
-			canvas.drawRRect(kit.RRectXY(kit.XYWHRect(verticalScrollBarX, verticalScrollBarY, CanvasKitRenderer.SCROLLBAR_SIZE, verticalScrollBarLength), 5, 5), scrollBarPaint);
-			canvas.drawRRect(kit.RRectXY(kit.XYWHRect(horizontalScrollBarX, horizontalScrollBarY, horizontalScrollBarLength, CanvasKitRenderer.SCROLLBAR_SIZE), 5, 5), scrollBarPaint);
+			canvas.drawRRect(kit.RRectXY(kit.XYWHRect(verticalScrollBarX, verticalScrollBarY, scrollBarSize, verticalScrollBarLength), scrollBarOptions.cornerRadius, scrollBarOptions.cornerRadius), scrollBarPaint);
+			canvas.drawRRect(kit.RRectXY(kit.XYWHRect(horizontalScrollBarX, horizontalScrollBarY, horizontalScrollBarLength, scrollBarSize), scrollBarOptions.cornerRadius, scrollBarOptions.cornerRadius), scrollBarPaint);
 
 			let onlyRendering = window.performance.now() - totalRendering;
 
@@ -414,6 +392,7 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 	 */
 	public cleanup(): void {
 		this._lazyRenderingSchedulerSubject.complete();
+		this._resizeThrottleSubject.complete();
 
 		this._unbindListeners();
 
