@@ -18,6 +18,11 @@ export interface IRendererOptions {
 	type?: RendererType;
 
 	/**
+	 * Options regarding the table view to render.
+	 */
+	view?: IViewOptions;
+
+	/**
 	 * Options for the HTML5 canvas renderer.
 	 */
 	canvas?: ICanvasRendererOptions;
@@ -35,12 +40,41 @@ export interface IRendererOptions {
 }
 
 /**
+ * Options customizing the table view.
+ */
+export interface IViewOptions {
+
+	/**
+	 * Number of fixed rows.
+	 */
+	fixedRows?: number;
+
+	/**
+	 * Number of fixed columns.
+	 */
+	fixedColumns?: number;
+
+}
+
+/**
  * Function used to fill the renderer options
  * where there are no options set by the user.
  */
 export const fillOptions = (options?: IRendererOptions) => {
 	if (!options) {
 		options = {};
+	}
+
+	if (!options.view) {
+		options.view = {};
+	}
+
+	if (options.view.fixedRows === undefined || options.view.fixedRows === null) {
+		options.view.fixedRows = 0;
+	}
+
+	if (options.view.fixedColumns === undefined || options.view.fixedColumns === null) {
+		options.view.fixedColumns = 0;
 	}
 
 	if (!options.type) {

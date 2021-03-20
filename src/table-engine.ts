@@ -69,9 +69,17 @@ export class TableEngine {
 
 	/**
 	 * Repaint the table manually.
+	 * You might need to do that for example after changing the table-engine options (fixed rows, fixed columns, ...).
 	 */
 	public repaint(): void {
 		this._renderer.render();
+	}
+
+	/**
+	 * Get the table engines options.
+	 */
+	public getOptions(): ITableEngineOptions {
+		return this._options;
 	}
 
 	/**

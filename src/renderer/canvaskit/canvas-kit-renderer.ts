@@ -344,7 +344,7 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 		fontPaint.setAntiAlias(true);
 
 		const scrollBarPaint = new kit.Paint();
-		scrollBarPaint.setColor(kit.Color4f(...scrollBarOptions.color));
+		scrollBarPaint.setColor(kit.Color4f(scrollBarOptions.color.red, scrollBarOptions.color.green, scrollBarOptions.color.blue, scrollBarOptions.color.alpha));
 		scrollBarPaint.setStyle(kit.PaintStyle.Fill);
 		scrollBarPaint.setAntiAlias(true);
 

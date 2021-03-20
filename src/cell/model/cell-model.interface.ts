@@ -27,6 +27,12 @@ export interface ICellModel {
 	getCellsForRect(rect: IRectangle): ICell[];
 
 	/**
+	 * Get a cell range for the given rectangle (metric is pixel).
+	 * @param rect rectangle to get cell range for (metric is pixel)
+	 */
+	getRangeForRect(rect: IRectangle): ICellRange;
+
+	/**
 	 * Get a cell at the given offset (metric is pixel points).
 	 * @param x offset from left (horizontal)
 	 * @param y offset from top (vertical)

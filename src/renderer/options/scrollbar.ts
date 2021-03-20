@@ -1,6 +1,8 @@
 /**
  * Default size of the scrollbar.
  */
+import {IColor} from "../../util/color";
+
 const DEFAULT_SCROLLBAR_SIZE: number = 10;
 
 /**
@@ -19,6 +21,11 @@ const DEFAULT_MIN_SCROLLBAR_LENGTH: number = 30;
 const DEFAULT_SCROLLBAR_RADIUS: number = 5;
 
 /**
+ * Default scrollbar color.
+ */
+const DEFAULT_SCROLLBAR_COLOR: IColor = {red: 0.2, green: 0.2, blue: 0.2, alpha: 0.5};
+
+/**
  * Options regarding the scrollbar to display.
  */
 export interface IScrollBarOptions {
@@ -28,7 +35,7 @@ export interface IScrollBarOptions {
 	 * numbers.
 	 * For example [0.0, 0.0, 0.0, 1.0].
 	 */
-	color?: [number, number, number, number];
+	color?: IColor;
 
 	/**
 	 * Size of the scrollbar.
@@ -62,7 +69,7 @@ export const fillOptions = (options?: IScrollBarOptions) => {
 	}
 
 	if (!options.color) {
-		options.color = [0.2, 0.2, 0.2, 0.5];
+		options.color = DEFAULT_SCROLLBAR_COLOR;
 	}
 
 	if (options.size === undefined || options.size === null) {

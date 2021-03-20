@@ -236,6 +236,14 @@ export class CellModel implements ICellModel {
 	}
 
 	/**
+	 * Get a cell range for the given rectangle (metric is pixel).
+	 * @param rect rectangle to get cell range for (metric is pixel)
+	 */
+	public getRangeForRect(rect: IRectangle): ICellRange {
+		return this._calculateCellRangeForRect(rect);
+	}
+
+	/**
 	 * Get a cell at the given offset (metric is pixel points).
 	 * @param x offset from left (horizontal)
 	 * @param y offset from top (vertical)

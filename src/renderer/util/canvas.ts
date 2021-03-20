@@ -2,6 +2,7 @@
  * Utility methods regarding HTML5 canvas.
  */
 import {IRectangle} from "../../util/rect";
+import {IColor} from "../../util/color";
 
 export class CanvasUtil {
 
@@ -66,6 +67,14 @@ export class CanvasUtil {
 		ctx.quadraticCurveTo(rect.left, rect.top, rect.left + radius, rect.top);
 
 		ctx.closePath();
+	}
+
+	/**
+	 * Convert the passed color for a fill or stroke style for the HTML5 canvas.
+	 * @param color to convert
+	 */
+	public static colorToStyle(color: IColor): string {
+		return `rgba(${color.red}, ${color.green}, ${color.blue}, ${color.alpha})`;
 	}
 
 }

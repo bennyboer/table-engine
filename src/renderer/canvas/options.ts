@@ -4,7 +4,7 @@ import {fillOptions as fillScrollBarOptions, IScrollBarOptions} from "../options
  * Duration in milliseconds used to throttle high-rate events
  * such as scrolling that need re-rendering afterwards.
  */
-const DEFAULT_LAZY_RENDERING_THROTTLE_DURATION: number = 30;
+const DEFAULT_LAZY_RENDERING_THROTTLE_DURATION: number = 16;
 
 /**
  * Options for the HTML5 canvas renderer.

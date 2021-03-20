@@ -1,4 +1,4 @@
-import {AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, ViewChild} from "@angular/core";
+import {AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, OnDestroy, ViewChild} from "@angular/core";
 import {ICellModel} from "../../../src/cell/model/cell-model.interface";
 import {CellModel} from "../../../src/cell/model/cell-model";
 import {CellRange} from "../../../src/cell/range/cell-range";
@@ -13,7 +13,7 @@ import {IRectangle} from "../../../src/util/rect";
   styleUrls: ["./app.component.scss"],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AppComponent implements AfterViewInit {
+export class AppComponent implements AfterViewInit, OnDestroy {
 
   @ViewChild("tableContainer")
   public tableContainer!: ElementRef;
@@ -27,6 +27,18 @@ export class AppComponent implements AfterViewInit {
     this.engine.repaint();
   }
 
+  public addOneFixedRowsColumns(): void {
+    this.engine.getOptions().renderer.view.fixedRows += 1;
+    this.engine.getOptions().renderer.view.fixedColumns += 1;
+    this.engine.repaint();
+  }
+
+  public removeOneFixedRowsColumns(): void {
+    this.engine.getOptions().renderer.view.fixedRows = Math.max(this.engine.getOptions().renderer.view.fixedRows - 1, 0);
+    this.engine.getOptions().renderer.view.fixedColumns = Math.max(this.engine.getOptions().renderer.view.fixedColumns - 1, 0);
+    this.engine.repaint();
+  }
+
   /**
    * Called after the view is initialized.
    */
@@ -35,6 +47,15 @@ export class AppComponent implements AfterViewInit {
     this.engine = new TableEngine(this.tableContainer.nativeElement, cellModel);
     this.engine.registerCellRenderer(new TestCellRenderer());
     this.engine.initialize();
+  }
+
+  /**
+   * Called on component destruction.
+   */
+  public ngOnDestroy(): void {
+    if (!!this.engine) {
+      this.engine.cleanup();
+    }
   }
 
   /**

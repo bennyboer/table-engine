@@ -1514,3 +1514,33 @@ test("[CellModel.getBounds] Get bounds of a cell", () => {
 	expect(bounds.height).toBe(90);
 	expect(bounds.width).toBe(200);
 });
+
+test("[CellModel.getRange] Get cell range for rectangle", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				rendererName: "base",
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row, column) => "base",
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	const range = model.getRangeForRect({
+		left: 100,
+		top: 100,
+		width: 300,
+		height: 50
+	});
+
+	expect(range.startRow).toBe(3);
+	expect(range.endRow).toBe(5);
+	expect(range.startColumn).toBe(1);
+	expect(range.endColumn).toBe(4);
+});

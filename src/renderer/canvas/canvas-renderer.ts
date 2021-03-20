@@ -11,6 +11,8 @@ import {ICell} from "../../cell/cell";
 import {ICellRenderer} from "../cell/cell-renderer";
 import {ICanvasCellRenderer} from "./cell/canvas-cell-renderer";
 import {BaseCellRenderer} from "./cell/base/base-cell-renderer";
+import {ICellRange} from "../../cell/range/cell-range";
+import {IColor} from "../../util/color";
 
 /**
  * Table-engine renderer using the HTML5 canvas.
@@ -275,6 +277,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param ctx of the scroll bar on a axis (horizontal, vertical)
 	 */
 	private static _isMouseOverScrollBar(x: number, y: number, vertical: boolean, ctx: IScrollBarAxisRenderContext): boolean {
+		if (!ctx) {
+			return false;
+		}
+
 		const width: number = vertical ? ctx.size : ctx.length;
 		const height: number = vertical ? ctx.length : ctx.size;
 
@@ -294,15 +300,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			// Update scroll offset accordingly
 			if (this._mouseScrollDragStart.scrollVertically) {
 				const yDiff = y - this._mouseScrollDragStart.startY;
-				const tableHeight = this._cellModel.getHeight();
+				const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
+				const tableHeight = this._cellModel.getHeight() - fixedRowsHeight;
+				const viewPortHeight = this._canvasElement.height - fixedRowsHeight;
 
-				this._scrollToY(this._mouseScrollDragStart.startScrollOffset.y + (yDiff / this._canvasElement.height * tableHeight));
+				this._scrollToY(this._mouseScrollDragStart.startScrollOffset.y + (yDiff / viewPortHeight * tableHeight));
 			}
 			if (this._mouseScrollDragStart.scrollHorizontally) {
 				const xDiff = x - this._mouseScrollDragStart.startX;
-				const tableWidth = this._cellModel.getWidth();
+				const fixedColumnWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
+				const tableWidth = this._cellModel.getWidth() - fixedColumnWidth;
+				const viewPortWidth = this._canvasElement.width - fixedColumnWidth;
 
-				this._scrollToX(this._mouseScrollDragStart.startScrollOffset.x + (xDiff / this._canvasElement.width * tableWidth));
+				this._scrollToX(this._mouseScrollDragStart.startScrollOffset.x + (xDiff / viewPortWidth * tableWidth));
 			}
 
 			this._lazyRenderingSchedulerSubject.next();
@@ -334,10 +344,18 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		// Re-size scroll bar offsets as well
 		const tableHeight: number = this._cellModel.getHeight();
 		const tableWidth: number = this._cellModel.getWidth();
-		const verticalScrollProgress = this._scrollOffset.y / (tableHeight - this._canvasElement.height);
-		const horizontalScrollProgress = this._scrollOffset.x / (tableWidth - this._canvasElement.width);
-		this._scrollOffset.y = verticalScrollProgress * (tableHeight - newBounds.height);
-		this._scrollOffset.x = horizontalScrollProgress * (tableWidth - newBounds.width);
+		if (tableWidth > newBounds.width) {
+			const horizontalScrollProgress = this._scrollOffset.x / (tableWidth - this._canvasElement.width);
+			this._scrollOffset.x = horizontalScrollProgress * (tableWidth - newBounds.width);
+		} else {
+			this._scrollOffset.x = 0;
+		}
+		if (tableHeight > newBounds.height) {
+			const verticalScrollProgress = this._scrollOffset.y / (tableHeight - this._canvasElement.height);
+			this._scrollOffset.y = verticalScrollProgress * (tableHeight - newBounds.height);
+		} else {
+			this._scrollOffset.y = 0;
+		}
 
 		// Set new size to canvas
 		CanvasUtil.setCanvasSize(this._canvasElement, newBounds.width, newBounds.height);
@@ -364,11 +382,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const scrollDelta: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, event);
 
 		if (scrollVertically) {
-			if (!this._scrollToY(this._scrollOffset.y + scrollDelta)) {
+			if (this._scrollToY(this._scrollOffset.y + scrollDelta)) {
 				this._lazyRenderingSchedulerSubject.next();
 			}
 		} else {
-			if (!this._scrollToX(this._scrollOffset.x + scrollDelta)) {
+			if (this._scrollToX(this._scrollOffset.x + scrollDelta)) {
 				this._lazyRenderingSchedulerSubject.next();
 			}
 		}
@@ -380,37 +398,57 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @returns whether the offset is out of bounds and thus corrected to the max/min value
 	 */
 	private _scrollToX(offset: number): boolean {
-		const maxOffset: number = this._cellModel.getWidth() - this._canvasElement.width;
+		const tableWidth: number = this._cellModel.getWidth();
+		const viewPortWidth: number = this._canvasElement.width;
+
+		// Check if we're able to scroll
+		if (tableWidth <= viewPortWidth) {
+			return false;
+		}
+
+		const maxOffset: number = tableWidth - viewPortWidth;
 
 		if (offset < 0) {
+			const changed: boolean = this._scrollOffset.x !== 0;
 			this._scrollOffset.x = 0;
-			return true;
+			return changed;
 		} else if (offset > maxOffset) {
+			const changed: boolean = this._scrollOffset.x !== maxOffset;
 			this._scrollOffset.x = maxOffset;
-			return true;
+			return changed;
 		} else {
 			this._scrollOffset.x = offset;
-			return false;
+			return true;
 		}
 	}
 
 	/**
 	 * Scroll to the given vertical (Y) position.
 	 * @param offset to scroll to
-	 * @returns whether the offset is out of bounds and thus corrected to the max/min value
+	 * @returns whether the offset changed
 	 */
 	private _scrollToY(offset: number): boolean {
-		const maxOffset: number = this._cellModel.getHeight() - this._canvasElement.height;
+		const tableHeight: number = this._cellModel.getHeight();
+		const viewPortHeight: number = this._canvasElement.height;
+
+		// Check if we're able to scroll
+		if (tableHeight <= viewPortHeight) {
+			return false;
+		}
+
+		const maxOffset: number = tableHeight - viewPortHeight;
 
 		if (offset < 0) {
+			const changed: boolean = this._scrollOffset.y !== 0;
 			this._scrollOffset.y = 0;
-			return true;
+			return changed;
 		} else if (offset > maxOffset) {
+			const changed: boolean = this._scrollOffset.y !== maxOffset;
 			this._scrollOffset.y = maxOffset;
-			return true;
+			return changed;
 		} else {
 			this._scrollOffset.y = offset;
-			return false;
+			return true;
 		}
 	}
 
@@ -456,44 +494,56 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 	/**
 	 * Calculate the scroll bar rendering context.
+	 * @param fixedRowsHeight height of the fixed rows
+	 * @param fixedColumnsWidth width of the fixed columns
 	 */
-	private _calculateScrollBarContext(): IScrollBarRenderContext {
+	private _calculateScrollBarContext(fixedRowsHeight: number, fixedColumnsWidth: number): IScrollBarRenderContext {
 		// Derive scroll bar options
 		const scrollBarOptions: IScrollBarOptions = this._options.canvas.scrollBar;
 		const scrollBarSize: number = scrollBarOptions.size * window.devicePixelRatio;
 		const minScrollBarLength: number = scrollBarOptions.minLength * window.devicePixelRatio;
 		const scrollBarOffset: number = scrollBarOptions.offset * window.devicePixelRatio;
+		const cornerRadius: number = scrollBarOptions.cornerRadius * window.devicePixelRatio;
 
-		const tableHeight: number = this._cellModel.getHeight();
-		const tableWidth: number = this._cellModel.getWidth();
+		const tableHeight: number = this._cellModel.getHeight() - fixedRowsHeight;
+		const tableWidth: number = this._cellModel.getWidth() - fixedColumnsWidth;
+
+		const viewPortWidth: number = this._canvasElement.width - fixedColumnsWidth;
+		const viewPortHeight: number = this._canvasElement.height - fixedRowsHeight;
 
 		// Calculate vertical scrollbar layout
-		const verticalScrollBarLength = Math.max(this._canvasElement.height / tableHeight * this._canvasElement.height, minScrollBarLength);
-		const verticalScrollProgress = this._scrollOffset.y / (tableHeight - this._canvasElement.height);
-		const verticalScrollBarX = this._canvasElement.width - scrollBarSize - scrollBarOffset;
-		const verticalScrollBarY = (this._canvasElement.height - verticalScrollBarLength) * verticalScrollProgress;
+		let vertical: IScrollBarAxisRenderContext = null;
+		if (tableHeight > viewPortHeight) {
+			const length = Math.max(viewPortHeight / tableHeight * viewPortHeight, minScrollBarLength);
+			const progress = this._scrollOffset.y / (tableHeight - viewPortHeight);
+
+			vertical = {
+				size: scrollBarSize,
+				length,
+				x: viewPortWidth - scrollBarSize - scrollBarOffset + fixedColumnsWidth,
+				y: (viewPortHeight - length) * progress + fixedRowsHeight
+			};
+		}
 
 		// Calculate horizontal scrollbar layout
-		const horizontalScrollBarLength = Math.max(this._canvasElement.width / tableWidth * this._canvasElement.width, minScrollBarLength);
-		const horizontalScrollProgress = this._scrollOffset.x / (tableWidth - this._canvasElement.width);
-		const horizontalScrollBarY = this._canvasElement.height - scrollBarSize - scrollBarOffset;
-		const horizontalScrollBarX = (this._canvasElement.width - horizontalScrollBarLength) * horizontalScrollProgress;
+		let horizontal: IScrollBarAxisRenderContext = null;
+		if (tableWidth > viewPortWidth) {
+			const length = Math.max(viewPortWidth / tableWidth * viewPortWidth, minScrollBarLength);
+			const progress = this._scrollOffset.x / (tableWidth - viewPortWidth);
+
+			horizontal = {
+				size: scrollBarSize,
+				length,
+				x: (viewPortWidth - length) * progress + fixedColumnsWidth,
+				y: viewPortHeight - scrollBarSize - scrollBarOffset + fixedRowsHeight
+			};
+		}
 
 		return {
 			color: this._options.canvas.scrollBar.color,
-			cornerRadius: this._options.canvas.scrollBar.cornerRadius * window.devicePixelRatio,
-			vertical: {
-				size: scrollBarSize,
-				length: verticalScrollBarLength,
-				x: verticalScrollBarX,
-				y: verticalScrollBarY
-			},
-			horizontal: {
-				size: scrollBarSize,
-				length: horizontalScrollBarLength,
-				x: horizontalScrollBarX,
-				y: horizontalScrollBarY
-			}
+			cornerRadius,
+			vertical,
+			horizontal,
 		};
 	}
 
@@ -503,43 +553,157 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _createRenderingContext(): IRenderContext {
 		const viewPort: IRectangle = this._getViewPort();
 
+		const fixedRows: number = Math.min(this._options.view.fixedRows, this._cellModel.getRowCount());
+		const fixedColumns: number = Math.min(this._options.view.fixedColumns, this._cellModel.getColumnCount());
+
+		// Calculate width and height of the fixed rows and columns
+		const fixedRowsHeight: number = fixedRows > 0
+			? this._cellModel.getRowOffset(fixedRows - 1) + (this._cellModel.isRowHidden(fixedRows - 1) ? 0.0 : this._cellModel.getRowSize(fixedRows - 1))
+			: 0;
+		const fixedColumnsWidth: number = fixedColumns > 0
+			? this._cellModel.getColumnOffset(fixedColumns - 1) + (this._cellModel.isColumnHidden(fixedColumns - 1) ? 0.0 : this._cellModel.getColumnSize(fixedColumns - 1))
+			: 0;
+
+		const cellsInfo = this._createCellRenderingInfo(viewPort, fixedRows, fixedColumns, fixedRowsHeight, fixedColumnsWidth);
+		const scrollBarContext: IScrollBarRenderContext = this._calculateScrollBarContext(fixedRowsHeight, fixedColumnsWidth);
+
+		return {
+			viewPort,
+			cells: cellsInfo,
+			scrollBar: scrollBarContext,
+			renderers: this._cellRendererLookup
+		}
+	}
+
+	/**
+	 * Create information used to render cells later.
+	 * @param viewPort to get cells for
+	 * @param fixedRows amount of fixed rows
+	 * @param fixedColumns amount of fixed columns
+	 * @param fixedRowsHeight height of the fixed rows
+	 * @param fixedColumnsWidth width of the fixed columns
+	 */
+	private _createCellRenderingInfo(
+		viewPort: IRectangle,
+		fixedRows: number,
+		fixedColumns: number,
+		fixedRowsHeight: number,
+		fixedColumnsWidth: number
+	): ICellRenderContextCollection {
 		/*
 		We group cells to render per renderer name to improve rendering
 		performance, as one renderer must only prepare once instead of
 		everytime.
 		 */
-		const cellsPerRenderer: Map<string, ICellRenderContext[]> = new Map<string, ICellRenderContext[]>();
 
-		const cells = this._cellModel.getCellsForRect(viewPort);
+		// Fetch cell range to paint for the current viewport
+		const cellRange: ICellRange = this._cellModel.getRangeForRect(viewPort);
+
+		// Fill "normal" (non-fixed) cells first
+		const nonFixedCells = this._createCellRenderArea({
+			startRow: Math.min(cellRange.startRow + fixedRows, cellRange.endRow),
+			endRow: cellRange.endRow,
+			startColumn: Math.min(cellRange.startColumn + fixedColumns, cellRange.endColumn),
+			endColumn: cellRange.endColumn
+		}, {
+			left: fixedColumnsWidth,
+			top: fixedRowsHeight,
+			width: viewPort.width - fixedColumnsWidth,
+			height: viewPort.height - fixedRowsHeight
+		}, true, true);
+
+		const result: ICellRenderContextCollection = {
+			nonFixedCells
+		};
+
+		// Fill fixed columns (if any)
+		if (fixedColumns > 0) {
+			result.fixedColumnCells = this._createCellRenderArea({
+				startRow: cellRange.startRow,
+				endRow: cellRange.endRow,
+				startColumn: 0,
+				endColumn: fixedColumns - 1
+			}, {
+				left: 0,
+				top: fixedRowsHeight,
+				width: fixedColumnsWidth,
+				height: viewPort.height - fixedRowsHeight
+			}, false, true);
+		}
+
+		// Fill fixed rows (if any)
+		if (fixedRows > 0) {
+			result.fixedRowCells = this._createCellRenderArea({
+				startRow: 0,
+				endRow: fixedRows - 1,
+				startColumn: cellRange.startColumn,
+				endColumn: cellRange.endColumn
+			}, {
+				left: fixedColumnsWidth,
+				top: 0,
+				width: viewPort.width - fixedColumnsWidth,
+				height: fixedRowsHeight
+			}, true, false);
+		}
+
+		// Fill fixed corner cells (if any)
+		if (fixedColumns > 0 && fixedRows > 0) {
+			result.fixedCornerCells = this._createCellRenderArea({
+				startRow: 0,
+				endRow: fixedRows - 1,
+				startColumn: 0,
+				endColumn: fixedColumns - 1
+			}, {
+				left: 0,
+				top: 0,
+				width: fixedColumnsWidth,
+				height: fixedRowsHeight
+			}, false, false);
+		}
+
+		return result;
+	}
+
+	/**
+	 * Create cell area to render.
+	 * @param range to create rendering lookup for
+	 * @param viewPortBounds of the range
+	 * @param adjustBoundsX whether to adjust the x bounds
+	 * @param adjustBoundsY whether to adjust the y bounds
+	 * @returns mapping of renderer names to all cells that need to be rendered with the renderer
+	 */
+	private _createCellRenderArea(range: ICellRange, viewPortBounds: IRectangle, adjustBoundsX: boolean, adjustBoundsY: boolean): ICellAreaRenderContext {
+		const cellsPerRenderer = new Map<string, ICellRenderInfo[]>();
+		const cells = this._cellModel.getCells(range);
+
 		for (let i = 0; i < cells.length; i++) {
 			const cell = cells[i];
 			const bounds = this._cellModel.getBounds(cells[i].range);
 
 			// Correct bounds for current scroll offsets
-			bounds.top -= this._scrollOffset.y;
-			bounds.left -= this._scrollOffset.x;
+			if (adjustBoundsY) {
+				bounds.top -= this._scrollOffset.y;
+			}
+			if (adjustBoundsX) {
+				bounds.left -= this._scrollOffset.x;
+			}
 
-			let cellsToRender: ICellRenderContext[] = cellsPerRenderer.get(cell.rendererName);
+			let cellsToRender: ICellRenderInfo[] = cellsPerRenderer.get(cell.rendererName);
 			if (!cellsToRender) {
 				cellsToRender = [];
 				cellsPerRenderer.set(cell.rendererName, cellsToRender);
 			}
 
-			// TODO Check whether pre-allocating memory based on a guess is faster than pushing every time
 			cellsToRender.push({
 				cell,
 				bounds
 			});
 		}
 
-		const scrollBarContext: IScrollBarRenderContext = this._calculateScrollBarContext();
-
 		return {
-			viewPort,
-			cellsPerRenderer,
-			scrollBar: scrollBarContext,
-			renderers: this._cellRendererLookup
-		}
+			viewPortBounds: viewPortBounds,
+			cellsPerRenderer
+		};
 	}
 
 	/**
@@ -576,12 +740,24 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 			let renderingTime = window.performance.now();
 
-			// Clear canvas first
-			// TODO: In the future we should only clear the area that we need to repaint!
-			ctx.clearRect(0, 0, renderingContext.viewPort.width, renderingContext.viewPort.height);
+			// Render "normal" (non-fixed) cells first
+			CanvasRenderer._renderCellArea(ctx, renderingContext, renderingContext.cells.nonFixedCells);
+			CanvasRenderer._renderBordersPerRenderer(ctx, renderingContext, renderingContext.cells.nonFixedCells);
 
-			CanvasRenderer._renderCells(ctx, renderingContext);
-			CanvasRenderer._renderBorders(ctx, renderingContext);
+			// Then render fixed cells (if any).
+			if (!!renderingContext.cells.fixedColumnCells) {
+				CanvasRenderer._renderCellArea(ctx, renderingContext, renderingContext.cells.fixedColumnCells);
+				CanvasRenderer._renderBordersPerRenderer(ctx, renderingContext, renderingContext.cells.fixedColumnCells);
+			}
+			if (!!renderingContext.cells.fixedRowCells) {
+				CanvasRenderer._renderCellArea(ctx, renderingContext, renderingContext.cells.fixedRowCells);
+				CanvasRenderer._renderBordersPerRenderer(ctx, renderingContext, renderingContext.cells.fixedRowCells);
+			}
+			if (!!renderingContext.cells.fixedCornerCells) {
+				CanvasRenderer._renderCellArea(ctx, renderingContext, renderingContext.cells.fixedCornerCells);
+				CanvasRenderer._renderBordersPerRenderer(ctx, renderingContext, renderingContext.cells.fixedCornerCells);
+			}
+
 			CanvasRenderer._renderScrollBars(ctx, renderingContext);
 
 			console.log(`RENDERING: ${window.performance.now() - renderingTime}ms, CREATING RENDERING CONTEXT: ${creatingRenderingContextTime}ms`);
@@ -589,12 +765,16 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
-	 * Render the table cells.
+	 * Render the passed cellsPerRenderer map.
 	 * @param ctx to render with
 	 * @param context the rendering context
+	 * @param cellArea to render
 	 */
-	private static _renderCells(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
-		for (const [rendererName, cellsToRender] of context.cellsPerRenderer.entries()) {
+	private static _renderCellArea(ctx: CanvasRenderingContext2D, context: IRenderContext, cellArea: ICellAreaRenderContext): void {
+		// Clear area first
+		ctx.clearRect(cellArea.viewPortBounds.left, cellArea.viewPortBounds.top, cellArea.viewPortBounds.width, cellArea.viewPortBounds.height);
+
+		for (const [rendererName, cellsToRender] of cellArea.cellsPerRenderer.entries()) {
 			const cellRenderer: ICanvasCellRenderer = context.renderers.get(rendererName);
 			if (!cellRenderer) {
 				throw new Error(`Could not find cell renderer for name '${rendererName}'`);
@@ -613,18 +793,18 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
-	 * Render the borders of the table.
+	 * Render borders for the passed cellsPerRenderer map.
 	 * @param ctx to render with
 	 * @param context the rendering context
+	 * @param cellArea to render
 	 */
-	private static _renderBorders(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
-		// TODO This needs to be re-implemented once the border model is finished
-
-		for (const [rendererName, cellsToRender] of context.cellsPerRenderer.entries()) {
+	private static _renderBordersPerRenderer(ctx: CanvasRenderingContext2D, context: IRenderContext, cellArea: ICellAreaRenderContext): void {
+		for (const [rendererName, cellsToRender] of cellArea.cellsPerRenderer.entries()) {
 			for (const cellToRender of cellsToRender) {
 				const bounds: IRectangle = cellToRender.bounds;
 
 				ctx.strokeStyle = "#EAEAEA";
+				ctx.lineWidth = 1;
 
 				ctx.beginPath();
 
@@ -644,25 +824,29 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param context the rendering context
 	 */
 	private static _renderScrollBars(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
-		ctx.fillStyle = `rgba(${context.scrollBar.color[0]}, ${context.scrollBar.color[1]}, ${context.scrollBar.color[2]}, ${context.scrollBar.color[3]})`;
+		ctx.fillStyle = CanvasUtil.colorToStyle(context.scrollBar.color);
 
-		// Draw vertical scrollbar
-		CanvasUtil.makeRoundRectPath(ctx, {
-			left: context.scrollBar.vertical.x,
-			top: context.scrollBar.vertical.y,
-			width: context.scrollBar.vertical.size,
-			height: context.scrollBar.vertical.length
-		}, context.scrollBar.cornerRadius);
-		ctx.fill();
+		// Draw vertical scrollbar (if needed)
+		if (!!context.scrollBar.vertical) {
+			CanvasUtil.makeRoundRectPath(ctx, {
+				left: context.scrollBar.vertical.x,
+				top: context.scrollBar.vertical.y,
+				width: context.scrollBar.vertical.size,
+				height: context.scrollBar.vertical.length
+			}, context.scrollBar.cornerRadius);
+			ctx.fill();
+		}
 
-		// Draw horizontal scrollbar
-		CanvasUtil.makeRoundRectPath(ctx, {
-			left: context.scrollBar.horizontal.x,
-			top: context.scrollBar.horizontal.y,
-			width: context.scrollBar.horizontal.length,
-			height: context.scrollBar.horizontal.size
-		}, context.scrollBar.cornerRadius);
-		ctx.fill();
+		// Draw horizontal scrollbar (if needed)
+		if (!!context.scrollBar.horizontal) {
+			CanvasUtil.makeRoundRectPath(ctx, {
+				left: context.scrollBar.horizontal.x,
+				top: context.scrollBar.horizontal.y,
+				width: context.scrollBar.horizontal.length,
+				height: context.scrollBar.horizontal.size
+			}, context.scrollBar.cornerRadius);
+			ctx.fill();
+		}
 	}
 
 }
@@ -678,9 +862,9 @@ interface IRenderContext {
 	viewPort: IRectangle;
 
 	/**
-	 * Cells to render per renderer name.
+	 * Infos about all cells to render.
 	 */
-	cellsPerRenderer: Map<string, ICellRenderContext[]>;
+	cells: ICellRenderContextCollection;
 
 	/**
 	 * Rendering context of the scrollbars.
@@ -695,9 +879,54 @@ interface IRenderContext {
 }
 
 /**
- * Rendering context for a single cell.
+ * Collections of all cells to render.
  */
-interface ICellRenderContext {
+interface ICellRenderContextCollection {
+
+	/**
+	 * "Normal" (non-fixed) cells to render.
+	 */
+	nonFixedCells: ICellAreaRenderContext;
+
+	/**
+	 * Fixed corner cells to render.
+	 */
+	fixedCornerCells?: ICellAreaRenderContext;
+
+	/**
+	 * Fixed row cells to render.
+	 */
+	fixedRowCells?: ICellAreaRenderContext;
+
+	/**
+	 * Fixed column cells to render.
+	 */
+	fixedColumnCells?: ICellAreaRenderContext;
+
+}
+
+/**
+ * Rendering context for a cell area (fixed corner cells, fixed column cells,
+ * fixed row cells, "normal" (non-fixed) cells.
+ */
+interface ICellAreaRenderContext {
+
+	/**
+	 * Total bounds of the cell area in the viewport.
+	 */
+	viewPortBounds: IRectangle;
+
+	/**
+	 * Cells to render per renderer name.
+	 */
+	cellsPerRenderer: Map<string, ICellRenderInfo[]>;
+
+}
+
+/**
+ * Rendering info for a single cell.
+ */
+interface ICellRenderInfo {
 
 	/**
 	 * Cell to render.
@@ -720,7 +949,7 @@ interface IScrollBarRenderContext {
 	 * Color of the scroll bars.
 	 * Format is four floats (RGBA).
 	 */
-	color: number[];
+	color: IColor;
 
 	/**
 	 * Radius of the scroll bar rounded corners.
@@ -729,13 +958,15 @@ interface IScrollBarRenderContext {
 
 	/**
 	 * Vertical scrollbar rendering context.
+	 * Only set if a scrollbar needed.
 	 */
-	vertical: IScrollBarAxisRenderContext;
+	vertical?: IScrollBarAxisRenderContext;
 
 	/**
 	 * Horizontal scrollbar rendering context.
+	 * Only set if a scrollbar is needed.
 	 */
-	horizontal: IScrollBarAxisRenderContext;
+	horizontal?: IScrollBarAxisRenderContext;
 
 }
 
