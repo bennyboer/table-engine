@@ -1,5 +1,6 @@
 import {IRendererOptions} from "./options";
 import {ICellModel} from "../cell/model/cell-model.interface";
+import {ICellRenderer} from "./cell/cell-renderer";
 
 /**
  * Representation of a renderer of the table engine.
@@ -19,6 +20,13 @@ export interface ITableEngineRenderer {
 	 * (Re)-Render the table.
 	 */
 	render(): void;
+
+	/**
+	 * Register a cell renderer responsible for
+	 * rendering a single cells value.
+	 * @param renderer to register
+	 */
+	registerCellRenderer(renderer: ICellRenderer<any>): void;
 
 	/**
 	 * Cleanup the renderer when no more needed.

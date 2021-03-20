@@ -40,10 +40,12 @@ export class AppComponent implements AfterViewInit {
       [
         {
           range: CellRange.fromSingleRowColumn(1000, 1000),
+          rendererName: "base",
           value: "Last cell with more text than normally"
         }
       ],
       (row, column) => (row + 1) * (column + 1),
+      (row, column) => "base",
       (row) => 30,
       (column) => 120,
       new Set<number>(),

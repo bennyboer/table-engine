@@ -9,6 +9,7 @@ import {takeUntil, throttleTime} from "rxjs/operators";
 import {IScrollBarOptions} from "../options/scrollbar";
 import {CanvasUtil} from "../util/canvas";
 import {ScrollUtil} from "../util/scroll";
+import {ICellRenderer} from "../cell/cell-renderer";
 
 /**
  * Renderer of the table engine leveraging Skia CanvasKit.
@@ -401,6 +402,15 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 
 		this._surface.dispose();
 		this._surface.delete();
+	}
+
+	/**
+	 * Register a cell renderer responsible for
+	 * rendering a single cells value.
+	 * @param renderer to register
+	 */
+	public registerCellRenderer(renderer: ICellRenderer<any>): void {
+		// TODO
 	}
 
 }

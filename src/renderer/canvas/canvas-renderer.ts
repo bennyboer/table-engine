@@ -8,11 +8,19 @@ import {CanvasUtil} from "../util/canvas";
 import {IRectangle} from "../../util/rect";
 import {IScrollBarOptions} from "../options/scrollbar";
 import {ICell} from "../../cell/cell";
+import {ICellRenderer} from "../cell/cell-renderer";
+import {ICanvasCellRenderer} from "./cell/canvas-cell-renderer";
+import {BaseCellRenderer} from "./cell/base/base-cell-renderer";
 
 /**
  * Table-engine renderer using the HTML5 canvas.
  */
 export class CanvasRenderer implements ITableEngineRenderer {
+
+	/**
+	 * Lookup for cell renderers by their name.
+	 */
+	private readonly _cellRendererLookup: Map<string, ICanvasCellRenderer> = new Map<string, ICanvasCellRenderer>();
 
 	/**
 	 * Container the renderer should operate on.
@@ -107,6 +115,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Context of the current mouse scroll dragging.
 	 */
 	private _mouseScrollDragStart: IMouseScrollDragContext | null = null;
+
+	constructor() {
+		this._registerDefaultCellRenderers();
+	}
+
+	/**
+	 * Register the HTML5 canvas default cell renderers.
+	 */
+	private _registerDefaultCellRenderers(): void {
+		this.registerCellRenderer(new BaseCellRenderer());
+	}
 
 	/**
 	 * Cleanup the renderer when no more needed.
@@ -482,26 +501,56 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _createRenderingContext(): IRenderContext {
 		const viewPort: IRectangle = this._getViewPort();
 
+		/*
+		We group cells to render per renderer name to improve rendering
+		performance, as one renderer must only prepare once instead of
+		everytime.
+		 */
+		const cellsPerRenderer: Map<string, ICellRenderContext[]> = new Map<string, ICellRenderContext[]>();
+
 		const cells = this._cellModel.getCellsForRect(viewPort);
-		const cellBounds: IRectangle[] = new Array(cells.length);
 		for (let i = 0; i < cells.length; i++) {
+			const cell = cells[i];
 			const bounds = this._cellModel.getBounds(cells[i].range);
 
 			// Correct bounds for current scroll offsets
 			bounds.top -= this._scrollOffset.y;
 			bounds.left -= this._scrollOffset.x;
 
-			cellBounds[i] = bounds;
+			let cellsToRender: ICellRenderContext[] = cellsPerRenderer.get(cell.rendererName);
+			if (!cellsToRender) {
+				cellsToRender = [];
+				cellsPerRenderer.set(cell.rendererName, cellsToRender);
+			}
+
+			// TODO Check whether pre-allocating memory based on a guess is faster than pushing every time
+			cellsToRender.push({
+				cell,
+				bounds
+			});
 		}
 
 		const scrollBarContext: IScrollBarRenderContext = this._calculateScrollBarContext();
 
 		return {
 			viewPort,
-			cells,
-			cellBounds,
-			scrollBar: scrollBarContext
+			cellsPerRenderer,
+			scrollBar: scrollBarContext,
+			renderers: this._cellRendererLookup
 		}
+	}
+
+	/**
+	 * Register a cell renderer responsible for
+	 * rendering a single cells value.
+	 * @param renderer to register
+	 */
+	public registerCellRenderer(renderer: ICellRenderer<any>): void {
+		if (this._cellRendererLookup.has(renderer.getName())) {
+			throw new Error(`Cell renderer with name '${renderer.getName()}' already registered`);
+		}
+
+		this._cellRendererLookup.set(renderer.getName(), renderer as ICanvasCellRenderer);
 	}
 
 	/**
@@ -543,16 +592,21 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param context the rendering context
 	 */
 	private static _renderCells(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
-		for (let i = 0; i < context.cells.length; i++) {
-			const cell: ICell = context.cells[i];
-			const bounds: IRectangle = context.cellBounds[i];
+		for (const [rendererName, cellsToRender] of context.cellsPerRenderer.entries()) {
+			const cellRenderer: ICanvasCellRenderer = context.renderers.get(rendererName);
+			if (!cellRenderer) {
+				throw new Error(`Could not find cell renderer for name '${rendererName}'`);
+			}
 
-			// TODO The following stuff should be in a cell renderer implementation instead of here
-			ctx.font = "12px sans-serif";
-			ctx.fillStyle = "#333333";
-			ctx.textBaseline = "top";
+			// Tell cell renderer that we will soon render a bunch of cells with it.
+			cellRenderer.before(ctx);
 
-			ctx.fillText(`${cell.value}`, bounds.left, bounds.top);
+			for (const cellToRender of cellsToRender) {
+				cellRenderer.render(ctx, cellToRender.cell, cellToRender.bounds);
+			}
+
+			// Notify cell renderer that we have rendered all cells for this rendering cycle.
+			cellRenderer.after(ctx);
 		}
 	}
 
@@ -564,19 +618,21 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private static _renderBorders(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
 		// TODO This needs to be re-implemented once the border model is finished
 
-		for (let i = 0; i < context.cells.length; i++) {
-			const bounds: IRectangle = context.cellBounds[i];
+		for (const [rendererName, cellsToRender] of context.cellsPerRenderer.entries()) {
+			for (const cellToRender of cellsToRender) {
+				const bounds: IRectangle = cellToRender.bounds;
 
-			ctx.strokeStyle = "#EAEAEA";
+				ctx.strokeStyle = "#EAEAEA";
 
-			ctx.beginPath();
+				ctx.beginPath();
 
-			// Draw only the bottom and right border for now until we have the border model
-			ctx.moveTo(bounds.left, bounds.top + bounds.height);
-			ctx.lineTo(bounds.left + bounds.width, bounds.top + bounds.height);
-			ctx.lineTo(bounds.left + bounds.width, bounds.top);
+				// Draw only the bottom and right border for now until we have the border model
+				ctx.moveTo(bounds.left, bounds.top + bounds.height);
+				ctx.lineTo(bounds.left + bounds.width, bounds.top + bounds.height);
+				ctx.lineTo(bounds.left + bounds.width, bounds.top);
 
-			ctx.stroke();
+				ctx.stroke();
+			}
 		}
 	}
 
@@ -620,19 +676,36 @@ interface IRenderContext {
 	viewPort: IRectangle;
 
 	/**
-	 * Cells to render.
+	 * Cells to render per renderer name.
 	 */
-	cells: ICell[];
-
-	/**
-	 * Bounds of the cells to render.
-	 */
-	cellBounds: IRectangle[];
+	cellsPerRenderer: Map<string, ICellRenderContext[]>;
 
 	/**
 	 * Rendering context of the scrollbars.
 	 */
 	scrollBar: IScrollBarRenderContext;
+
+	/**
+	 * Lookup for cell renderers.
+	 */
+	renderers: Map<string, ICanvasCellRenderer>;
+
+}
+
+/**
+ * Rendering context for a single cell.
+ */
+interface ICellRenderContext {
+
+	/**
+	 * Cell to render.
+	 */
+	cell: ICell;
+
+	/**
+	 * Bounds of the cell.
+	 */
+	bounds: IRectangle;
 
 }
 

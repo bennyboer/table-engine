@@ -82,6 +82,7 @@ export class CellModel implements ICellModel {
 	 * Initialize a cell model from the passed size.
 	 * @param cells to fill cell model with
 	 * @param emptyCellValueSupplier supplies values for empty cells
+	 * @param emptyCellRendererSupplier supplies renderer names for empty cells
 	 * @param rowSizeSupplier supplies size for each row
 	 * @param columnSizeSupplier supplies size for each column
 	 * @param hiddenRows supplies whether a row is hidden
@@ -90,6 +91,7 @@ export class CellModel implements ICellModel {
 	public static generate(
 		cells: ICell[],
 		emptyCellValueSupplier: (row: number, column: number) => any,
+		emptyCellRendererSupplier: (row: number, column: number) => any,
 		rowSizeSupplier: (row: number) => number,
 		columnSizeSupplier: (column: number) => number,
 		hiddenRows: Set<number>,
@@ -147,9 +149,12 @@ export class CellModel implements ICellModel {
 					} else {
 						// Encountered empty cell
 						const value: any = emptyCellValueSupplier(row, column);
+						const rendererName: string = emptyCellRendererSupplier(row, column);
+
 						if (value !== null && value !== undefined) {
 							cellLookup[row][column] = {
 								value,
+								rendererName,
 								range: CellRange.fromSingleRowColumn(row, column)
 							};
 						} else {
