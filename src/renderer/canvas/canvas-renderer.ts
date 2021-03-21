@@ -377,19 +377,31 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onWheel(event: WheelEvent): void {
-		const scrollVertically: boolean = !event.shiftKey;
+		const scrollDeltaY: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, true, event);
+		const scrollDeltaX: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, false, event);
 
-		const scrollDelta: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, event);
+		// When shift-key is pressed, deltaY means scrolling horizontally (same for deltaX).
+		const switchScrollDirection: boolean = event.shiftKey;
 
-		if (scrollVertically) {
-			if (this._scrollToY(this._scrollOffset.y + scrollDelta)) {
-				this._lazyRenderingSchedulerSubject.next();
-			}
-		} else {
-			if (this._scrollToX(this._scrollOffset.x + scrollDelta)) {
-				this._lazyRenderingSchedulerSubject.next();
-			}
+		const newScrollOffsetX: number = this._scrollOffset.x + (switchScrollDirection ? scrollDeltaY : scrollDeltaX);
+		const newScrollOffsetY: number = this._scrollOffset.y + (switchScrollDirection ? scrollDeltaX : scrollDeltaY);
+
+		if (this._scrollTo(newScrollOffsetX, newScrollOffsetY)) {
+			this._lazyRenderingSchedulerSubject.next();
 		}
+	}
+
+	/**
+	 * Scroll to the given x and y offsets.
+	 * @param offsetX to scroll to
+	 * @param offsetY to scroll to
+	 * @returns whether the offsets have been changed
+	 */
+	private _scrollTo(offsetX: number, offsetY: number): boolean {
+		const xChanged: boolean = this._scrollToX(offsetX);
+		const yChanged: boolean = this._scrollToY(offsetY);
+
+		return xChanged || yChanged;
 	}
 
 	/**

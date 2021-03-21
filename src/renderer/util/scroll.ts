@@ -6,18 +6,20 @@ export class ScrollUtil {
 	/**
 	 * Determine the amount to scroll from the given wheel event.
 	 * @param canvasElement the canvas element to draw on
+	 * @param vertical whether to determine the vertical or horizontal scroll offset
 	 * @param event of the wheel
 	 */
-	public static determineScrollOffsetFromEvent(canvasElement: HTMLCanvasElement, event: WheelEvent): number {
+	public static determineScrollOffsetFromEvent(canvasElement: HTMLCanvasElement, vertical: boolean, event: WheelEvent): number {
 		const scrollVertically: boolean = !event.shiftKey;
+		const delta: number = vertical ? event.deltaY : event.deltaX;
 
 		switch (event.deltaMode) {
 			case event.DOM_DELTA_PIXEL:
-				return event.deltaY * window.devicePixelRatio;
+				return delta * window.devicePixelRatio;
 			case event.DOM_DELTA_LINE: // Each deltaY means to scroll a line
-				return event.deltaY * 25 * window.devicePixelRatio;
+				return delta * 25 * window.devicePixelRatio;
 			case event.DOM_DELTA_PAGE: // Each deltaY means to scroll by a page (the tables height)
-				return event.deltaY * (scrollVertically ? canvasElement.height : canvasElement.width);
+				return delta * (scrollVertically ? canvasElement.height : canvasElement.width);
 			default:
 				throw new Error(`WheelEvent deltaMode unsupported`);
 		}

@@ -190,7 +190,7 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 	private _onWheel(event: WheelEvent): void {
 		const scrollVertically: boolean = !event.shiftKey;
 
-		const scrollDelta: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, event);
+		const scrollDelta: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, true, event);
 
 		if (scrollVertically) {
 			this._scrollToY(this._scrollOffsetY + scrollDelta);
