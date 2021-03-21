@@ -2,7 +2,7 @@ import {ITableEngineRenderer} from "../renderer";
 import {ICellModel} from "../../cell/model/cell-model.interface";
 import {IRendererOptions} from "../options";
 import {asyncScheduler, Subject} from "rxjs";
-import {min, takeUntil, throttleTime} from "rxjs/operators";
+import {takeUntil, throttleTime} from "rxjs/operators";
 import {ScrollUtil} from "../util/scroll";
 import {CanvasUtil} from "../util/canvas";
 import {IRectangle} from "../../util/rect";
@@ -71,6 +71,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _keyDownListener: (KeyboardEvent) => void;
 
 	/**
+	 * Registered key up listener.
+	 */
+	private _keyUpListener: (KeyboardEvent) => void;
+
+	/**
 	 * Registered listener to the mouse wheel.
 	 */
 	private _wheelListener: (WheelEvent) => void;
@@ -89,6 +94,21 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Registered listener to mouse up events.
 	 */
 	private _mouseUpListener: (MouseEvent) => void;
+
+	/**
+	 * Registered listener to touch start events.
+	 */
+	private _touchStartListener: (TouchEvent) => void;
+
+	/**
+	 * Registered listener to touch move events.
+	 */
+	private _touchMoveListener: (TouchEvent) => void;
+
+	/**
+	 * Registered listener to touch end events.
+	 */
+	private _touchEndListener: (TouchEvent) => void;
 
 	/**
 	 * Resize observer observing size changes on the container HTML element.
@@ -116,12 +136,33 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	/**
 	 * Context of the current mouse scroll dragging.
 	 */
-	private _mouseScrollDragStart: IMouseScrollDragContext | null = null;
+	private _scrollBarDragStart: IScrollBarDragContext | null = null;
 
 	/**
 	 * Current device pixel ratio to render with.
 	 */
 	private _devicePixelRatio: number = Math.max(window.devicePixelRatio, 1.0);
+
+	/**
+	 * Whether the mouse drag mode is enabled when the space key is pressed.
+	 */
+	private _isInMouseDragMode: boolean = false;
+
+	/**
+	 * Context of the current mouse dragging.
+	 * Can be enabled via pressing space and mouse events.
+	 */
+	private _mouseDragStart: IMouseDragContext | null = null;
+
+	/**
+	 * ID of the touch starting panning.
+	 */
+	private _startTouchID: number | null = null;
+
+	/**
+	 * Context of the current panning of the workspace (using fingers).
+	 */
+	private _panningStart: IMouseDragContext | null = null;
 
 	constructor() {
 		this._registerDefaultCellRenderers();
@@ -171,6 +212,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		this._keyDownListener = (event) => this._onKeyDown(event);
 		this._canvasElement.addEventListener("keydown", this._keyDownListener);
 
+		this._keyUpListener = (event) => this._onKeyUp(event);
+		this._canvasElement.addEventListener("keyup", this._keyUpListener);
+
 		// Listen for mouse events
 		this._wheelListener = (event) => this._onWheel(event);
 		this._canvasElement.addEventListener("wheel", this._wheelListener, {
@@ -185,6 +229,16 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		this._mouseUpListener = (event) => this._onMouseUp(event);
 		window.addEventListener("mouseup", this._mouseUpListener);
+
+		// Listen for touch events
+		this._touchStartListener = (event) => this._onTouchStart(event);
+		this._canvasElement.addEventListener("touchstart", this._touchStartListener);
+
+		this._touchMoveListener = (event) => this._onTouchMove(event);
+		window.addEventListener("touchmove", this._touchMoveListener);
+
+		this._touchEndListener = (event) => this._onTouchEnd(event);
+		window.addEventListener("touchend", this._touchEndListener);
 
 		// Listen for size changes on the container HTML element
 		this._resizeObserver = new ResizeObserver((resizeEntries) => this._onResize(resizeEntries));
@@ -216,6 +270,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		if (!!this._keyDownListener) {
 			this._canvasElement.removeEventListener("keydown", this._keyDownListener);
 		}
+		if (!!this._keyUpListener) {
+			this._canvasElement.removeEventListener("keyup", this._keyUpListener);
+		}
+
 		if (!!this._wheelListener) {
 			this._canvasElement.removeEventListener("wheel", this._wheelListener);
 		}
@@ -228,6 +286,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		if (!!this._mouseUpListener) {
 			window.removeEventListener("mouseup", this._mouseUpListener);
 		}
+
+		if (!!this._touchStartListener) {
+			this._canvasElement.removeEventListener("touchstart", this._touchStartListener);
+		}
+		if (!!this._touchMoveListener) {
+			window.removeEventListener("touchmove", this._touchMoveListener);
+		}
+		if (!!this._touchEndListener) {
+			window.removeEventListener("touchend", this._touchEndListener);
+		}
+
 		if (!!this._resizeObserver) {
 			this._resizeObserver.disconnect();
 		}
@@ -247,12 +316,21 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			if (isOverVerticalScrollBar || isOverHorizontalScrollBar) {
 				const scrollVertically: boolean = isOverVerticalScrollBar;
 
-				this._mouseScrollDragStart = {
+				this._scrollBarDragStart = {
 					scrollHorizontally: !scrollVertically,
 					scrollVertically,
 					startX: x,
 					startY: y,
 					offsetFromScrollBarStart: scrollVertically ? this._lastRenderingContext.scrollBar.vertical.y - y : this._lastRenderingContext.scrollBar.horizontal.x - x,
+					startScrollOffset: {
+						x: this._scrollOffset.x,
+						y: this._scrollOffset.y
+					}
+				};
+			} else if (this._isInMouseDragMode) {
+				this._mouseDragStart = {
+					startX: x,
+					startY: y,
 					startScrollOffset: {
 						x: this._scrollOffset.x,
 						y: this._scrollOffset.y
@@ -266,7 +344,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Get the mouse events offset on the canvas.
 	 * @param event to get offset for
 	 */
-	private _getMouseOffset(event: MouseEvent): [number, number] {
+	private _getMouseOffset(event: MouseEvent | Touch): [number, number] {
 		const rect = this._canvasElement.getBoundingClientRect();
 
 		return [
@@ -299,33 +377,64 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onMouseMove(event: MouseEvent): void {
-		const isScrollBarDragging: boolean = !!this._mouseScrollDragStart;
+		const isScrollBarDragging: boolean = !!this._scrollBarDragStart;
+		const isMouseDragging: boolean = !!this._mouseDragStart;
+
+		const [x, y] = this._getMouseOffset(event);
+
 		if (isScrollBarDragging) {
-			const [x, y] = this._getMouseOffset(event);
+			this._onScrollBarMove(x, y, this._scrollBarDragStart);
+		} else if (isMouseDragging) {
+			this._onViewPortMove(x, y, this._mouseDragStart);
+		}
+	}
 
-			// Update scroll offset accordingly
-			if (this._mouseScrollDragStart.scrollVertically) {
-				const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
-				const viewPortHeight = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.height;
-				const tableHeight = this._cellModel.getHeight() - fixedRowsHeight;
-
-				const curY = this._mouseScrollDragStart.startY + (y - this._mouseScrollDragStart.startY) + this._mouseScrollDragStart.offsetFromScrollBarStart;
-				const maxY = viewPortHeight - this._lastRenderingContext.scrollBar.vertical.length;
-
-				this._scrollToY(curY / maxY * (tableHeight - viewPortHeight));
-			}
-			if (this._mouseScrollDragStart.scrollHorizontally) {
-				const fixedColumnWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
-				const viewPortWidth = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.width;
-				const tableWidth = this._cellModel.getWidth() - fixedColumnWidth;
-
-				const curX = this._mouseScrollDragStart.startX + (x - this._mouseScrollDragStart.startX) + this._mouseScrollDragStart.offsetFromScrollBarStart;
-				const maxX = viewPortWidth - this._lastRenderingContext.scrollBar.horizontal.length;
-
-				this._scrollToX(curX / maxX * (tableWidth - viewPortWidth));
-			}
-
+	/**
+	 * Called when the viewport is dragged and should be moved (scroll adjustment).
+	 * @param x the new x position
+	 * @param y the new y position
+	 * @param start of the drag
+	 */
+	private _onViewPortMove(x: number, y: number, start: IMouseDragContext): void {
+		if (this._scrollTo(
+			start.startScrollOffset.x + (start.startX - x),
+			start.startScrollOffset.y + (start.startY - y)
+		)) {
 			this._lazyRenderingSchedulerSubject.next();
+		}
+	}
+
+	/**
+	 * Called when a scrollbar should be moved.
+	 * @param x the new x position
+	 * @param y the new y position
+	 * @param start of the scrollbar drag
+	 */
+	private _onScrollBarMove(x: number, y: number, start: IScrollBarDragContext): void {
+		// Update scroll offset accordingly
+		if (start.scrollVertically) {
+			const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
+			const viewPortHeight = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.height;
+			const tableHeight = this._cellModel.getHeight() - fixedRowsHeight;
+
+			const curY = start.startY + (y - start.startY) + start.offsetFromScrollBarStart;
+			const maxY = viewPortHeight - this._lastRenderingContext.scrollBar.vertical.length;
+
+			if (this._scrollToY(curY / maxY * (tableHeight - viewPortHeight))) {
+				this._lazyRenderingSchedulerSubject.next();
+			}
+		}
+		if (start.scrollHorizontally) {
+			const fixedColumnWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
+			const viewPortWidth = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.width;
+			const tableWidth = this._cellModel.getWidth() - fixedColumnWidth;
+
+			const curX = start.startX + (x - start.startX) + start.offsetFromScrollBarStart;
+			const maxX = viewPortWidth - this._lastRenderingContext.scrollBar.horizontal.length;
+
+			if (this._scrollToX(curX / maxX * (tableWidth - viewPortWidth))) {
+				this._lazyRenderingSchedulerSubject.next();
+			}
 		}
 	}
 
@@ -334,7 +443,62 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onMouseUp(event: MouseEvent): void {
-		this._mouseScrollDragStart = null; // Reset scroll bar dragging
+		this._scrollBarDragStart = null; // Reset scroll bar dragging
+		this._mouseDragStart = null; // Reset workspace dragging via mouse/touch
+	}
+
+	/**
+	 * Called when a touch start event occurs.
+	 * @param event that occurred
+	 */
+	private _onTouchStart(event: TouchEvent): void {
+		if (event.touches.length === 1 && !this._panningStart) {
+			const touch: Touch = event.changedTouches[0];
+
+			this._startTouchID = touch.identifier;
+
+			const [x, y] = this._getMouseOffset(touch);
+
+			this._panningStart = {
+				startX: x,
+				startY: y,
+				startScrollOffset: {
+					x: this._scrollOffset.x,
+					y: this._scrollOffset.y
+				}
+			};
+			event.preventDefault();
+		}
+	}
+
+	/**
+	 * Called when a touch move event occurs.
+	 * @param event that occurred
+	 */
+	private _onTouchMove(event: TouchEvent): void {
+		if (!!this._panningStart && event.changedTouches.length === 1) {
+			const touch: Touch = event.changedTouches[0];
+
+			if (touch.identifier === this._startTouchID) {
+				const [x, y] = this._getMouseOffset(touch);
+
+				this._onViewPortMove(x, y, this._panningStart);
+			}
+		}
+	}
+
+	/**
+	 * Called when a touch end event occurs.
+	 * @param event that occurred
+	 */
+	private _onTouchEnd(event: TouchEvent): void {
+		for (let i = 0; i < event.changedTouches.length; i++) {
+			const touch: Touch = event.changedTouches[i];
+			if (touch.identifier === this._startTouchID) {
+				// Stop panning
+				this._panningStart = null;
+			}
+		}
 	}
 
 	/**
@@ -391,7 +555,20 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onKeyDown(event: KeyboardEvent): void {
-		console.log("Key down event!");
+		if (event.code === "Space") {
+			this._isInMouseDragMode = true;
+			event.preventDefault();
+		}
+	}
+
+	/**
+	 * Called on key up on the container.
+	 * @param event that occurred
+	 */
+	private _onKeyUp(event: KeyboardEvent): void {
+		if (event.code === "Space") {
+			this._isInMouseDragMode = false;
+		}
 	}
 
 	/**
@@ -420,7 +597,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 	}
 
-	/**
+	/**1
 	 * Scroll to the given x and y offsets.
 	 * @param offsetX to scroll to
 	 * @param offsetY to scroll to
@@ -1073,7 +1250,7 @@ interface IScrollOffset {
 /**
  * Context of a mouse/touch scroll dragging.
  */
-interface IMouseScrollDragContext {
+interface IScrollBarDragContext {
 
 	/**
 	 * Whether scrolling vertical.
@@ -1097,6 +1274,28 @@ interface IMouseScrollDragContext {
 
 	/**
 	 * Start Y-offset.
+	 */
+	startY: number;
+
+	/**
+	 * Scroll offset to the start of the dragging.
+	 */
+	startScrollOffset: IScrollOffset;
+
+}
+
+/**
+ * Context holding info about a workspace dragging via mouse/touch.
+ */
+interface IMouseDragContext {
+
+	/**
+	 * Start x-offset.
+	 */
+	startX: number;
+
+	/**
+	 * Start y-offset.
 	 */
 	startY: number;
 
