@@ -75,7 +75,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
           value: "Hello world!"
         },
         {
-          range: CellRange.fromSingleRowColumn(1000, 1000),
+          range: CellRange.fromSingleRowColumn(100, 20),
           rendererName: "base",
           value: "Last cell with more text than normally"
         }

@@ -2,7 +2,7 @@ import {ITableEngineRenderer} from "../renderer";
 import {ICellModel} from "../../cell/model/cell-model.interface";
 import {IRendererOptions} from "../options";
 import {asyncScheduler, Subject} from "rxjs";
-import {takeUntil, throttleTime} from "rxjs/operators";
+import {min, takeUntil, throttleTime} from "rxjs/operators";
 import {ScrollUtil} from "../util/scroll";
 import {CanvasUtil} from "../util/canvas";
 import {IRectangle} from "../../util/rect";
@@ -117,6 +117,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Context of the current mouse scroll dragging.
 	 */
 	private _mouseScrollDragStart: IMouseScrollDragContext | null = null;
+
+	/**
+	 * Current device pixel ratio to render with.
+	 */
+	private _devicePixelRatio: number = Math.max(window.devicePixelRatio, 1.0);
 
 	constructor() {
 		this._registerDefaultCellRenderers();
@@ -247,6 +252,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					scrollVertically,
 					startX: x,
 					startY: y,
+					offsetFromScrollBarStart: scrollVertically ? this._lastRenderingContext.scrollBar.vertical.y - y : this._lastRenderingContext.scrollBar.horizontal.x - x,
 					startScrollOffset: {
 						x: this._scrollOffset.x,
 						y: this._scrollOffset.y
@@ -264,8 +270,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const rect = this._canvasElement.getBoundingClientRect();
 
 		return [
-			(event.clientX - rect.left) * window.devicePixelRatio,
-			(event.clientY - rect.top) * window.devicePixelRatio
+			(event.clientX - rect.left),
+			(event.clientY - rect.top)
 		];
 	}
 
@@ -299,20 +305,24 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 			// Update scroll offset accordingly
 			if (this._mouseScrollDragStart.scrollVertically) {
-				const yDiff = y - this._mouseScrollDragStart.startY;
 				const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
+				const viewPortHeight = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.height;
 				const tableHeight = this._cellModel.getHeight() - fixedRowsHeight;
-				const viewPortHeight = this._canvasElement.height - fixedRowsHeight;
 
-				this._scrollToY(this._mouseScrollDragStart.startScrollOffset.y + (yDiff / viewPortHeight * tableHeight));
+				const curY = this._mouseScrollDragStart.startY + (y - this._mouseScrollDragStart.startY) + this._mouseScrollDragStart.offsetFromScrollBarStart;
+				const maxY = viewPortHeight - this._lastRenderingContext.scrollBar.vertical.length;
+
+				this._scrollToY(curY / maxY * (tableHeight - viewPortHeight));
 			}
 			if (this._mouseScrollDragStart.scrollHorizontally) {
-				const xDiff = x - this._mouseScrollDragStart.startX;
 				const fixedColumnWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
+				const viewPortWidth = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.width;
 				const tableWidth = this._cellModel.getWidth() - fixedColumnWidth;
-				const viewPortWidth = this._canvasElement.width - fixedColumnWidth;
 
-				this._scrollToX(this._mouseScrollDragStart.startScrollOffset.x + (xDiff / viewPortWidth * tableWidth));
+				const curX = this._mouseScrollDragStart.startX + (x - this._mouseScrollDragStart.startX) + this._mouseScrollDragStart.offsetFromScrollBarStart;
+				const maxX = viewPortWidth - this._lastRenderingContext.scrollBar.horizontal.length;
+
+				this._scrollToX(curX / maxX * (tableWidth - viewPortWidth));
 			}
 
 			this._lazyRenderingSchedulerSubject.next();
@@ -339,26 +349,38 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Resize the current canvas to the current container HTML element size.
 	 */
 	private _resizeCanvasToCurrentContainerSize(): void {
+		this._devicePixelRatio = Math.max(window.devicePixelRatio, 1.0);
+
 		const newBounds: DOMRect = this._container.getBoundingClientRect();
 
 		// Re-size scroll bar offsets as well
-		const tableHeight: number = this._cellModel.getHeight();
-		const tableWidth: number = this._cellModel.getWidth();
+		const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
+		const fixedColumnsWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
+
+		const tableHeight: number = this._cellModel.getHeight() - fixedRowsHeight;
+		const tableWidth: number = this._cellModel.getWidth() - fixedColumnsWidth;
+
+		const oldViewPort: IRectangle = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds;
+
 		if (tableWidth > newBounds.width) {
-			const horizontalScrollProgress = this._scrollOffset.x / (tableWidth - this._canvasElement.width);
-			this._scrollOffset.x = horizontalScrollProgress * (tableWidth - newBounds.width);
+			const oldMaxOffset = (tableWidth - oldViewPort.width);
+			const newMaxOffset = (tableWidth - (newBounds.width - fixedColumnsWidth));
+
+			this._scrollOffset.x = Math.max(Math.min(this._scrollOffset.x * newMaxOffset / oldMaxOffset, newMaxOffset), 0);
 		} else {
 			this._scrollOffset.x = 0;
 		}
 		if (tableHeight > newBounds.height) {
-			const verticalScrollProgress = this._scrollOffset.y / (tableHeight - this._canvasElement.height);
-			this._scrollOffset.y = verticalScrollProgress * (tableHeight - newBounds.height);
+			const oldMaxOffset = (tableHeight - oldViewPort.height);
+			const newMaxOffset = (tableHeight - (newBounds.height - fixedRowsHeight));
+
+			this._scrollOffset.y = Math.max(Math.min(this._scrollOffset.y * newMaxOffset / oldMaxOffset, newMaxOffset), 0);
 		} else {
 			this._scrollOffset.y = 0;
 		}
 
 		// Set new size to canvas
-		CanvasUtil.setCanvasSize(this._canvasElement, newBounds.width, newBounds.height);
+		CanvasUtil.setCanvasSize(this._canvasElement, newBounds.width, newBounds.height, this._devicePixelRatio);
 
 		// Schedule a repaint
 		this._lazyRenderingSchedulerSubject.next();
@@ -377,6 +399,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onWheel(event: WheelEvent): void {
+		if (event.ctrlKey) {
+			// The user wants to zoom the page -> Don't scroll!
+			return;
+		}
+
 		const scrollDeltaY: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, true, event);
 		const scrollDeltaX: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, false, event);
 
@@ -410,8 +437,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @returns whether the offset is out of bounds and thus corrected to the max/min value
 	 */
 	private _scrollToX(offset: number): boolean {
-		const tableWidth: number = this._cellModel.getWidth();
-		const viewPortWidth: number = this._canvasElement.width;
+		const fixedColumnsWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
+
+		const tableWidth: number = this._cellModel.getWidth() - fixedColumnsWidth;
+		const viewPortWidth: number = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.width;
 
 		// Check if we're able to scroll
 		if (tableWidth <= viewPortWidth) {
@@ -440,8 +469,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @returns whether the offset changed
 	 */
 	private _scrollToY(offset: number): boolean {
-		const tableHeight: number = this._cellModel.getHeight();
-		const viewPortHeight: number = this._canvasElement.height;
+		const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
+
+		const tableHeight: number = this._cellModel.getHeight() - fixedRowsHeight;
+		const viewPortHeight: number = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.height;
 
 		// Check if we're able to scroll
 		if (tableHeight <= viewPortHeight) {
@@ -499,35 +530,39 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		return {
 			top: this._scrollOffset.y,
 			left: this._scrollOffset.x,
-			width: this._canvasElement.width,
-			height: this._canvasElement.height
+			width: this._canvasElement.width / this._devicePixelRatio,
+			height: this._canvasElement.height / this._devicePixelRatio
 		};
 	}
 
 	/**
 	 * Calculate the scroll bar rendering context.
+	 * @param viewPort to render scroll bar in
 	 * @param fixedRowsHeight height of the fixed rows
 	 * @param fixedColumnsWidth width of the fixed columns
 	 */
-	private _calculateScrollBarContext(fixedRowsHeight: number, fixedColumnsWidth: number): IScrollBarRenderContext {
+	private _calculateScrollBarContext(viewPort: IRectangle, fixedRowsHeight: number, fixedColumnsWidth: number): IScrollBarRenderContext {
 		// Derive scroll bar options
 		const scrollBarOptions: IScrollBarOptions = this._options.canvas.scrollBar;
-		const scrollBarSize: number = scrollBarOptions.size * window.devicePixelRatio;
-		const minScrollBarLength: number = scrollBarOptions.minLength * window.devicePixelRatio;
-		const scrollBarOffset: number = scrollBarOptions.offset * window.devicePixelRatio;
-		const cornerRadius: number = scrollBarOptions.cornerRadius * window.devicePixelRatio;
+		const scrollBarSize: number = scrollBarOptions.size;
+		const minScrollBarLength: number = scrollBarOptions.minLength;
+		const scrollBarOffset: number = scrollBarOptions.offset;
+		const cornerRadius: number = scrollBarOptions.cornerRadius;
+
+		const viewPortWidth: number = viewPort.width - fixedColumnsWidth;
+		const viewPortHeight: number = viewPort.height - fixedRowsHeight;
 
 		const tableHeight: number = this._cellModel.getHeight() - fixedRowsHeight;
 		const tableWidth: number = this._cellModel.getWidth() - fixedColumnsWidth;
 
-		const viewPortWidth: number = this._canvasElement.width - fixedColumnsWidth;
-		const viewPortHeight: number = this._canvasElement.height - fixedRowsHeight;
+		const maxVerticalOffset: number = tableHeight - viewPortHeight;
+		const maxHorizontalOffset: number = tableWidth - viewPortWidth;
 
 		// Calculate vertical scrollbar layout
 		let vertical: IScrollBarAxisRenderContext = null;
 		if (tableHeight > viewPortHeight) {
 			const length = Math.max(viewPortHeight / tableHeight * viewPortHeight, minScrollBarLength);
-			const progress = this._scrollOffset.y / (tableHeight - viewPortHeight);
+			const progress = this._scrollOffset.y / maxVerticalOffset;
 
 			vertical = {
 				size: scrollBarSize,
@@ -541,7 +576,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		let horizontal: IScrollBarAxisRenderContext = null;
 		if (tableWidth > viewPortWidth) {
 			const length = Math.max(viewPortWidth / tableWidth * viewPortWidth, minScrollBarLength);
-			const progress = this._scrollOffset.x / (tableWidth - viewPortWidth);
+			const progress = this._scrollOffset.x / maxHorizontalOffset;
 
 			horizontal = {
 				size: scrollBarSize,
@@ -577,7 +612,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			: 0;
 
 		const cellsInfo = this._createCellRenderingInfo(viewPort, fixedRows, fixedColumns, fixedRowsHeight, fixedColumnsWidth);
-		const scrollBarContext: IScrollBarRenderContext = this._calculateScrollBarContext(fixedRowsHeight, fixedColumnsWidth);
+		const scrollBarContext: IScrollBarRenderContext = this._calculateScrollBarContext(viewPort, fixedRowsHeight, fixedColumnsWidth);
 
 		return {
 			viewPort,
@@ -752,6 +787,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 			let renderingTime = window.performance.now();
 
+			ctx.save();
+			ctx.scale(this._devicePixelRatio, this._devicePixelRatio);
+
 			// Render "normal" (non-fixed) cells first
 			CanvasRenderer._renderCellArea(ctx, renderingContext, renderingContext.cells.nonFixedCells);
 			CanvasRenderer._renderBordersPerRenderer(ctx, renderingContext, renderingContext.cells.nonFixedCells);
@@ -771,6 +809,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			}
 
 			CanvasRenderer._renderScrollBars(ctx, renderingContext);
+
+			ctx.restore();
 
 			console.log(`RENDERING: ${window.performance.now() - renderingTime}ms, CREATING RENDERING CONTEXT: ${creatingRenderingContextTime}ms`);
 		});
@@ -1042,6 +1082,11 @@ interface IMouseScrollDragContext {
 	 * Whether scrolling horizontally.
 	 */
 	scrollHorizontally: boolean;
+
+	/**
+	 * Offset from scroll bar start at the start of the drag.
+	 */
+	offsetFromScrollBarStart: number;
 
 	/**
 	 * Start X-offset.

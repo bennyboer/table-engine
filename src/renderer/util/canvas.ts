@@ -1,9 +1,9 @@
-/**
- * Utility methods regarding HTML5 canvas.
- */
 import {IRectangle} from "../../util/rect";
 import {IColor} from "../../util/color";
 
+/**
+ * Utility methods regarding HTML5 canvas.
+ */
 export class CanvasUtil {
 
 	/**
@@ -11,8 +11,9 @@ export class CanvasUtil {
 	 * @param element the canvas element to set the size to
 	 * @param width new width of the element to set
 	 * @param height new height of the element to set
+	 * @param devicePixelRatio to use (optional) if not specified the browser default is used
 	 */
-	public static setCanvasSize(element: HTMLCanvasElement, width: number, height: number): void {
+	public static setCanvasSize(element: HTMLCanvasElement, width: number, height: number, devicePixelRatio?: number): void {
 		/*
 		We honor window.devicePixelRatio here to support high-DPI screens.
 		To support High-DPI screens we will set the canvas element size twice:
@@ -23,7 +24,9 @@ export class CanvasUtil {
 		If we don't do this the table will be rendered blurry on High-DPI screens/devices.
 		 */
 
-		const devicePixelRatio: number = window.devicePixelRatio;
+		if (devicePixelRatio === undefined || devicePixelRatio === null) {
+			devicePixelRatio = window.devicePixelRatio;
+		}
 
 		element.width = width * devicePixelRatio;
 		element.height = height * devicePixelRatio;

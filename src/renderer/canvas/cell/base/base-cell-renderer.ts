@@ -42,7 +42,7 @@ export class BaseCellRenderer implements ICanvasCellRenderer {
 	 * @param bounds to render cell in
 	 */
 	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
-		ctx.fillText(`${cell.value}`, bounds.left, bounds.top);
+		ctx.fillText(`${cell.value}`, Math.round(bounds.left), Math.round(bounds.top));
 	}
 
 }
