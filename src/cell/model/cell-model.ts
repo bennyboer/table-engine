@@ -249,10 +249,26 @@ export class CellModel implements ICellModel {
 	 * @param y offset from top (vertical)
 	 */
 	public getCellAtOffset(x: number, y: number): ICell | null {
-		const row: number = CellModel._calculateIndexForOffset(y, this._rowOffsets, this._rowSizes, this._hiddenRows);
-		const column: number = CellModel._calculateIndexForOffset(x, this._columnOffsets, this._columnSizes, this._hiddenColumns);
+		const row: number = this.getRowAtOffset(y);
+		const column: number = this.getColumnAtOffset(x);
 
 		return this.getCell(row, column);
+	}
+
+	/**
+	 * Get the nearest row at the given offset.
+	 * @param offset to get nearest row at
+	 */
+	public getRowAtOffset(offset: number): number {
+		return CellModel._calculateIndexForOffset(offset, this._rowOffsets, this._rowSizes, this._hiddenRows);
+	}
+
+	/**
+	 * Get the nearest column at the given offset.
+	 * @param offset to get nearest column at
+	 */
+	public getColumnAtOffset(offset: number): number {
+		return CellModel._calculateIndexForOffset(offset, this._columnOffsets, this._columnSizes, this._hiddenColumns);
 	}
 
 	/**

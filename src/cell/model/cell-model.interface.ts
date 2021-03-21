@@ -40,6 +40,18 @@ export interface ICellModel {
 	getCellAtOffset(x: number, y: number): ICell | null;
 
 	/**
+	 * Get the nearest row at the given offset.
+	 * @param offset to get nearest row at
+	 */
+	getRowAtOffset(offset: number): number;
+
+	/**
+	 * Get the nearest column at the given offset.
+	 * @param offset to get nearest column at
+	 */
+	getColumnAtOffset(offset: number): number;
+
+	/**
 	 * Get bounds for the given range.
 	 * @param range to get bounds for
 	 */

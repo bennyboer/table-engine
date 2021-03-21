@@ -11,7 +11,7 @@ import {ICell} from "../../cell/cell";
 import {ICellRenderer} from "../cell/cell-renderer";
 import {ICanvasCellRenderer} from "./cell/canvas-cell-renderer";
 import {BaseCellRenderer} from "./cell/base/base-cell-renderer";
-import {ICellRange} from "../../cell/range/cell-range";
+import {CellRange, ICellRange} from "../../cell/range/cell-range";
 import {IColor} from "../../util/color";
 
 /**
@@ -307,37 +307,65 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onMouseDown(event: MouseEvent): void {
-		if (!!this._lastRenderingContext) {
-			const [x, y] = this._getMouseOffset(event);
-
-			// Check if mouse if over a scroll bar
-			const isOverVerticalScrollBar: boolean = CanvasRenderer._isMouseOverScrollBar(x, y, true, this._lastRenderingContext.scrollBar.vertical);
-			const isOverHorizontalScrollBar: boolean = CanvasRenderer._isMouseOverScrollBar(x, y, false, this._lastRenderingContext.scrollBar.horizontal);
-			if (isOverVerticalScrollBar || isOverHorizontalScrollBar) {
-				const scrollVertically: boolean = isOverVerticalScrollBar;
-
-				this._scrollBarDragStart = {
-					scrollHorizontally: !scrollVertically,
-					scrollVertically,
-					startX: x,
-					startY: y,
-					offsetFromScrollBarStart: scrollVertically ? this._lastRenderingContext.scrollBar.vertical.y - y : this._lastRenderingContext.scrollBar.horizontal.x - x,
-					startScrollOffset: {
-						x: this._scrollOffset.x,
-						y: this._scrollOffset.y
-					}
-				};
-			} else if (this._isInMouseDragMode) {
-				this._mouseDragStart = {
-					startX: x,
-					startY: y,
-					startScrollOffset: {
-						x: this._scrollOffset.x,
-						y: this._scrollOffset.y
-					}
-				};
-			}
+		if (!this._lastRenderingContext) {
+			return;
 		}
+
+		const [x, y] = this._getMouseOffset(event);
+
+		// Check if mouse if over a scroll bar
+		const isOverVerticalScrollBar: boolean = CanvasRenderer._isMouseOverScrollBar(x, y, true, this._lastRenderingContext.scrollBar.vertical);
+		const isOverHorizontalScrollBar: boolean = CanvasRenderer._isMouseOverScrollBar(x, y, false, this._lastRenderingContext.scrollBar.horizontal);
+		if (isOverVerticalScrollBar || isOverHorizontalScrollBar) {
+			const scrollVertically: boolean = isOverVerticalScrollBar;
+
+			this._scrollBarDragStart = {
+				scrollHorizontally: !scrollVertically,
+				scrollVertically,
+				startX: x,
+				startY: y,
+				offsetFromScrollBarStart: scrollVertically ? this._lastRenderingContext.scrollBar.vertical.y - y : this._lastRenderingContext.scrollBar.horizontal.x - x,
+				startScrollOffset: {
+					x: this._scrollOffset.x,
+					y: this._scrollOffset.y
+				}
+			};
+		} else if (this._isInMouseDragMode) {
+			this._mouseDragStart = {
+				startX: x,
+				startY: y,
+				startScrollOffset: {
+					x: this._scrollOffset.x,
+					y: this._scrollOffset.y
+				}
+			};
+		} else {
+			// Update selection
+			this._updateCurrentSelection(this._getCellRangeAtPoint(x, y));
+		}
+	}
+
+	/**
+	 * Get the cell range at the given point.
+	 * @param x offset
+	 * @param y offset
+	 */
+	private _getCellRangeAtPoint(x: number, y: number): ICellRange {
+		const cell = this._cellModel.getCellAtOffset(x, y);
+		if (!!cell) {
+			return cell.range;
+		} else {
+			return CellRange.fromSingleRowColumn(this._cellModel.getRowAtOffset(y), this._cellModel.getColumnAtOffset(x));
+		}
+	}
+
+	/**
+	 * Update the current selection to the passed cell range.
+	 * @param range to update current selection to
+	 */
+	private _updateCurrentSelection(range: ICellRange): void {
+		console.log(range);
+		// TODO
 	}
 
 	/**
