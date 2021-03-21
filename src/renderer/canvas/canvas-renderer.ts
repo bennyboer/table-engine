@@ -174,7 +174,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		// Listen for mouse events
 		this._wheelListener = (event) => this._onWheel(event);
 		this._canvasElement.addEventListener("wheel", this._wheelListener, {
-			passive: true
+			passive: false
 		});
 
 		this._mouseDownListener = (event) => this._onMouseDown(event);
@@ -403,6 +403,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			// The user wants to zoom the page -> Don't scroll!
 			return;
 		}
+
+		event.preventDefault();
 
 		const scrollDeltaY: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, true, event);
 		const scrollDeltaX: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, false, event);
