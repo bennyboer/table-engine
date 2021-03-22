@@ -445,7 +445,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			const viewPortHeight = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.height;
 			const tableHeight = this._cellModel.getHeight() - fixedRowsHeight;
 
-			const curY = start.startY + (y - start.startY) + start.offsetFromScrollBarStart;
+			// Normalize x and y coordinates for fixed rows/columns
+			y -= fixedRowsHeight;
+			const startY = start.startY - fixedRowsHeight;
+
+			const curY = startY + (y - startY) + start.offsetFromScrollBarStart;
 			const maxY = viewPortHeight - this._lastRenderingContext.scrollBar.vertical.length;
 
 			if (this._scrollToY(curY / maxY * (tableHeight - viewPortHeight))) {
@@ -457,7 +461,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			const viewPortWidth = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.width;
 			const tableWidth = this._cellModel.getWidth() - fixedColumnWidth;
 
-			const curX = start.startX + (x - start.startX) + start.offsetFromScrollBarStart;
+			// Normalize x and y coordinates for fixed rows/columns
+			x -= fixedColumnWidth;
+			const startX = start.startX - fixedColumnWidth;
+
+			const curX = startX + (x - startX) + start.offsetFromScrollBarStart;
 			const maxX = viewPortWidth - this._lastRenderingContext.scrollBar.horizontal.length;
 
 			if (this._scrollToX(curX / maxX * (tableWidth - viewPortWidth))) {

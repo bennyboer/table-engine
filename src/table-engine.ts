@@ -6,6 +6,8 @@ import {Observable, Subject} from "rxjs";
 import {ITableEngineEvent} from "./event/event";
 import {TableEngineEventType} from "./event/event-type";
 import {ICellRenderer} from "./renderer/cell/cell-renderer";
+import {ISelectionModel} from "./selection/model/selection-model.interface";
+import {SelectionModel} from "./selection/model/selection-model";
 
 /**
  * Entry point of the table engine library.
@@ -21,6 +23,11 @@ export class TableEngine {
 	 * Cell model of the table engine.
 	 */
 	private readonly _cellModel: ICellModel;
+
+	/**
+	 * Selection model of the table engine.
+	 */
+	private readonly _selectionModel: ISelectionModel;
 
 	/**
 	 * Options customizing the table-engine behavior.
@@ -47,6 +54,7 @@ export class TableEngine {
 	constructor(container: HTMLElement, cellModel: ICellModel, options?: ITableEngineOptions) {
 		this._container = container;
 		this._cellModel = cellModel;
+		this._selectionModel = new SelectionModel(this._cellModel);
 		this._options = fillOptions(options);
 
 		// Initialize renderer
