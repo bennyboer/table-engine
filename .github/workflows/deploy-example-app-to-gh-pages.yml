@@ -1,0 +1,20 @@
+name: Build and deploy example app on GitHub pages
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build example app and deploy to GitHub pages
+      uses: AhsanAyaz/angular-deploy-gh-pages-actions@v1.3.1
+      with:
+        github_access_token: ${{ secrets.GITHUBPAGESDEPLOYTOKEN }}
+        build_configuration: production
+        base_href: https://bennyboer.github.io/table-engine/
+        deploy_branch: gh-pages
+        angular_dist_build_folder: example/dist/example
+        angular_project_dir: example
