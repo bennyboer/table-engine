@@ -11,9 +11,9 @@ export interface ISelection {
 	range: ICellRange;
 
 	/**
-	 * Initial position of the selection.
+	 * Initial position of the selection (if primary selection).
 	 */
-	initial: IInitialPosition;
+	initial?: IInitialPosition;
 
 }
 

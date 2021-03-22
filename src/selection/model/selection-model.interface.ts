@@ -24,20 +24,33 @@ export interface ISelectionModel {
 	/**
 	 * Add a selection to the model.
 	 * @param selection to add
+	 * @param validate whether to validate the passed selection first
 	 */
-	addSelection(selection: ISelection): void;
-
-	/**
-	 * Validate a selection.
-	 * For example to range over a complete merged cells.
-	 *
-	 * @param selection to validate
-	 */
-	validateSelection(selection: ISelection): void;
+	addSelection(selection: ISelection, validate: boolean): void;
 
 	/**
 	 * Clear all selections.
 	 */
 	clear(): void;
+
+	/**
+	 * Select the next possible row.
+	 */
+	selectNextRow(): void;
+
+	/**
+	 * Select the previous possible row.
+	 */
+	selectPreviousRow(): void;
+
+	/**
+	 * Select the next column.
+	 */
+	selectNextColumn(): void;
+
+	/**
+	 * Select the previous column.
+	 */
+	selectPreviousColumn(): void;
 
 }
