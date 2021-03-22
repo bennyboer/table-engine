@@ -66,7 +66,7 @@ export class TableEngine {
 	 * This will start rendering the table.
 	 */
 	public async initialize(): Promise<void> {
-		await this._renderer.initialize(this._container, this._cellModel, this._options.renderer);
+		await this._renderer.initialize(this._container, this._cellModel, this._selectionModel, this._options.renderer);
 
 		this._events.next({
 			type: TableEngineEventType.RENDERER_READY

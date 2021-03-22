@@ -4,17 +4,17 @@
 export interface IColor {
 
 	/**
-	 * Red value in range [0.0; 1.0].
+	 * Red value in range [0; 255].
 	 */
 	red: number;
 
 	/**
-	 * Green value in range [0.0; 1.0].
+	 * Green value in range [0; 255].
 	 */
 	green: number;
 
 	/**
-	 * Blue value in range [0.0; 1.0].
+	 * Blue value in range [0; 255].
 	 */
 	blue: number;
 

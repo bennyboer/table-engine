@@ -1,6 +1,7 @@
 import {IRendererOptions} from "./options";
 import {ICellModel} from "../cell/model/cell-model.interface";
 import {ICellRenderer} from "./cell/cell-renderer";
+import {ISelectionModel} from "../selection/model/selection-model.interface";
 
 /**
  * Representation of a renderer of the table engine.
@@ -12,9 +13,10 @@ export interface ITableEngineRenderer {
 	 * Initialize the renderer with the given options on the passed HTML container.
 	 * @param container to initialize renderer in
 	 * @param cellModel to render cells from
+	 * @param selectionModel to render selection from
 	 * @param options of the renderer
 	 */
-	initialize(container: HTMLElement, cellModel: ICellModel, options: IRendererOptions): Promise<void>;
+	initialize(container: HTMLElement, cellModel: ICellModel, selectionModel: ISelectionModel, options: IRendererOptions): Promise<void>;
 
 	/**
 	 * (Re)-Render the table.

@@ -23,7 +23,7 @@ const DEFAULT_SCROLLBAR_RADIUS: number = 5;
 /**
  * Default scrollbar color.
  */
-const DEFAULT_SCROLLBAR_COLOR: IColor = {red: 0.2, green: 0.2, blue: 0.2, alpha: 0.5};
+const DEFAULT_SCROLLBAR_COLOR: IColor = {red: 30, green: 30, blue: 30, alpha: 0.5};
 
 /**
  * Options regarding the scrollbar to display.

@@ -13,6 +13,8 @@ import {ICanvasCellRenderer} from "./cell/canvas-cell-renderer";
 import {BaseCellRenderer} from "./cell/base/base-cell-renderer";
 import {CellRange, ICellRange} from "../../cell/range/cell-range";
 import {IColor} from "../../util/color";
+import {ISelectionModel} from "../../selection/model/selection-model.interface";
+import {IInitialPosition, ISelection} from "../../selection/selection";
 
 /**
  * Table-engine renderer using the HTML5 canvas.
@@ -33,6 +35,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Cell model to render cells from.
 	 */
 	private _cellModel: ICellModel;
+
+	/**
+	 * Selection model to draw selections for.
+	 */
+	private _selectionModel: ISelectionModel;
 
 	/**
 	 * Options of the renderer.
@@ -164,6 +171,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 */
 	private _panningStart: IMouseDragContext | null = null;
 
+	/**
+	 * The initially selected cell range of the current selection process (if in progress).
+	 */
+	private _initialSelectionRange: ICellRange | null;
+
 	constructor() {
 		this._registerDefaultCellRenderers();
 	}
@@ -192,11 +204,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Initialize the renderer with the given options on the passed HTML container.
 	 * @param container to initialize renderer in
 	 * @param cellModel to render cells from
+	 * @param selectionModel to render selection from
 	 * @param options of the renderer
 	 */
-	public async initialize(container: HTMLElement, cellModel: ICellModel, options: IRendererOptions): Promise<void> {
+	public async initialize(container: HTMLElement, cellModel: ICellModel, selectionModel: ISelectionModel, options: IRendererOptions): Promise<void> {
 		this._container = container;
 		this._cellModel = cellModel;
+		this._selectionModel = selectionModel;
 		this._options = options;
 
 		this._initializeRenderingCanvasElement();
@@ -311,46 +325,63 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			return;
 		}
 
-		const [x, y] = this._getMouseOffset(event);
+		const isMainButtonDown: boolean = event.buttons === 1;
+		if (isMainButtonDown) {
+			const [x, y] = this._getMouseOffset(event);
 
-		// Check if mouse if over a scroll bar
-		const isOverVerticalScrollBar: boolean = CanvasRenderer._isMouseOverScrollBar(x, y, true, this._lastRenderingContext.scrollBar.vertical);
-		const isOverHorizontalScrollBar: boolean = CanvasRenderer._isMouseOverScrollBar(x, y, false, this._lastRenderingContext.scrollBar.horizontal);
-		if (isOverVerticalScrollBar || isOverHorizontalScrollBar) {
-			const scrollVertically: boolean = isOverVerticalScrollBar;
+			// Check if mouse if over a scroll bar
+			const isOverVerticalScrollBar: boolean = CanvasRenderer._isMouseOverScrollBar(x, y, true, this._lastRenderingContext.scrollBar.vertical);
+			const isOverHorizontalScrollBar: boolean = CanvasRenderer._isMouseOverScrollBar(x, y, false, this._lastRenderingContext.scrollBar.horizontal);
+			if (isOverVerticalScrollBar || isOverHorizontalScrollBar) {
+				const scrollVertically: boolean = isOverVerticalScrollBar;
 
-			this._scrollBarDragStart = {
-				scrollHorizontally: !scrollVertically,
-				scrollVertically,
-				startX: x,
-				startY: y,
-				offsetFromScrollBarStart: scrollVertically ? this._lastRenderingContext.scrollBar.vertical.y - y : this._lastRenderingContext.scrollBar.horizontal.x - x,
-				startScrollOffset: {
-					x: this._scrollOffset.x,
-					y: this._scrollOffset.y
-				}
-			};
-		} else if (this._isInMouseDragMode) {
-			this._mouseDragStart = {
-				startX: x,
-				startY: y,
-				startScrollOffset: {
-					x: this._scrollOffset.x,
-					y: this._scrollOffset.y
-				}
-			};
-		} else {
-			// Update selection
-			this._updateCurrentSelection(this._getCellRangeAtPoint(x, y));
+				this._scrollBarDragStart = {
+					scrollHorizontally: !scrollVertically,
+					scrollVertically,
+					startX: x,
+					startY: y,
+					offsetFromScrollBarStart: scrollVertically ? this._lastRenderingContext.scrollBar.vertical.y - y : this._lastRenderingContext.scrollBar.horizontal.x - x,
+					startScrollOffset: {
+						x: this._scrollOffset.x,
+						y: this._scrollOffset.y
+					}
+				};
+			} else if (this._isInMouseDragMode) {
+				this._mouseDragStart = {
+					startX: x,
+					startY: y,
+					startScrollOffset: {
+						x: this._scrollOffset.x,
+						y: this._scrollOffset.y
+					}
+				};
+			} else {
+				// Update selection
+				this._initialSelectionRange = this._getCellRangeAtPoint(x, y);
+				this._updateCurrentSelection(this._initialSelectionRange, {
+					row: this._initialSelectionRange.startRow,
+					column: this._initialSelectionRange.startColumn,
+				});
+			}
 		}
 	}
 
 	/**
-	 * Get the cell range at the given point.
+	 * Get the cell range at the given point on the viewport.
 	 * @param x offset
 	 * @param y offset
 	 */
 	private _getCellRangeAtPoint(x: number, y: number): ICellRange {
+		const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
+		const fixedColumnWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
+
+		if (x > fixedColumnWidth) {
+			x += this._scrollOffset.x;
+		}
+		if (y > fixedRowsHeight) {
+			y += this._scrollOffset.y;
+		}
+
 		const cell = this._cellModel.getCellAtOffset(x, y);
 		if (!!cell) {
 			return cell.range;
@@ -362,10 +393,16 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	/**
 	 * Update the current selection to the passed cell range.
 	 * @param range to update current selection to
+	 * @param initial to update current selection to
 	 */
-	private _updateCurrentSelection(range: ICellRange): void {
-		console.log(range);
-		// TODO
+	private _updateCurrentSelection(range: ICellRange, initial: IInitialPosition): void {
+		this._selectionModel.clear();
+		this._selectionModel.addSelection({
+			range,
+			initial
+		}, true);
+
+		this._lazyRenderingSchedulerSubject.next();
 	}
 
 	/**
@@ -405,15 +442,31 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onMouseMove(event: MouseEvent): void {
-		const isScrollBarDragging: boolean = !!this._scrollBarDragStart;
-		const isMouseDragging: boolean = !!this._mouseDragStart;
+		const isMainButtonDown: boolean = event.buttons === 1;
+		if (isMainButtonDown) {
+			const isScrollBarDragging: boolean = !!this._scrollBarDragStart;
+			const isMouseDragging: boolean = !!this._mouseDragStart;
 
-		const [x, y] = this._getMouseOffset(event);
+			const [x, y] = this._getMouseOffset(event);
 
-		if (isScrollBarDragging) {
-			this._onScrollBarMove(x, y, this._scrollBarDragStart);
-		} else if (isMouseDragging) {
-			this._onViewPortMove(x, y, this._mouseDragStart);
+			if (isScrollBarDragging) {
+				this._onScrollBarMove(x, y, this._scrollBarDragStart);
+			} else if (isMouseDragging) {
+				this._onViewPortMove(x, y, this._mouseDragStart);
+			} else {
+				// Extend selection
+				const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
+
+				this._updateCurrentSelection({
+					startRow: Math.min(this._initialSelectionRange.startRow, targetRange.startRow),
+					endRow: Math.max(this._initialSelectionRange.endRow, targetRange.endRow),
+					startColumn: Math.min(this._initialSelectionRange.startColumn, targetRange.startColumn),
+					endColumn: Math.max(this._initialSelectionRange.endColumn, targetRange.endColumn),
+				}, {
+					row: this._initialSelectionRange.startRow,
+					column: this._initialSelectionRange.startColumn,
+				});
+			}
 		}
 	}
 
@@ -592,8 +645,23 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 */
 	private _onKeyDown(event: KeyboardEvent): void {
 		if (event.code === "Space") {
-			this._isInMouseDragMode = true;
 			event.preventDefault();
+			this._isInMouseDragMode = true;
+		} else if (event.code === "Tab") {
+			// TODO This needs to be reworked - just for testing
+			event.preventDefault();
+			const primary = this._selectionModel.getPrimary();
+			if (!!primary) {
+				primary.initial.column++;
+			}
+			this._lazyRenderingSchedulerSubject.next();
+		} else if (event.code === "Enter") {
+			// TODO This needs to be reworked - just for testing
+			const primary = this._selectionModel.getPrimary();
+			if (!!primary) {
+				primary.initial.row++;
+			}
+			this._lazyRenderingSchedulerSubject.next();
 		}
 	}
 
@@ -810,6 +878,174 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
+	 * Calculate the selection rendering context.
+	 * @param viewPort to calculate selections for
+	 * @param fixedRows to calculate with
+	 * @param fixedColumns to calculate with
+	 * @param fixedRowsHeight height of the fixed rows
+	 * @param fixedColumnsWidth width of the fixed columns
+	 */
+	private _calculateSelectionContext(
+		viewPort: IRectangle,
+		fixedRows: number,
+		fixedColumns: number,
+		fixedRowsHeight: number,
+		fixedColumnsWidth: number
+	): ISelectionRenderContext {
+		const selections: ISelection[] = this._selectionModel.getSelections();
+		const primary: ISelection = this._selectionModel.getPrimary();
+
+		if (selections.length === 0) {
+			return null; // We do not have a selection yet
+		}
+
+		const result: ISelectionRenderContext = {
+			other: [],
+			inNonFixedArea: [],
+			inFixedColumns: [],
+			inFixedRows: []
+		};
+
+		for (const s of selections) {
+			this._addInfosForSelection(
+				result,
+				primary,
+				viewPort,
+				fixedRows,
+				fixedColumns,
+				fixedRowsHeight,
+				fixedColumnsWidth,
+				s === primary
+			);
+		}
+
+		return result;
+	}
+
+	/**
+	 * Calculate the bounds for the given selection and add them to the rendering context result.
+	 * @param toAdd the context to add the result to
+	 * @param selection to calculate bounds for
+	 * @param viewPort to calculate selections for
+	 * @param fixedRows to calculate with
+	 * @param fixedColumns to calculate with
+	 * @param fixedRowsHeight height of the fixed rows
+	 * @param fixedColumnsWidth width of the fixed columns
+	 * @param isPrimary whether the selection is the primary selection
+	 */
+	private _addInfosForSelection(
+		toAdd: ISelectionRenderContext,
+		selection: ISelection,
+		viewPort: IRectangle,
+		fixedRows: number,
+		fixedColumns: number,
+		fixedRowsHeight: number,
+		fixedColumnsWidth: number,
+		isPrimary: boolean
+	): void {
+		const bounds: IRectangle = this._calculateSelectionBoundsFromCellRangeBounds(
+			this._cellModel.getBounds(selection.range),
+			selection.range,
+			viewPort,
+			fixedRows,
+			fixedColumns,
+			fixedRowsHeight,
+			fixedColumnsWidth
+		);
+
+		const initialBounds: IRectangle | null = isPrimary ? this._calculateSelectionBoundsFromCellRangeBounds(
+			this._cellModel.getBounds(CellRange.fromSingleRowColumn(selection.initial.row, selection.initial.column)),
+			selection.range,
+			viewPort,
+			fixedRows,
+			fixedColumns,
+			fixedRowsHeight,
+			fixedColumnsWidth
+		) : null;
+
+		const isStartInFixedRows: boolean = selection.range.startRow < fixedRows;
+		const isStartInFixedColumns: boolean = selection.range.startColumn < fixedColumns;
+
+		let collectionToPushTo: ISelectionRenderInfo[];
+		if (isStartInFixedRows && isStartInFixedColumns) {
+			collectionToPushTo = toAdd.other;
+		} else if (isStartInFixedRows) {
+			collectionToPushTo = toAdd.inFixedRows;
+		} else if (isStartInFixedColumns) {
+			collectionToPushTo = toAdd.inFixedColumns;
+		} else {
+			collectionToPushTo = toAdd.inNonFixedArea;
+		}
+
+		collectionToPushTo.push({
+			bounds,
+			initial: initialBounds,
+			isPrimary
+		});
+	}
+
+	/**
+	 * Calculate the selection bounds from the given cell range bounds.
+	 * @param bounds cell bounds to calculate selection bounds with
+	 * @param range cell range the bounds have been calculated with
+	 * @param viewPort to calculate selections for
+	 * @param fixedRows to calculate with
+	 * @param fixedColumns to calculate with
+	 * @param fixedRowsHeight height of the fixed rows
+	 * @param fixedColumnsWidth width of the fixed columns
+	 */
+	private _calculateSelectionBoundsFromCellRangeBounds(
+		bounds: IRectangle,
+		range: ICellRange,
+		viewPort: IRectangle,
+		fixedRows: number,
+		fixedColumns: number,
+		fixedRowsHeight: number,
+		fixedColumnsWidth: number
+	): IRectangle {
+		let startY = bounds.top;
+		let endY = bounds.top + bounds.height;
+		let startX = bounds.left;
+		let endX = bounds.left + bounds.width;
+
+		if (range.startRow >= fixedRows) {
+			startY -= this._scrollOffset.y;
+		}
+		if (range.endRow >= fixedRows) {
+			endY -= this._scrollOffset.y;
+		}
+		if (range.startColumn >= fixedColumns) {
+			startX -= this._scrollOffset.x;
+		}
+		if (range.endColumn >= fixedColumns) {
+			endX -= this._scrollOffset.x;
+		}
+
+		const isStartInFixedRows: boolean = range.startRow < fixedRows;
+		const isStartInFixedColumns: boolean = range.startColumn < fixedColumns;
+
+		const widthInFixedColumns: number = this._cellModel.getBounds({
+			startRow: 0,
+			endRow: 0,
+			startColumn: range.startColumn,
+			endColumn: Math.min(fixedColumns - 1, range.endColumn)
+		}).width;
+		const heightInFixedRows: number = this._cellModel.getBounds({
+			startRow: range.startRow,
+			endRow: Math.min(fixedRows - 1, range.endRow),
+			startColumn: 0,
+			endColumn: 0
+		}).height;
+
+		return {
+			left: startX,
+			top: startY,
+			width: Math.max(endX - startX, isStartInFixedColumns ? widthInFixedColumns : 0),
+			height: Math.max(endY - startY, isStartInFixedRows ? heightInFixedRows : 0)
+		};
+	}
+
+	/**
 	 * Create the rendering context for the current state.
 	 */
 	private _createRenderingContext(): IRenderContext {
@@ -828,11 +1064,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		const cellsInfo = this._createCellRenderingInfo(viewPort, fixedRows, fixedColumns, fixedRowsHeight, fixedColumnsWidth);
 		const scrollBarContext: IScrollBarRenderContext = this._calculateScrollBarContext(viewPort, fixedRowsHeight, fixedColumnsWidth);
+		const selectionContext: ISelectionRenderContext = this._calculateSelectionContext(viewPort, fixedRows, fixedColumns, fixedRowsHeight, fixedColumnsWidth);
 
 		return {
 			viewPort,
 			cells: cellsInfo,
 			scrollBar: scrollBarContext,
+			selection: selectionContext,
 			renderers: this._cellRendererLookup
 		}
 	}
@@ -1006,23 +1244,20 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			ctx.scale(this._devicePixelRatio, this._devicePixelRatio);
 
 			// Render "normal" (non-fixed) cells first
-			CanvasRenderer._renderCellArea(ctx, renderingContext, renderingContext.cells.nonFixedCells);
-			CanvasRenderer._renderBordersPerRenderer(ctx, renderingContext, renderingContext.cells.nonFixedCells);
+			CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.nonFixedCells, renderingContext.selection?.inNonFixedArea);
 
 			// Then render fixed cells (if any).
 			if (!!renderingContext.cells.fixedColumnCells) {
-				CanvasRenderer._renderCellArea(ctx, renderingContext, renderingContext.cells.fixedColumnCells);
-				CanvasRenderer._renderBordersPerRenderer(ctx, renderingContext, renderingContext.cells.fixedColumnCells);
+				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedColumnCells, renderingContext.selection.inFixedColumns);
 			}
 			if (!!renderingContext.cells.fixedRowCells) {
-				CanvasRenderer._renderCellArea(ctx, renderingContext, renderingContext.cells.fixedRowCells);
-				CanvasRenderer._renderBordersPerRenderer(ctx, renderingContext, renderingContext.cells.fixedRowCells);
+				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedRowCells, renderingContext.selection.inFixedRows);
 			}
 			if (!!renderingContext.cells.fixedCornerCells) {
-				CanvasRenderer._renderCellArea(ctx, renderingContext, renderingContext.cells.fixedCornerCells);
-				CanvasRenderer._renderBordersPerRenderer(ctx, renderingContext, renderingContext.cells.fixedCornerCells);
+				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedCornerCells, renderingContext.selection.other);
 			}
 
+			// Render scrollbars
 			CanvasRenderer._renderScrollBars(ctx, renderingContext);
 
 			ctx.restore();
@@ -1032,12 +1267,35 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
-	 * Render the passed cellsPerRenderer map.
+	 * Render a specific area of the table (non-fixed cell area, fixed rows area,
+	 * fixed columns area, fixed corner area).
+	 * @param ctx to render with
+	 * @param context the rendering context
+	 * @param cellArea to render for the area
+	 * @param selectionInfos to render for the area
+	 */
+	private static _renderArea(
+		ctx: CanvasRenderingContext2D,
+		context: IRenderContext,
+		cellArea: ICellAreaRenderContext,
+		selectionInfos?: ISelectionRenderInfo[]
+	): void {
+		CanvasRenderer._renderAreaCells(ctx, context, cellArea);
+		CanvasRenderer._renderBordersPerRenderer(ctx, context, cellArea);
+
+		// Render selection that may be displayed the area
+		if (!!selectionInfos) {
+			CanvasRenderer._renderSelections(ctx, context, selectionInfos);
+		}
+	}
+
+	/**
+	 * Render cells for the passed cell area.
 	 * @param ctx to render with
 	 * @param context the rendering context
 	 * @param cellArea to render
 	 */
-	private static _renderCellArea(ctx: CanvasRenderingContext2D, context: IRenderContext, cellArea: ICellAreaRenderContext): void {
+	private static _renderAreaCells(ctx: CanvasRenderingContext2D, context: IRenderContext, cellArea: ICellAreaRenderContext): void {
 		// Clear area first
 		ctx.clearRect(cellArea.viewPortBounds.left, cellArea.viewPortBounds.top, cellArea.viewPortBounds.width, cellArea.viewPortBounds.height);
 
@@ -1116,6 +1374,62 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 	}
 
+	/**
+	 * Render the selections.
+	 * @param ctx to render with
+	 * @param context the rendering context
+	 * @param infos rendering infos about selection rectangles to draw
+	 */
+	private static _renderSelections(ctx: CanvasRenderingContext2D, context: IRenderContext, infos: ISelectionRenderInfo[]): void {
+		// TODO Colors and line width to rendering configuration
+		const primarySelectionBorderColor: IColor = {red: 41, green: 180, blue: 255, alpha: 1.0};
+		const primarySelectionBackgroundColor: IColor = {red: 30, green: 120, blue: 180, alpha: 0.2};
+		const secondarySelectionBorderColor: IColor = {red: 50, green: 50, blue: 50, alpha: 0.4};
+		const secondarySelectionBackgroundColor: IColor = {red: 50, green: 50, blue: 50, alpha: 0.2};
+		const selectionBorderSize: number = 2;
+
+		ctx.fillStyle = CanvasUtil.colorToStyle(secondarySelectionBackgroundColor);
+		ctx.strokeStyle = CanvasUtil.colorToStyle(secondarySelectionBorderColor);
+		ctx.lineWidth = selectionBorderSize;
+
+		for (const info of infos) {
+			if (info.isPrimary) {
+				ctx.fillStyle = CanvasUtil.colorToStyle(primarySelectionBackgroundColor);
+				ctx.strokeStyle = CanvasUtil.colorToStyle(primarySelectionBorderColor);
+
+				// Fill area over initial (if necessary)
+				if (info.bounds.top - info.initial.top > 0) {
+					ctx.fillRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.top - info.initial.top);
+				}
+
+				// Fill area left of initial (if necessary)
+				if (info.bounds.left - info.initial.left > 0) {
+					ctx.fillRect(info.bounds.left, info.initial.top + (info.bounds.top - info.initial.top), info.bounds.left - info.initial.left, info.initial.height);
+				}
+
+				// Fill area right of initial (if necessary)
+				if ((info.bounds.left + info.bounds.width) - (info.initial.left + info.initial.width) > 0) {
+					ctx.fillRect(info.initial.left + info.initial.width, info.initial.top + (info.bounds.top - info.initial.top), (info.bounds.left + info.bounds.width) - (info.initial.left + info.initial.width), info.initial.height);
+				}
+
+				// Fill area under initial (if necessary)
+				if ((info.bounds.top + info.bounds.height) - (info.initial.top + info.initial.height) > 0) {
+					ctx.fillRect(info.bounds.left, info.initial.top + info.initial.height, info.bounds.width, (info.bounds.top + info.bounds.height) - (info.initial.top + info.initial.height));
+				}
+
+				// Stroke
+				ctx.strokeRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.height);
+
+				// Reset colors
+				ctx.fillStyle = CanvasUtil.colorToStyle(secondarySelectionBackgroundColor);
+				ctx.strokeStyle = CanvasUtil.colorToStyle(secondarySelectionBorderColor);
+			} else {
+				ctx.fillRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.height);
+				ctx.strokeRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.height);
+			}
+		}
+	}
+
 }
 
 /**
@@ -1139,9 +1453,63 @@ interface IRenderContext {
 	scrollBar: IScrollBarRenderContext;
 
 	/**
+	 * Rendering context of the selectiojns.
+	 */
+	selection?: ISelectionRenderContext;
+
+	/**
 	 * Lookup for cell renderers.
 	 */
 	renderers: Map<string, ICanvasCellRenderer>;
+
+}
+
+/**
+ * Rendering context of selections.
+ */
+interface ISelectionRenderContext {
+
+	/**
+	 * Selections rectangles completely contained in the non-fixed area.
+	 */
+	inNonFixedArea: ISelectionRenderInfo[];
+
+	/**
+	 * Selection rectangles completely contained in non-fixed area or fixed rows area.
+	 */
+	inFixedRows: ISelectionRenderInfo[];
+
+	/**
+	 * Selection rectangle completely contained in non-fixed area or fixed columns area.
+	 */
+	inFixedColumns: ISelectionRenderInfo[];
+
+	/**
+	 * Selection rectangles to be displayed above all areas.
+	 */
+	other: ISelectionRenderInfo[];
+
+}
+
+/**
+ * Rendering info about one selection.
+ */
+interface ISelectionRenderInfo {
+
+	/**
+	 * Whether the selection is the primary selection.
+	 */
+	isPrimary: boolean;
+
+	/**
+	 * Bounds of the initial cell (only available when this is the primary selection.
+	 */
+	initial?: IRectangle;
+
+	/**
+	 * Bounds of the rectangle on the viewport.
+	 */
+	bounds: IRectangle;
 
 }
 
