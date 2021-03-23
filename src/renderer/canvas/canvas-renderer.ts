@@ -1248,13 +1248,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 			// Then render fixed cells (if any).
 			if (!!renderingContext.cells.fixedColumnCells) {
-				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedColumnCells, renderingContext.selection.inFixedColumns);
+				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedColumnCells, renderingContext.selection?.inFixedColumns);
 			}
 			if (!!renderingContext.cells.fixedRowCells) {
-				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedRowCells, renderingContext.selection.inFixedRows);
+				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedRowCells, renderingContext.selection?.inFixedRows);
 			}
 			if (!!renderingContext.cells.fixedCornerCells) {
-				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedCornerCells, renderingContext.selection.other);
+				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedCornerCells, renderingContext.selection?.other);
 			}
 
 			// Render scrollbars
