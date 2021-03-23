@@ -35,4 +35,11 @@ export interface ITableEngineRenderer {
 	 */
 	cleanup(): void;
 
+	/**
+	 * Scroll to the cell at the given row and column (if not already in the current view).
+	 * @param row to scroll to
+	 * @param column to scroll to
+	 */
+	scrollTo(row: number, column: number): void;
+
 }

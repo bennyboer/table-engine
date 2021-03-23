@@ -446,6 +446,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		if (isMainButtonDown) {
 			const isScrollBarDragging: boolean = !!this._scrollBarDragStart;
 			const isMouseDragging: boolean = !!this._mouseDragStart;
+			const isSelectionDragging: boolean = !!this._initialSelectionRange;
 
 			const [x, y] = this._getMouseOffset(event);
 
@@ -453,7 +454,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				this._onScrollBarMove(x, y, this._scrollBarDragStart);
 			} else if (isMouseDragging) {
 				this._onViewPortMove(x, y, this._mouseDragStart);
-			} else {
+			} else if (isSelectionDragging) {
 				// Extend selection
 				const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
 
@@ -648,20 +649,78 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			event.preventDefault();
 			this._isInMouseDragMode = true;
 		} else if (event.code === "Tab") {
-			// TODO This needs to be reworked - just for testing
 			event.preventDefault();
-			const primary = this._selectionModel.getPrimary();
-			if (!!primary) {
-				primary.initial.column++;
-			}
-			this._lazyRenderingSchedulerSubject.next();
+			this._moveInitialSelection(event.shiftKey ? -1 : 1, 0);
 		} else if (event.code === "Enter") {
-			// TODO This needs to be reworked - just for testing
-			const primary = this._selectionModel.getPrimary();
-			if (!!primary) {
-				primary.initial.row++;
+			this._moveInitialSelection(0, event.shiftKey ? -1 : 1);
+		}
+	}
+
+	/**
+	 * Move the initial selection in the current primary selection.
+	 * @param xDiff to move horizontally
+	 * @param yDiff to move vertically
+	 */
+	private _moveInitialSelection(xDiff: number, yDiff: number): void {
+		if (!this._selectionModel.getPrimary()) {
+			return; // Nothing to move
+		}
+
+		this._selectionModel.moveInitial(xDiff, yDiff);
+
+		const primary = this._selectionModel.getPrimary();
+		this.scrollTo(primary.initial.row, primary.initial.column);
+
+		this._lazyRenderingSchedulerSubject.next();
+	}
+
+	/**
+	 * Scroll to the cell at the given row and column (if not already in the current view).
+	 * @param row to scroll to
+	 * @param column to scroll to
+	 */
+	public scrollTo(row: number, column: number): void {
+		const cell: ICell = this._cellModel.getCell(row, column);
+		const range: ICellRange = !!cell ? cell.range : CellRange.fromSingleRowColumn(row, column);
+		const bounds: IRectangle = this._cellModel.getBounds(range);
+
+		const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
+		const fixedColumnsWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
+
+		bounds.left -= fixedColumnsWidth;
+		bounds.top -= fixedRowsHeight;
+
+		const viewPortWidth: number = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.width;
+		const viewPortHeight: number = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.height;
+
+		const startX: number = this._scrollOffset.x;
+		const endX: number = this._scrollOffset.x + viewPortWidth;
+
+		if (bounds.left < startX) {
+			// Scroll to the left
+			if (this._scrollToX(bounds.left)) {
+				this._lazyRenderingSchedulerSubject.next();
 			}
-			this._lazyRenderingSchedulerSubject.next();
+		} else if (bounds.left + bounds.width > endX) {
+			// Scroll to the right
+			if (this._scrollToX(bounds.left + bounds.width - viewPortWidth)) {
+				this._lazyRenderingSchedulerSubject.next();
+			}
+		}
+
+		const startY: number = this._scrollOffset.y;
+		const endY: number = this._scrollOffset.y + viewPortHeight;
+
+		if (bounds.top < startY) {
+			// Scroll to the top
+			if (this._scrollToY(bounds.top)) {
+				this._lazyRenderingSchedulerSubject.next();
+			}
+		} else if (bounds.top + bounds.height > endY) {
+			// Scroll to the bottom
+			if (this._scrollToY(bounds.top + bounds.height - viewPortHeight)) {
+				this._lazyRenderingSchedulerSubject.next();
+			}
 		}
 	}
 
@@ -953,18 +1012,56 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			fixedColumnsWidth
 		);
 
-		const initialBounds: IRectangle | null = isPrimary ? this._calculateSelectionBoundsFromCellRangeBounds(
-			this._cellModel.getBounds(CellRange.fromSingleRowColumn(selection.initial.row, selection.initial.column)),
-			selection.range,
-			viewPort,
-			fixedRows,
-			fixedColumns,
-			fixedRowsHeight,
-			fixedColumnsWidth
-		) : null;
+		let initialBounds: IRectangle | null = null;
+		if (isPrimary) {
+			let initialRange: ICellRange;
+			const cellAtInitial = this._cellModel.getCell(selection.initial.row, selection.initial.column);
+			if (!!cellAtInitial) {
+				initialRange = cellAtInitial.range;
+			} else {
+				initialRange = CellRange.fromSingleRowColumn(selection.initial.row, selection.initial.column);
+			}
+
+			initialBounds = this._cellModel.getBounds(initialRange);
+		}
 
 		const isStartInFixedRows: boolean = selection.range.startRow < fixedRows;
 		const isStartInFixedColumns: boolean = selection.range.startColumn < fixedColumns;
+
+		// Correct initial bounds (if any) for fixed rows/columns
+		if (!!initialBounds) {
+			if (isStartInFixedRows) {
+				// Check distance of initial bounds to fixed rows
+				const distance: number = initialBounds.top - fixedRowsHeight;
+				if (distance >= 0) {
+					// Correct top offset or height based on distance to fixed rows
+					const initialUnderFixedRowsOffset: number = fixedRowsHeight - (initialBounds.top - this._scrollOffset.y);
+
+					initialBounds.top = Math.max(initialBounds.top - this._scrollOffset.y, fixedRowsHeight);
+					if (initialUnderFixedRowsOffset > 0) {
+						initialBounds.height = Math.max(initialBounds.height - initialUnderFixedRowsOffset, 0);
+					}
+				}
+			} else {
+				initialBounds.top -= this._scrollOffset.y;
+			}
+
+			if (isStartInFixedColumns) {
+				// Check distance of initial bounds to fixed columns
+				const distance: number = initialBounds.left - fixedColumnsWidth;
+				if (distance >= 0) {
+					// Correct left offset or width based on distance to fixed columns
+					const initialUnderFixedColumnsOffset: number = fixedColumnsWidth - (initialBounds.left - this._scrollOffset.x);
+
+					initialBounds.left = Math.max(initialBounds.left - this._scrollOffset.x, fixedColumnsWidth);
+					if (initialUnderFixedColumnsOffset > 0) {
+						initialBounds.width = Math.max(initialBounds.width - initialUnderFixedColumnsOffset, 0);
+					}
+				}
+			} else {
+				initialBounds.left -= this._scrollOffset.x;
+			}
+		}
 
 		let collectionToPushTo: ISelectionRenderInfo[];
 		if (isStartInFixedRows && isStartInFixedColumns) {
@@ -1398,23 +1495,25 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				ctx.strokeStyle = CanvasUtil.colorToStyle(primarySelectionBorderColor);
 
 				// Fill area over initial (if necessary)
-				if (info.bounds.top - info.initial.top > 0) {
-					ctx.fillRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.top - info.initial.top);
+				if (info.initial.top - info.bounds.top > 0) {
+					ctx.fillRect(info.bounds.left, info.bounds.top, info.bounds.width, info.initial.top - info.bounds.top);
 				}
 
 				// Fill area left of initial (if necessary)
-				if (info.bounds.left - info.initial.left > 0) {
-					ctx.fillRect(info.bounds.left, info.initial.top + (info.bounds.top - info.initial.top), info.bounds.left - info.initial.left, info.initial.height);
-				}
-
-				// Fill area right of initial (if necessary)
-				if ((info.bounds.left + info.bounds.width) - (info.initial.left + info.initial.width) > 0) {
-					ctx.fillRect(info.initial.left + info.initial.width, info.initial.top + (info.bounds.top - info.initial.top), (info.bounds.left + info.bounds.width) - (info.initial.left + info.initial.width), info.initial.height);
+				if (info.initial.left - info.bounds.left > 0) {
+					ctx.fillRect(info.bounds.left, info.initial.top, info.initial.left - info.bounds.left, info.initial.height);
 				}
 
 				// Fill area under initial (if necessary)
-				if ((info.bounds.top + info.bounds.height) - (info.initial.top + info.initial.height) > 0) {
-					ctx.fillRect(info.bounds.left, info.initial.top + info.initial.height, info.bounds.width, (info.bounds.top + info.bounds.height) - (info.initial.top + info.initial.height));
+				const underHeight: number = (info.bounds.top + info.bounds.height) - (info.initial.top + info.initial.height);
+				if (underHeight > 0) {
+					ctx.fillRect(info.bounds.left, info.initial.top + info.initial.height, info.bounds.width, underHeight);
+				}
+
+				// Fill area right of initial (if necessary)
+				const rightWidth: number = (info.bounds.left + info.bounds.width) - (info.initial.left + info.initial.width);
+				if (rightWidth > 0) {
+					ctx.fillRect(info.initial.left + info.initial.width, info.initial.top, rightWidth, info.initial.height);
 				}
 
 				// Stroke
@@ -1502,7 +1601,8 @@ interface ISelectionRenderInfo {
 	isPrimary: boolean;
 
 	/**
-	 * Bounds of the initial cell (only available when this is the primary selection.
+	 * Bounds of the initial cell (only available when this is the primary selection)
+	 * relative to the parent bounds in this info.
 	 */
 	initial?: IRectangle;
 

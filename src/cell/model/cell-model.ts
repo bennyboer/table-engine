@@ -272,6 +272,100 @@ export class CellModel implements ICellModel {
 	}
 
 	/**
+	 * Whether the given cell range is visible.
+	 * At least one row and column needs to be visible.
+	 * @param range to check for visibility
+	 */
+	public isRangeVisible(range: ICellRange): boolean {
+		let isAtLeastOneRowVisible: boolean = false;
+		for (let row = range.startRow; row <= range.endRow; row++) {
+			if (!this.isRowHidden(row)) {
+				isAtLeastOneRowVisible = true;
+				break;
+			}
+		}
+
+		let isAtLeastOneColumnVisible: boolean = false;
+		for (let column = range.startColumn; column <= range.endColumn; column++) {
+			if (!this.isColumnHidden(column)) {
+				isAtLeastOneColumnVisible = true;
+				break;
+			}
+		}
+
+		return isAtLeastOneRowVisible && isAtLeastOneColumnVisible;
+	}
+
+	/**
+	 * Find the next visible row starting from the given one.
+	 * @param from the first row to check for visibility
+	 * @returns the next visible row or -1
+	 */
+	public findNextVisibleRow(from: number): number {
+		return CellModel._findNextVisibleIndex(from, this.getRowCount() - 1, this._hiddenRows);
+	}
+
+	/**
+	 * Find the next visible column starting from the given one.
+	 * @param from the first column to check for visibility
+	 * @returns the next visible column or -1
+	 */
+	public findNextVisibleColumn(from: number): number {
+		return CellModel._findNextVisibleIndex(from, this.getColumnCount() - 1, this._hiddenColumns);
+	}
+
+	/**
+	 * Find the next visible index (row/column) starting from the given one.
+	 * @param from index to start from
+	 * @param maxIndex the maximum possible index
+	 * @param hidden all hidden indices
+	 * @returns the next visible index or -1
+	 */
+	private static _findNextVisibleIndex(from: number, maxIndex: number, hidden: Set<number>): number {
+		for (let i = from; i <= maxIndex; i++) {
+			if (!hidden.has(i)) {
+				return i;
+			}
+		}
+
+		return -1;
+	}
+
+	/**
+	 * Find the previous visible row starting from the given one.
+	 * @param from the first row to check for visibility
+	 * @returns the previous visible row or -1
+	 */
+	public findPreviousVisibleRow(from: number): number {
+		return CellModel._findPreviousVisibleIndex(from, this._hiddenRows);
+	}
+
+	/**
+	 * Find the previous visible column starting from the given one.
+	 * @param from the first column to check for visibility
+	 * @returns the previous visible column or -1
+	 */
+	public findPreviousVisibleColumn(from: number): number {
+		return CellModel._findPreviousVisibleIndex(from, this._hiddenColumns);
+	}
+
+	/**
+	 * Find the previous visible index (row/column) starting from the given one.
+	 * @param from index to start from
+	 * @param hidden all hidden indices
+	 * @returns the previous visible index or -1
+	 */
+	private static _findPreviousVisibleIndex(from: number, hidden: Set<number>): number {
+		for (let i = from; i >= 0; i--) {
+			if (!hidden.has(i)) {
+				return i;
+			}
+		}
+
+		return -1;
+	}
+
+	/**
 	 * Get bounds for the given range.
 	 * @param range to get bounds for
 	 */

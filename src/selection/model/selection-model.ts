@@ -251,31 +251,258 @@ export class SelectionModel implements ISelectionModel {
 	}
 
 	/**
-	 * Select the next possible row.
+	 * Extend the passed selection in the given direction.
+	 * @param selection to extend
+	 * @param xDiff horizontal offset to extend by
+	 * @param yDiff vertical offset to extend by
 	 */
-	public selectNextRow(): void {
+	public extendSelection(selection: ISelection, xDiff: number, yDiff: number): void {
 		// TODO
 	}
 
 	/**
-	 * Select the previous possible row.
+	 * Move the current primary selection
+	 * in the given direction.
+	 * @param selection to move
+	 * @param xDiff horizontal offset to move by
+	 * @param yDiff vertical offset to move by
 	 */
-	public selectPreviousRow(): void {
+	public moveSelection(selection: ISelection, xDiff: number, yDiff: number): void {
 		// TODO
 	}
 
 	/**
-	 * Select the next column.
+	 * Move the initial in the current primary selection (if any)
+	 * in the given direction.
+	 * @param xDiff horizontal offset to move by
+	 * @param yDiff vertical offset to move by
 	 */
-	public selectNextColumn(): void {
-		// TODO
+	public moveInitial(xDiff: number, yDiff: number): void {
+		const primary = this.getPrimary();
+		if (!primary) {
+			return;
+		}
+
+		const firstVisibleRow: number = this._cellModel.findNextVisibleRow(primary.range.startRow);
+		const firstVisibleColumn: number = this._cellModel.findNextVisibleColumn(primary.range.startColumn);
+		const lastVisibleRow: number = this._cellModel.findPreviousVisibleRow(primary.range.endRow);
+		const lastVisibleColumn: number = this._cellModel.findPreviousVisibleColumn(primary.range.endColumn);
+
+		// Check if move is possible
+		let isNextMovePossible: boolean = true;
+		let moveToNextSelection: boolean = false;
+		if (primary.initial.column === firstVisibleColumn && primary.initial.row === firstVisibleRow && (xDiff < 0 || yDiff < 0)) {
+			isNextMovePossible = false;
+			moveToNextSelection = false;
+		} else if (primary.initial.column === lastVisibleColumn && primary.initial.row === lastVisibleRow && (xDiff > 0 || yDiff > 0)) {
+			isNextMovePossible = false;
+			moveToNextSelection = true;
+		}
+
+		if (!isNextMovePossible) {
+			// Move to next or previous selection as new primary (if possible)
+			let newPrimary: ISelection = primary;
+			if (this._selections.length > 1) {
+				let nextPrimaryIndex = moveToNextSelection ? this._primaryIndex + 1 : this._primaryIndex - 1;
+				if (nextPrimaryIndex < 0) {
+					nextPrimaryIndex = this._selections.length - 1;
+				} else if (nextPrimaryIndex > this._selections.length - 1) {
+					nextPrimaryIndex = 0;
+				}
+				this._primaryIndex = nextPrimaryIndex;
+
+				newPrimary = this._selections[this._primaryIndex];
+			}
+
+			if (newPrimary === primary) {
+				// Primary did not change
+				if (moveToNextSelection) {
+					newPrimary.initial.row = firstVisibleRow;
+					newPrimary.initial.column = firstVisibleColumn;
+				} else {
+					newPrimary.initial.row = lastVisibleRow;
+					newPrimary.initial.column = lastVisibleColumn;
+				}
+			} else {
+				if (moveToNextSelection) {
+					newPrimary.initial.row = this._cellModel.findNextVisibleRow(newPrimary.range.startRow);
+					newPrimary.initial.column = this._cellModel.findNextVisibleColumn(newPrimary.range.startColumn);
+				} else {
+					newPrimary.initial.row = this._cellModel.findPreviousVisibleRow(newPrimary.range.endRow);
+					newPrimary.initial.column = this._cellModel.findPreviousVisibleColumn(newPrimary.range.endColumn);
+				}
+			}
+
+			return;
+		}
+
+		let wrapOccurred: boolean = true;
+		while (wrapOccurred) {
+			wrapOccurred = false;
+
+			if (yDiff !== 0) {
+				let newRow: number;
+
+				if (yDiff < 0) {
+					newRow = this._findRowOfPreviousVisibleCell(primary.initial.row, primary.initial.column);
+
+					if (newRow === -1 || newRow < firstVisibleRow) {
+						// Move to end row of selection
+						newRow = lastVisibleRow;
+
+						// Move to previous column later
+						xDiff = -1;
+
+						wrapOccurred = true;
+					}
+
+					yDiff = 0;
+				} else {
+					newRow = this._findRowOfNextVisibleCell(primary.initial.row, primary.initial.column);
+
+					if (newRow === -1 || newRow > lastVisibleRow) {
+						// Move to start row of selection
+						newRow = firstVisibleRow;
+
+						// Move to next column later
+						xDiff = 1;
+
+						wrapOccurred = true;
+					}
+
+					yDiff = 0;
+				}
+
+				primary.initial.row = newRow;
+			}
+
+			if (!wrapOccurred && xDiff !== 0) {
+				let newColumn: number;
+				if (xDiff < 0) {
+					newColumn = this._findColumnOfPreviousVisibleCell(primary.initial.column, primary.initial.row);
+
+					if (newColumn === -1 || newColumn < firstVisibleColumn) {
+						// Move to end column of selection
+						newColumn = lastVisibleColumn;
+
+						// Move to previous row later
+						yDiff = -1;
+
+						wrapOccurred = true;
+					}
+
+					xDiff = 0;
+				} else {
+					newColumn = this._findColumnOfNextVisibleCell(primary.initial.column, primary.initial.row);
+
+					if (newColumn === -1 || newColumn > lastVisibleColumn) {
+						// Move to start column of selection
+						newColumn = firstVisibleColumn;
+
+						// Move to next row later
+						yDiff = 1;
+
+						wrapOccurred = true;
+					}
+
+					xDiff = 0;
+				}
+
+				primary.initial.column = newColumn;
+			}
+		}
 	}
 
 	/**
-	 * Select the previous column.
+	 * Find row of the next visible cell.
+	 * @param afterRow row index to start from (exclusive)
+	 * @param column index to use
+	 * @return the next visible index or -1
 	 */
-	public selectPreviousColumn(): void {
-		// TODO
+	private _findRowOfNextVisibleCell(afterRow: number, column: number): number {
+		const cell: ICell = this._cellModel.getCell(afterRow, column);
+
+		let nextVisibleRowCell: ICell = null;
+		let nextVisibleRow: number = afterRow;
+		do {
+			nextVisibleRow = this._cellModel.findNextVisibleRow(nextVisibleRow + 1);
+			if (nextVisibleRow === -1) {
+				return -1;
+			}
+
+			nextVisibleRowCell = this._cellModel.getCell(nextVisibleRow, column);
+		} while (nextVisibleRowCell !== null && nextVisibleRowCell === cell);
+
+		return nextVisibleRow;
+	}
+
+	/**
+	 * Find row of the previous visible cell.
+	 * @param beforeRow row index to start from (exclusive)
+	 * @param column index to use
+	 * @return the previous visible index or -1
+	 */
+	private _findRowOfPreviousVisibleCell(beforeRow: number, column: number): number {
+		const cell: ICell = this._cellModel.getCell(beforeRow, column);
+
+		let previousVisibleRowCell: ICell = null;
+		let previousVisibleRow: number = beforeRow;
+		do {
+			previousVisibleRow = this._cellModel.findPreviousVisibleRow(previousVisibleRow - 1);
+			if (previousVisibleRow === -1) {
+				return -1;
+			}
+
+			previousVisibleRowCell = this._cellModel.getCell(previousVisibleRow, column);
+		} while (previousVisibleRowCell !== null && previousVisibleRowCell === cell);
+
+		return previousVisibleRow;
+	}
+
+	/**
+	 * Find column of the next visible cell.
+	 * @param afterColumn column index to start from (exclusive)
+	 * @param row index to use
+	 * @return the next visible index or -1
+	 */
+	private _findColumnOfNextVisibleCell(afterColumn: number, row: number): number {
+		const cell: ICell = this._cellModel.getCell(row, afterColumn);
+
+		let nextVisibleColumnCell: ICell = null;
+		let nextVisibleColumn: number = afterColumn;
+		do {
+			nextVisibleColumn = this._cellModel.findNextVisibleColumn(nextVisibleColumn + 1);
+			if (nextVisibleColumn === -1) {
+				return -1;
+			}
+
+			nextVisibleColumnCell = this._cellModel.getCell(row, nextVisibleColumn);
+		} while (nextVisibleColumnCell !== null && nextVisibleColumnCell === cell);
+
+		return nextVisibleColumn;
+	}
+
+	/**
+	 * Find column of the previous visible cell.
+	 * @param beforeColumn column index to start from (exclusive)
+	 * @param row index to use
+	 * @return the previous visible index or -1
+	 */
+	private _findColumnOfPreviousVisibleCell(beforeColumn: number, row: number): number {
+		const cell: ICell = this._cellModel.getCell(row, beforeColumn);
+
+		let previousVisibleColumnCell: ICell = null;
+		let previousVisibleColumn: number = beforeColumn;
+		do {
+			previousVisibleColumn = this._cellModel.findPreviousVisibleColumn(previousVisibleColumn - 1);
+			if (previousVisibleColumn === -1) {
+				return -1;
+			}
+
+			previousVisibleColumnCell = this._cellModel.getCell(row, previousVisibleColumn);
+		} while (previousVisibleColumnCell !== null && previousVisibleColumnCell === cell);
+
+		return previousVisibleColumn;
 	}
 
 }

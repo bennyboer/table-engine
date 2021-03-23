@@ -107,6 +107,15 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 	}
 
 	/**
+	 * Scroll to the cell at the given row and column (if not already in the current view).
+	 * @param row to scroll to
+	 * @param column to scroll to
+	 */
+	public scrollTo(row: number, column: number): void {
+		// TODO
+	}
+
+	/**
 	 * Bind listeners to the window or container.
 	 */
 	private _bindListeners(): void {

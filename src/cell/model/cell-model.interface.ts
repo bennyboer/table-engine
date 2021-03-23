@@ -52,6 +52,41 @@ export interface ICellModel {
 	getColumnAtOffset(offset: number): number;
 
 	/**
+	 * Whether the given cell range is visible.
+	 * At least one row and column needs to be visible.
+	 * @param range to check for visibility
+	 */
+	isRangeVisible(range: ICellRange): boolean;
+
+	/**
+	 * Find the next visible row starting from the given one.
+	 * @param from the first row to check for visibility
+	 * @returns the next visible row or -1
+	 */
+	findNextVisibleRow(from: number): number;
+
+	/**
+	 * Find the next visible column starting from the given one.
+	 * @param from the first column to check for visibility
+	 * @returns the next visible column or -1
+	 */
+	findNextVisibleColumn(from: number): number;
+
+	/**
+	 * Find the previous visible row starting from the given one.
+	 * @param from the first row to check for visibility
+	 * @returns the previous visible row or -1
+	 */
+	findPreviousVisibleRow(from: number): number;
+
+	/**
+	 * Find the previous visible column starting from the given one.
+	 * @param from the first column to check for visibility
+	 * @returns the previous visible column or -1
+	 */
+	findPreviousVisibleColumn(from: number): number;
+
+	/**
 	 * Get bounds for the given range.
 	 * @param range to get bounds for
 	 */

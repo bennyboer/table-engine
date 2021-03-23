@@ -1544,3 +1544,108 @@ test("[CellModel.getRange] Get cell range for rectangle", () => {
 	expect(range.startColumn).toBe(1);
 	expect(range.endColumn).toBe(4);
 });
+
+test("[CellModel.isRangeVisible] Check whether a range is visible", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				rendererName: "base",
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row, column) => "base",
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	expect(model.isRangeVisible({
+		startRow: 2,
+		endRow: 4,
+		startColumn: 2,
+		endColumn: 4
+	})).toBe(true);
+
+	model.hideRows([2, 4]);
+	model.hideColumns([2, 3]);
+
+	expect(model.isRangeVisible({
+		startRow: 2,
+		endRow: 4,
+		startColumn: 2,
+		endColumn: 4
+	})).toBe(true);
+
+	model.hideColumns([4]);
+
+	expect(model.isRangeVisible({
+		startRow: 2,
+		endRow: 4,
+		startColumn: 2,
+		endColumn: 4
+	})).toBe(false);
+
+	model.hideRows([3]);
+
+	expect(model.isRangeVisible({
+		startRow: 2,
+		endRow: 4,
+		startColumn: 2,
+		endColumn: 4
+	})).toBe(false);
+});
+
+test("[CellModel.find] Find next/previous visible row/column", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				rendererName: "base",
+				value: "Last cell"
+			}
+		],
+		(row, column) => row * column,
+		(row, column) => "base",
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	model.hideRows([2, 4]);
+	model.hideColumns([2, 3]);
+
+	expect(model.findNextVisibleRow(0)).toBe(0);
+	expect(model.findNextVisibleRow(1)).toBe(1);
+	expect(model.findNextVisibleRow(2)).toBe(3);
+	expect(model.findNextVisibleRow(3)).toBe(3);
+	expect(model.findNextVisibleRow(4)).toBe(5);
+	expect(model.findNextVisibleRow(5)).toBe(5);
+	expect(model.findNextVisibleRow(6)).toBe(-1);
+
+	expect(model.findNextVisibleColumn(0)).toBe(0);
+	expect(model.findNextVisibleColumn(1)).toBe(1);
+	expect(model.findNextVisibleColumn(2)).toBe(4);
+	expect(model.findNextVisibleColumn(4)).toBe(4);
+	expect(model.findNextVisibleColumn(5)).toBe(5);
+	expect(model.findNextVisibleColumn(6)).toBe(-1);
+
+	expect(model.findPreviousVisibleRow(-1)).toBe(-1);
+	expect(model.findPreviousVisibleRow(0)).toBe(0);
+	expect(model.findPreviousVisibleRow(1)).toBe(1);
+	expect(model.findPreviousVisibleRow(2)).toBe(1);
+	expect(model.findPreviousVisibleRow(3)).toBe(3);
+	expect(model.findPreviousVisibleRow(4)).toBe(3);
+	expect(model.findPreviousVisibleRow(5)).toBe(5);
+
+	expect(model.findPreviousVisibleColumn(-1)).toBe(-1);
+	expect(model.findPreviousVisibleColumn(0)).toBe(0);
+	expect(model.findPreviousVisibleColumn(1)).toBe(1);
+	expect(model.findPreviousVisibleColumn(2)).toBe(1);
+	expect(model.findPreviousVisibleColumn(3)).toBe(1);
+	expect(model.findPreviousVisibleColumn(4)).toBe(4);
+	expect(model.findPreviousVisibleColumn(5)).toBe(5);
+});
