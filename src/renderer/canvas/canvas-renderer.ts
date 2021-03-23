@@ -15,6 +15,7 @@ import {CellRange, ICellRange} from "../../cell/range/cell-range";
 import {IColor} from "../../util/color";
 import {ISelectionModel} from "../../selection/model/selection-model.interface";
 import {IInitialPosition, ISelection} from "../../selection/selection";
+import {ISelectionOptions} from "../options/selection";
 
 /**
  * Table-engine renderer using the HTML5 canvas.
@@ -959,6 +960,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 
 		const result: ISelectionRenderContext = {
+			options: this._options.canvas.selection,
 			other: [],
 			inNonFixedArea: [],
 			inFixedColumns: [],
@@ -1478,21 +1480,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param infos rendering infos about selection rectangles to draw
 	 */
 	private static _renderSelections(ctx: CanvasRenderingContext2D, context: IRenderContext, infos: ISelectionRenderInfo[]): void {
-		// TODO Colors and line width to rendering configuration
-		const primarySelectionBorderColor: IColor = {red: 41, green: 180, blue: 255, alpha: 1.0};
-		const primarySelectionBackgroundColor: IColor = {red: 30, green: 120, blue: 180, alpha: 0.2};
-		const secondarySelectionBorderColor: IColor = {red: 50, green: 50, blue: 50, alpha: 0.4};
-		const secondarySelectionBackgroundColor: IColor = {red: 50, green: 50, blue: 50, alpha: 0.2};
-		const selectionBorderSize: number = 2;
-
-		ctx.fillStyle = CanvasUtil.colorToStyle(secondarySelectionBackgroundColor);
-		ctx.strokeStyle = CanvasUtil.colorToStyle(secondarySelectionBorderColor);
-		ctx.lineWidth = selectionBorderSize;
+		ctx.fillStyle = CanvasUtil.colorToStyle(context.selection.options.secondary.backgroundColor);
+		ctx.strokeStyle = CanvasUtil.colorToStyle(context.selection.options.secondary.borderColor);
+		ctx.lineWidth = context.selection.options.borderSize;
 
 		for (const info of infos) {
 			if (info.isPrimary) {
-				ctx.fillStyle = CanvasUtil.colorToStyle(primarySelectionBackgroundColor);
-				ctx.strokeStyle = CanvasUtil.colorToStyle(primarySelectionBorderColor);
+				ctx.fillStyle = CanvasUtil.colorToStyle(context.selection.options.primary.backgroundColor);
+				ctx.strokeStyle = CanvasUtil.colorToStyle(context.selection.options.primary.borderColor);
 
 				// Fill area over initial (if necessary)
 				if (info.initial.top - info.bounds.top > 0) {
@@ -1520,8 +1515,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				ctx.strokeRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.height);
 
 				// Reset colors
-				ctx.fillStyle = CanvasUtil.colorToStyle(secondarySelectionBackgroundColor);
-				ctx.strokeStyle = CanvasUtil.colorToStyle(secondarySelectionBorderColor);
+				ctx.fillStyle = CanvasUtil.colorToStyle(context.selection.options.secondary.backgroundColor);
+				ctx.strokeStyle = CanvasUtil.colorToStyle(context.selection.options.secondary.borderColor);
 			} else {
 				ctx.fillRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.height);
 				ctx.strokeRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.height);
@@ -1567,6 +1562,11 @@ interface IRenderContext {
  * Rendering context of selections.
  */
 interface ISelectionRenderContext {
+
+	/**
+	 * Selection options.
+	 */
+	options: ISelectionOptions;
 
 	/**
 	 * Selections rectangles completely contained in the non-fixed area.

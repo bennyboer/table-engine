@@ -1,8 +1,8 @@
+import {IColor} from "../../util/color";
+
 /**
  * Default size of the scrollbar.
  */
-import {IColor} from "../../util/color";
-
 const DEFAULT_SCROLLBAR_SIZE: number = 10;
 
 /**

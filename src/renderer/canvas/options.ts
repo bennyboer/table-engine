@@ -1,4 +1,5 @@
 import {fillOptions as fillScrollBarOptions, IScrollBarOptions} from "../options/scrollbar";
+import {fillOptions as fillSelectionOptions, ISelectionOptions} from "../options/selection";
 
 /**
  * Duration in milliseconds used to throttle high-rate events
@@ -25,6 +26,11 @@ export interface ICanvasRendererOptions {
 	 */
 	scrollBar?: IScrollBarOptions;
 
+	/**
+	 * Options regarding the selection appearance.
+	 */
+	selection?: ISelectionOptions;
+
 }
 
 /**
@@ -43,8 +49,12 @@ export const fillOptions = (options?: ICanvasRendererOptions) => {
 	if (!options.scrollBar) {
 		options.scrollBar = {};
 	}
-
 	fillScrollBarOptions(options.scrollBar);
+
+	if (!options.selection) {
+		options.selection = {};
+	}
+	fillSelectionOptions(options.selection);
 
 	return options;
 };
