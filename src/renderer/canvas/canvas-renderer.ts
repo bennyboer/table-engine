@@ -66,7 +66,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Subject used to throttle scroll or other high-rate
 	 * event that need to re-render the table.
 	 */
-	private _lazyRenderingSchedulerSubject: Subject<void> = new Subject<void>();
+	private _repaintScheduler: Subject<void> = new Subject<void>();
 
 	/**
 	 * Subject used to throttle resize events.
@@ -192,7 +192,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Cleanup the renderer when no more needed.
 	 */
 	public cleanup(): void {
-		this._lazyRenderingSchedulerSubject.complete();
+		this._repaintScheduler.complete();
 		this._resizeThrottleSubject.complete();
 
 		this._unbindListeners();
@@ -269,7 +269,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		).subscribe(() => this._resizeCanvasToCurrentContainerSize());
 
 		// Repaint when necessary (for example on scrolling)
-		this._lazyRenderingSchedulerSubject.asObservable().pipe(
+		this._repaintScheduler.asObservable().pipe(
 			takeUntil(this._onCleanup),
 			throttleTime(this._options.canvas.lazyRenderingThrottleDuration, asyncScheduler, {
 				leading: false,
@@ -385,7 +385,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		const cell = this._cellModel.getCellAtOffset(x, y);
 		if (!!cell) {
-			return cell.range;
+			return {
+				startRow: cell.range.startRow,
+				endRow: cell.range.endRow,
+				startColumn: cell.range.startColumn,
+				endColumn: cell.range.endColumn
+			};
 		} else {
 			return CellRange.fromSingleRowColumn(this._cellModel.getRowAtOffset(y), this._cellModel.getColumnAtOffset(x));
 		}
@@ -403,7 +408,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			initial
 		}, true);
 
-		this._lazyRenderingSchedulerSubject.next();
+		this._repaintScheduler.next();
 	}
 
 	/**
@@ -483,7 +488,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			start.startScrollOffset.x + (start.startX - x),
 			start.startScrollOffset.y + (start.startY - y)
 		)) {
-			this._lazyRenderingSchedulerSubject.next();
+			this._repaintScheduler.next();
 		}
 	}
 
@@ -508,7 +513,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			const maxY = viewPortHeight - this._lastRenderingContext.scrollBar.vertical.length;
 
 			if (this._scrollToY(curY / maxY * (tableHeight - viewPortHeight))) {
-				this._lazyRenderingSchedulerSubject.next();
+				this._repaintScheduler.next();
 			}
 		}
 		if (start.scrollHorizontally) {
@@ -524,7 +529,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			const maxX = viewPortWidth - this._lastRenderingContext.scrollBar.horizontal.length;
 
 			if (this._scrollToX(curX / maxX * (tableWidth - viewPortWidth))) {
-				this._lazyRenderingSchedulerSubject.next();
+				this._repaintScheduler.next();
 			}
 		}
 	}
@@ -638,7 +643,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		CanvasUtil.setCanvasSize(this._canvasElement, newBounds.width, newBounds.height, this._devicePixelRatio);
 
 		// Schedule a repaint
-		this._lazyRenderingSchedulerSubject.next();
+		this._repaintScheduler.next();
 	}
 
 	/**
@@ -646,14 +651,89 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onKeyDown(event: KeyboardEvent): void {
-		if (event.code === "Space") {
-			event.preventDefault();
-			this._isInMouseDragMode = true;
-		} else if (event.code === "Tab") {
-			event.preventDefault();
-			this._moveInitialSelection(event.shiftKey ? -1 : 1, 0);
-		} else if (event.code === "Enter") {
-			this._moveInitialSelection(0, event.shiftKey ? -1 : 1);
+		switch (event.code) {
+			case "Space":
+				event.preventDefault();
+				this._isInMouseDragMode = true;
+				break;
+			case "Tab":
+				event.preventDefault();
+				this._moveInitialSelection(event.shiftKey ? -1 : 1, 0);
+				break;
+			case "Enter":
+				this._moveInitialSelection(0, event.shiftKey ? -1 : 1);
+				break;
+			case "ArrowDown":
+			case "ArrowLeft":
+			case "ArrowRight":
+			case "ArrowUp":
+				const extend: boolean = event.shiftKey;
+				const jump: boolean = event.ctrlKey;
+
+				let xDiff: number = 0;
+				if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
+					xDiff = event.code === "ArrowLeft" ? -1 : 1;
+				}
+
+				let yDiff: number = 0;
+				if (event.code === "ArrowUp" || event.code === "ArrowDown") {
+					yDiff = event.code === "ArrowUp" ? -1 : 1;
+				}
+
+				if (extend) {
+					this._extendSelection(xDiff, yDiff, jump);
+				} else {
+					this._moveSelection(xDiff, yDiff, jump);
+				}
+				break;
+		}
+	}
+
+	/**
+	 * Move the current primary selection (if any).
+	 * @param xDiff to move horizontally
+	 * @param yDiff to move vertically
+	 * @param jump whether to jump to the end in the specified direction
+	 */
+	private _moveSelection(xDiff: number, yDiff: number, jump: boolean): void {
+		const primary: ISelection = this._selectionModel.getPrimary();
+		if (!primary) {
+			return; // Nothing to move
+		}
+
+		if (this._selectionModel.moveSelection(primary, xDiff, yDiff, jump)) {
+			this.scrollTo(primary.initial.row, primary.initial.column);
+
+			this._repaintScheduler.next();
+		}
+	}
+
+	/**
+	 * Extend the current primary selection (if any) in the specified direction.
+	 * @param xDiff to extend horizontally
+	 * @param yDiff to extend vertically
+	 * @param jump whether to jump to the end in the specified direction
+	 */
+	private _extendSelection(xDiff: number, yDiff: number, jump: boolean): void {
+		const primary: ISelection = this._selectionModel.getPrimary();
+		if (!primary) {
+			return; // Nothing to extend
+		}
+
+		if (this._selectionModel.extendSelection(primary, xDiff, yDiff, jump)) {
+			let rowToScrollTo: number = primary.initial.row;
+			if (yDiff !== 0) {
+				rowToScrollTo = yDiff < 0 ? primary.range.startRow : primary.range.endRow;
+			}
+
+			let columnToScrollTo: number = primary.initial.column;
+			if (xDiff !== 0) {
+				columnToScrollTo = xDiff < 0 ? primary.range.startColumn : primary.range.endColumn;
+			}
+
+			this.scrollTo(rowToScrollTo, columnToScrollTo);
+
+			this._repaintScheduler.next();
 		}
 	}
 
@@ -672,7 +752,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const primary = this._selectionModel.getPrimary();
 		this.scrollTo(primary.initial.row, primary.initial.column);
 
-		this._lazyRenderingSchedulerSubject.next();
+		this._repaintScheduler.next();
 	}
 
 	/**
@@ -700,12 +780,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		if (bounds.left < startX) {
 			// Scroll to the left
 			if (this._scrollToX(bounds.left)) {
-				this._lazyRenderingSchedulerSubject.next();
+				this._repaintScheduler.next();
 			}
 		} else if (bounds.left + bounds.width > endX) {
 			// Scroll to the right
 			if (this._scrollToX(bounds.left + bounds.width - viewPortWidth)) {
-				this._lazyRenderingSchedulerSubject.next();
+				this._repaintScheduler.next();
 			}
 		}
 
@@ -715,12 +795,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		if (bounds.top < startY) {
 			// Scroll to the top
 			if (this._scrollToY(bounds.top)) {
-				this._lazyRenderingSchedulerSubject.next();
+				this._repaintScheduler.next();
 			}
 		} else if (bounds.top + bounds.height > endY) {
 			// Scroll to the bottom
 			if (this._scrollToY(bounds.top + bounds.height - viewPortHeight)) {
-				this._lazyRenderingSchedulerSubject.next();
+				this._repaintScheduler.next();
 			}
 		}
 	}
@@ -757,7 +837,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const newScrollOffsetY: number = this._scrollOffset.y + (switchScrollDirection ? scrollDeltaX : scrollDeltaY);
 
 		if (this._scrollTo(newScrollOffsetX, newScrollOffsetY)) {
-			this._lazyRenderingSchedulerSubject.next();
+			this._repaintScheduler.next();
 		}
 	}
 

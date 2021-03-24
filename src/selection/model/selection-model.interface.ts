@@ -38,16 +38,20 @@ export interface ISelectionModel {
 	 * @param selection to extend
 	 * @param xDiff horizontal offset to extend by
 	 * @param yDiff vertical offset to extend by
+	 * @param jump whether to jump to the very end in the specified direction
+	 * @returns whether the selection changed
 	 */
-	extendSelection(selection: ISelection, xDiff: number, yDiff: number): void;
+	extendSelection(selection: ISelection, xDiff: number, yDiff: number, jump: boolean): boolean;
 
 	/**
 	 * Move the passed selection in the given direction.
 	 * @param selection to move
 	 * @param xDiff horizontal offset to move by
 	 * @param yDiff vertical offset to move by
+	 * @param jump whether to jump to the very end in the specified direction
+	 * @returns whether the selection changed
 	 */
-	moveSelection(selection: ISelection, xDiff: number, yDiff: number): void;
+	moveSelection(selection: ISelection, xDiff: number, yDiff: number, jump: boolean): boolean;
 
 	/**
 	 * Move the initial in the current primary selection (if any)
