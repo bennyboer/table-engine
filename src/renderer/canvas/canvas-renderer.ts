@@ -587,6 +587,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				row: this._initialSelectionRange.startRow,
 				column: this._initialSelectionRange.startColumn,
 			}, false, false, true);
+
+			this._initialSelectionRange = null;
 		}
 	}
 
