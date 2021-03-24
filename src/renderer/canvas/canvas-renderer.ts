@@ -178,6 +178,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 */
 	private _initialSelectionRange: ICellRange | null;
 
+	/**
+	 * Current auto-scrolling state.
+	 * Auto-scrolling is used when selecting and the mouse is outside viewport bounds.
+	 */
+	private _autoScrollContext: IAutoScrollContext | null = null;
+
 	constructor() {
 		this._registerDefaultCellRenderers();
 	}
@@ -522,7 +528,80 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					row: this._initialSelectionRange.startRow,
 					column: this._initialSelectionRange.startColumn,
 				}, false, false, false);
+
+				// Initialize automatic scrolling when out of viewport bounds with the mouse
+				const viewPortBounds: IRectangle = this._lastRenderingContext.viewPort;
+				const outOfViewPortBoundsX: boolean = x < 0 || x > viewPortBounds.width;
+				const outOfViewPortBoundsY: boolean = y < 0 || y > viewPortBounds.height;
+				if (outOfViewPortBoundsX || outOfViewPortBoundsY) {
+					this._updateAutoScrolling(
+						outOfViewPortBoundsX ? (x < 0 ? x : x - viewPortBounds.width) : 0,
+						outOfViewPortBoundsY ? (y < 0 ? y : y - viewPortBounds.height) : 0
+					);
+				} else {
+					this._stopAutoScrolling();
+				}
 			}
+		}
+	}
+
+	/**
+	 * Update or start automatic scrolling.
+	 * @param xDiff horizontal offset from the viewport bounds
+	 * @param yDiff vertical offset from the viewport bounds
+	 */
+	private _updateAutoScrolling(xDiff: number, yDiff: number): void {
+		console.log(xDiff + " " + yDiff);
+
+		// this._stopAutoScrolling();
+
+		if (!!this._autoScrollContext) {
+			this._autoScrollContext.xDiff = xDiff;
+			this._autoScrollContext.yDiff = yDiff;
+		} else {
+			this._autoScrollContext = {
+				animationFrameID: window.requestAnimationFrame((timestamp) => this._autoScrollStep(timestamp, this._autoScrollContext.lastTimestamp)),
+				lastTimestamp: window.performance.now(),
+				xDiff: xDiff,
+				yDiff: yDiff
+			};
+		}
+	}
+
+	/**
+	 * Step for auto scrolling.
+	 * This will scroll by a small amount in the current auto-scrolling direction.
+	 * @param timestamp the current timestamp
+	 * @param oldTimestamp the last timestamp
+	 */
+	private _autoScrollStep(timestamp: number, oldTimestamp: number): void {
+		const diff: number = timestamp - oldTimestamp;
+		this._autoScrollContext.lastTimestamp = timestamp;
+
+		const baseOffsetToScroll = this._options.canvas.selection.autoScrollingSpeed * (diff / 1000);
+
+		const xScrollDiff: number = this._autoScrollContext.xDiff * baseOffsetToScroll;
+		const yScrollDiff: number = this._autoScrollContext.yDiff * baseOffsetToScroll;
+
+		if (this._scrollTo(
+			this._scrollOffset.x + xScrollDiff,
+			this._scrollOffset.y + yScrollDiff
+		)) {
+			this._repaintScheduler.next();
+		}
+
+		// Schedule next animation frame
+		this._autoScrollContext.animationFrameID = window.requestAnimationFrame((timestamp) => this._autoScrollStep(timestamp, this._autoScrollContext.lastTimestamp));
+	}
+
+	/**
+	 * Stop automatic scrolling.
+	 */
+	private _stopAutoScrolling(): void {
+		if (!!this._autoScrollContext) {
+			window.cancelAnimationFrame(this._autoScrollContext.animationFrameID);
+
+			this._autoScrollContext = null;
 		}
 	}
 
@@ -607,6 +686,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			}, false, false, true);
 
 			this._initialSelectionRange = null;
+			this._stopAutoScrolling(); // Stop automatic scrolling (when in progress)
 		}
 	}
 
@@ -730,6 +810,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			case "Enter":
 				this._moveInitialSelection(0, event.shiftKey ? -1 : 1);
 				break;
+			case "KeyA":
+				if (event.ctrlKey) {
+					event.preventDefault();
+
+					// Select all cells
+					this._selectAll();
+				}
+				break;
 			case "ArrowDown":
 			case "ArrowLeft":
 			case "ArrowRight":
@@ -754,6 +842,33 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				}
 				break;
 		}
+	}
+
+	/**
+	 * Select all cells.
+	 */
+	private _selectAll(): void {
+		this._selectionModel.clear();
+
+		const firstVisibleRow: number = this._cellModel.findNextVisibleRow(0);
+		const firstVisibleColumn: number = this._cellModel.findNextVisibleColumn(0);
+		const lastVisibleRow: number = this._cellModel.findPreviousVisibleRow(this._cellModel.getRowCount() - 1);
+		const lastVisibleColumn: number = this._cellModel.findPreviousVisibleColumn(this._cellModel.getColumnCount() - 1);
+
+		this._selectionModel.addSelection({
+			range: {
+				startRow: firstVisibleRow,
+				endRow: lastVisibleRow,
+				startColumn: firstVisibleColumn,
+				endColumn: lastVisibleColumn
+			},
+			initial: {
+				row: firstVisibleRow,
+				column: firstVisibleColumn
+			}
+		}, true, false);
+
+		this._repaintScheduler.next();
 	}
 
 	/**
@@ -1954,5 +2069,32 @@ interface IMouseDragContext {
 	 * Scroll offset to the start of the dragging.
 	 */
 	startScrollOffset: IScrollOffset;
+
+}
+
+/**
+ * Context describing the current auto-scrolling state.
+ */
+interface IAutoScrollContext {
+
+	/**
+	 * ID of the current animation frame requested.
+	 */
+	animationFrameID: number;
+
+	/**
+	 * Last timestamp (in milliseconds) for the automatic scrolling animation.
+	 */
+	lastTimestamp: number;
+
+	/**
+	 * Last x-diff value.
+	 */
+	xDiff: number;
+
+	/**
+	 * Last y-diff value.
+	 */
+	yDiff: number;
 
 }

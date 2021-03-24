@@ -26,6 +26,11 @@ const DEFAULT_SECONDARY_SELECTION_BACKGROUND_COLOR: IColor = {red: 50, green: 50
 const DEFAULT_SELECTION_BORDER_SIZE: number = 1;
 
 /**
+ * The default automatic scrolling speed.
+ */
+const DEFAULT_AUTO_SCROLL_SPEED: number = 3;
+
+/**
  * Options regarding the selection to display.
  */
 export interface ISelectionRenderingOptions {
@@ -44,6 +49,11 @@ export interface ISelectionRenderingOptions {
 	 * Colors for the secondary selection.
 	 */
 	secondary?: ISelectionColors;
+
+	/**
+	 * Speed for automatic scrolling (when selection is in progress and mouse is moving outside viewport bounds).
+	 */
+	autoScrollingSpeed?: number;
 
 }
 
@@ -99,6 +109,10 @@ export const fillOptions = (options?: ISelectionRenderingOptions) => {
 
 	if (!options.secondary.borderColor) {
 		options.secondary.borderColor = DEFAULT_SECONDARY_SELECTION_BORDER_COLOR;
+	}
+
+	if (options.autoScrollingSpeed === undefined || options.autoScrollingSpeed === null) {
+		options.autoScrollingSpeed = DEFAULT_AUTO_SCROLL_SPEED;
 	}
 
 	return options;
