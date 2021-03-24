@@ -15,7 +15,6 @@ import {IColor} from "../../util/color";
 import {ISelectionModel} from "../../selection/model/selection-model.interface";
 import {IInitialPosition, ISelection} from "../../selection/selection";
 import {ISelectionRenderingOptions} from "../options/selection";
-import {CellRangeUtil} from "../../cell/range/cell-range-util";
 
 /**
  * Table-engine renderer using the HTML5 canvas.
@@ -170,7 +169,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	/**
 	 * Context of the current panning of the workspace (using fingers).
 	 */
-	private _panningStart: IMouseDragContext | null = null;
+	private _panningStart: ITouchPanContext | null = null;
 
 	/**
 	 * The initially selected cell range of the current selection process (if in progress).
@@ -503,7 +502,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				if (outOfViewPortBoundsX || outOfViewPortBoundsY) {
 					this._updateAutoScrolling(
 						outOfViewPortBoundsX ? (x < 0 ? x : x - viewPortBounds.width) : 0,
-						outOfViewPortBoundsY ? (y < 0 ? y : y - viewPortBounds.height) : 0
+						outOfViewPortBoundsY ? (y < 0 ? y : y - viewPortBounds.height) : 0,
+						0
 					);
 				} else {
 					this._stopAutoScrolling();
@@ -516,8 +516,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Update or start automatic scrolling.
 	 * @param xDiff horizontal offset from the viewport bounds
 	 * @param yDiff vertical offset from the viewport bounds
+	 * @param acceleration to apply
 	 */
-	private _updateAutoScrolling(xDiff: number, yDiff: number): void {
+	private _updateAutoScrolling(xDiff: number, yDiff: number, acceleration: number): void {
 		if (!!this._autoScrollContext) {
 			this._autoScrollContext.xDiff = xDiff;
 			this._autoScrollContext.yDiff = yDiff;
@@ -526,7 +527,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				animationFrameID: window.requestAnimationFrame((timestamp) => this._autoScrollStep(timestamp, this._autoScrollContext.lastTimestamp)),
 				lastTimestamp: window.performance.now(),
 				xDiff: xDiff,
-				yDiff: yDiff
+				yDiff: yDiff,
+				acceleration
 			};
 		}
 	}
@@ -546,6 +548,18 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const xScrollDiff: number = this._autoScrollContext.xDiff * baseOffsetToScroll;
 		const yScrollDiff: number = this._autoScrollContext.yDiff * baseOffsetToScroll;
 
+		// Accelerate (or slow)
+		if (this._autoScrollContext.xDiff > 0) {
+			this._autoScrollContext.xDiff = Math.max(this._autoScrollContext.xDiff + this._autoScrollContext.acceleration * diff / 1000, 0);
+		} else {
+			this._autoScrollContext.xDiff = Math.min(this._autoScrollContext.xDiff - this._autoScrollContext.acceleration * diff / 1000, 0);
+		}
+		if (this._autoScrollContext.yDiff > 0) {
+			this._autoScrollContext.yDiff = Math.max(this._autoScrollContext.yDiff + this._autoScrollContext.acceleration * diff / 1000, 0);
+		} else {
+			this._autoScrollContext.yDiff = Math.min(this._autoScrollContext.yDiff - this._autoScrollContext.acceleration * diff / 1000, 0);
+		}
+
 		if (this._scrollTo(
 			this._scrollOffset.x + xScrollDiff,
 			this._scrollOffset.y + yScrollDiff
@@ -554,7 +568,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 
 		// Schedule next animation frame
-		this._autoScrollContext.animationFrameID = window.requestAnimationFrame((timestamp) => this._autoScrollStep(timestamp, this._autoScrollContext.lastTimestamp));
+		if (this._autoScrollContext.xDiff !== 0 || this._autoScrollContext.yDiff !== 0) {
+			this._autoScrollContext.animationFrameID = window.requestAnimationFrame((timestamp) => this._autoScrollStep(timestamp, this._autoScrollContext.lastTimestamp));
+		} else {
+			this._stopAutoScrolling();
+		}
 	}
 
 	/**
@@ -668,11 +686,16 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			this._panningStart = {
 				startX: x,
 				startY: y,
+				lastX: x,
+				lastY: y,
+				speedX: 0,
+				speedY: 0,
+				lastTimestamp: window.performance.now(),
 				startScrollOffset: {
 					x: this._scrollOffset.x,
 					y: this._scrollOffset.y
 				},
-				isClick: true
+				isTap: true
 			};
 			event.preventDefault();
 		}
@@ -689,7 +712,18 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			if (touch.identifier === this._startTouchID) {
 				const [x, y] = this._getMouseOffset(touch);
 
-				this._panningStart.isClick = false; // Finger moved, so this cannot be a tap event
+				this._panningStart.isTap = false; // Finger moved, so this cannot be a tap event
+
+				const currentTimestamp = window.performance.now();
+				const diff = currentTimestamp - this._panningStart.lastTimestamp;
+				this._panningStart.lastTimestamp = currentTimestamp;
+
+				this._panningStart.speedX = (x - this._panningStart.lastX) / diff;
+				this._panningStart.speedY = (y - this._panningStart.lastY) / diff;
+
+				this._panningStart.lastX = x;
+				this._panningStart.lastY = y;
+
 				this._onViewPortMove(x, y, this._panningStart);
 			}
 		}
@@ -703,10 +737,16 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		for (let i = 0; i < event.changedTouches.length; i++) {
 			const touch: Touch = event.changedTouches[i];
 			if (touch.identifier === this._startTouchID) {
-				if (event.changedTouches.length === 1 && this._panningStart.isClick) {
-					// Select cell at the position
-					const [x, y] = this._getMouseOffset(touch);
+				const [x, y] = this._getMouseOffset(touch);
 
+				this._updateAutoScrolling(
+					-this._panningStart.speedX * this._options.canvas.scrolling.touchScrollingSpeedFactor,
+					-this._panningStart.speedY * this._options.canvas.scrolling.touchScrollingSpeedFactor,
+					this._options.canvas.scrolling.touchScrollingAcceleration
+				);
+
+				if (event.changedTouches.length === 1 && this._panningStart.isTap) {
+					// Select cell at the position
 					this._initialSelectionRange = this._getCellRangeAtPoint(x, y);
 					this._updateCurrentSelection(this._initialSelectionRange, {
 						row: this._initialSelectionRange.startRow,
@@ -2053,11 +2093,42 @@ interface IMouseDragContext {
 	 */
 	startScrollOffset: IScrollOffset;
 
+}
+
+/**
+ * Context holding info about a workspace dragging via touch.
+ */
+interface ITouchPanContext extends IMouseDragContext {
+
 	/**
-	 * Whether the touch event is a click event.
-	 * This is only important for touch events to detect taps.
+	 * Whether the panning did not move and is thus a tap event.
 	 */
-	isClick?: boolean;
+	isTap: boolean;
+
+	/**
+	 * Last x position..
+	 */
+	lastX: number;
+
+	/**
+	 * Last y position.
+	 */
+	lastY: number;
+
+	/**
+	 * Current speed in x direction.
+	 */
+	speedX: number;
+
+	/**
+	 * Current speed in y direction.
+	 */
+	speedY: number;
+
+	/**
+	 * Last movement timestamp.
+	 */
+	lastTimestamp: number;
 
 }
 
@@ -2085,5 +2156,10 @@ interface IAutoScrollContext {
 	 * Last y-diff value.
 	 */
 	yDiff: number;
+
+	/**
+	 * Acceleration per second (may be negative (slowing) or positive (accelerating))
+	 */
+	acceleration: number;
 
 }
