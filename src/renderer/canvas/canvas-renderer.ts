@@ -15,7 +15,7 @@ import {CellRange, ICellRange} from "../../cell/range/cell-range";
 import {IColor} from "../../util/color";
 import {ISelectionModel} from "../../selection/model/selection-model.interface";
 import {IInitialPosition, ISelection} from "../../selection/selection";
-import {ISelectionOptions} from "../options/selection";
+import {ISelectionRenderingOptions} from "../options/selection";
 
 /**
  * Table-engine renderer using the HTML5 canvas.
@@ -362,7 +362,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				this._updateCurrentSelection(this._initialSelectionRange, {
 					row: this._initialSelectionRange.startRow,
 					column: this._initialSelectionRange.startColumn,
-				});
+				}, !event.ctrlKey, true, false);
 			}
 		}
 	}
@@ -400,13 +400,44 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Update the current selection to the passed cell range.
 	 * @param range to update current selection to
 	 * @param initial to update current selection to
+	 * @param clear whether to clear the current selection(s)
+	 * @param push whether to add or update the current primary selection
+	 * @param end whether the selection will no more change (for example on mouse move end)
 	 */
-	private _updateCurrentSelection(range: ICellRange, initial: IInitialPosition): void {
-		this._selectionModel.clear();
-		this._selectionModel.addSelection({
-			range,
-			initial
-		}, true);
+	private _updateCurrentSelection(range: ICellRange, initial: IInitialPosition, clear: boolean, push: boolean, end: boolean): void {
+		if (clear) {
+			this._selectionModel.clear();
+		}
+
+		if (push) {
+			this._selectionModel.addSelection({
+				range,
+				initial
+			}, true, end);
+		} else {
+			// Only change and validate range of current primary selection
+			const primary = this._selectionModel.getPrimary();
+			if (!primary) {
+				return;
+			}
+
+			primary.range = range;
+			primary.initial = initial;
+
+			const result = this._selectionModel.validate(primary, end);
+			if (end) {
+				// Remove primary again
+				this._selectionModel.removeSelection(primary);
+
+				for (const s of result.toRemove) {
+					this._selectionModel.removeSelection(s);
+				}
+				for (const s of result.toAdd) {
+					this._selectionModel.addSelection(s, false, false);
+				}
+				this._selectionModel.setPrimary(this._selectionModel.getSelections().length - result.toAdd.length);
+			}
+		}
 
 		this._repaintScheduler.next();
 	}
@@ -472,7 +503,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				}, {
 					row: this._initialSelectionRange.startRow,
 					column: this._initialSelectionRange.startColumn,
-				});
+				}, false, false, false);
 			}
 		}
 	}
@@ -541,6 +572,22 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _onMouseUp(event: MouseEvent): void {
 		this._scrollBarDragStart = null; // Reset scroll bar dragging
 		this._mouseDragStart = null; // Reset workspace dragging via mouse/touch
+
+		if (!!this._initialSelectionRange) {
+			// End selection extending
+			const [x, y] = this._getMouseOffset(event);
+			const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
+
+			this._updateCurrentSelection({
+				startRow: Math.min(this._initialSelectionRange.startRow, targetRange.startRow),
+				endRow: Math.max(this._initialSelectionRange.endRow, targetRange.endRow),
+				startColumn: Math.min(this._initialSelectionRange.startColumn, targetRange.startColumn),
+				endColumn: Math.max(this._initialSelectionRange.endColumn, targetRange.endColumn),
+			}, {
+				row: this._initialSelectionRange.startRow,
+				column: this._initialSelectionRange.startColumn,
+			}, false, false, true);
+		}
 	}
 
 	/**
@@ -1050,7 +1097,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		for (const s of selections) {
 			this._addInfosForSelection(
 				result,
-				primary,
+				s,
 				viewPort,
 				fixedRows,
 				fixedColumns,
@@ -1646,7 +1693,7 @@ interface ISelectionRenderContext {
 	/**
 	 * Selection options.
 	 */
-	options: ISelectionOptions;
+	options: ISelectionRenderingOptions;
 
 	/**
 	 * Selections rectangles completely contained in the non-fixed area.

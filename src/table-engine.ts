@@ -54,8 +54,12 @@ export class TableEngine {
 	constructor(container: HTMLElement, cellModel: ICellModel, options?: ITableEngineOptions) {
 		this._container = container;
 		this._cellModel = cellModel;
-		this._selectionModel = new SelectionModel(this._cellModel);
+
+		// Initialize options
 		this._options = fillOptions(options);
+
+		// Initialize selection model
+		this._selectionModel = new SelectionModel(this._cellModel, this._options.selection);
 
 		// Initialize renderer
 		this._renderer = RendererFactory.getRendererInstance(this._options.renderer.type);
@@ -95,6 +99,13 @@ export class TableEngine {
 	 */
 	public getCellModel(): ICellModel {
 		return this._cellModel;
+	}
+
+	/**
+	 * Get the table engines selection model.
+	 */
+	public getSelectionModel(): ISelectionModel {
+		return this._selectionModel;
 	}
 
 	/**

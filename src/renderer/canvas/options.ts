@@ -1,5 +1,5 @@
 import {fillOptions as fillScrollBarOptions, IScrollBarOptions} from "../options/scrollbar";
-import {fillOptions as fillSelectionOptions, ISelectionOptions} from "../options/selection";
+import {fillOptions as fillSelectionOptions, ISelectionRenderingOptions} from "../options/selection";
 
 /**
  * Duration in milliseconds used to throttle high-rate events
@@ -29,7 +29,7 @@ export interface ICanvasRendererOptions {
 	/**
 	 * Options regarding the selection appearance.
 	 */
-	selection?: ISelectionOptions;
+	selection?: ISelectionRenderingOptions;
 
 }
 

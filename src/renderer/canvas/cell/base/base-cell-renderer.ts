@@ -21,9 +21,11 @@ export class BaseCellRenderer implements ICanvasCellRenderer {
 	 * @param ctx to render with
 	 */
 	public before(ctx: CanvasRenderingContext2D): void {
+		// TODO Make those things customizable (Renderer options?)
 		ctx.font = "12px sans-serif";
 		ctx.fillStyle = "#333333";
-		ctx.textBaseline = "top";
+		ctx.textBaseline = "middle";
+		ctx.textAlign = "center";
 	}
 
 	/**
@@ -42,7 +44,7 @@ export class BaseCellRenderer implements ICanvasCellRenderer {
 	 * @param bounds to render cell in
 	 */
 	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
-		ctx.fillText(`${cell.value}`, Math.round(bounds.left), Math.round(bounds.top));
+		ctx.fillText(`${cell.value}`, Math.round(bounds.left + bounds.width / 2), Math.round(bounds.top + bounds.height / 2));
 	}
 
 }

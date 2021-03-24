@@ -25,8 +25,22 @@ export interface ISelectionModel {
 	 * Add a selection to the model.
 	 * @param selection to add
 	 * @param validate whether to validate the passed selection first
+	 * @param subtract whether to subtract from existing selections when needed
 	 */
-	addSelection(selection: ISelection, validate: boolean): void;
+	addSelection(selection: ISelection, validate: boolean, subtract: boolean): void;
+
+	/**
+	 * Remove a selection already existing in the model.
+	 * @param selection to remove
+	 */
+	removeSelection(selection: ISelection): void;
+
+	/**
+	 * Validate the passed selection that must be in the current selection model.
+	 * @param selection to validate
+	 * @param subtract whether to subtract from existing selections when needed
+	 */
+	validate(selection: ISelection, subtract: boolean): IValidationResult;
 
 	/**
 	 * Clear all selections.
@@ -60,5 +74,22 @@ export interface ISelectionModel {
 	 * @param yDiff vertical offset to move by
 	 */
 	moveInitial(xDiff: number, yDiff: number): void;
+
+}
+
+/**
+ * Result of a selection validation.
+ */
+export interface IValidationResult {
+
+	/**
+	 * Selections to remove.
+	 */
+	toRemove: ISelection[];
+
+	/**
+	 * Selections to add.
+	 */
+	toAdd: ISelection[];
 
 }

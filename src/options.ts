@@ -1,4 +1,5 @@
 import {IRendererOptions, fillOptions as fillRendererOptions} from "./renderer/options";
+import {ISelectionOptions, fillOptions as fillSelectionOptions} from "./selection/options";
 
 /**
  * Options used to modify the table engine behavior.
@@ -9,6 +10,11 @@ export interface ITableEngineOptions {
 	 * Options regarding the table-engine renderer.
 	 */
 	renderer?: IRendererOptions;
+
+	/**
+	 * Options regarding the table-engines selection model.
+	 */
+	selection?: ISelectionOptions;
 
 }
 
@@ -22,8 +28,14 @@ export const fillOptions = (options?: ITableEngineOptions) => {
 	}
 
 	if (!options.renderer) {
-		options.renderer = fillRendererOptions(options.renderer);
+		options.renderer = {};
 	}
+	options.renderer = fillRendererOptions(options.renderer);
+
+	if (!options.selection) {
+		options.selection = {};
+	}
+	options.selection = fillSelectionOptions(options.selection);
 
 	return options;
 };

@@ -13,12 +13,12 @@ const DEFAULT_PRIMARY_SELECTION_BACKGROUND_COLOR: IColor = {red: 109, green: 136
 /**
  * Default secondary selection border color.
  */
-const DEFAULT_SECONDARY_SELECTION_BORDER_COLOR: IColor = {red: 50, green: 50, blue: 50, alpha: 0.4};
+const DEFAULT_SECONDARY_SELECTION_BORDER_COLOR: IColor = {red: 100, green: 100, blue: 100, alpha: 0.3};
 
 /**
  * Default secondary selection background color.
  */
-const DEFAULT_SECONDARY_SELECTION_BACKGROUND_COLOR: IColor = {red: 50, green: 50, blue: 50, alpha: 0.2};
+const DEFAULT_SECONDARY_SELECTION_BACKGROUND_COLOR: IColor = {red: 50, green: 50, blue: 50, alpha: 0.1};
 
 /**
  * Default selection border size.
@@ -28,7 +28,7 @@ const DEFAULT_SELECTION_BORDER_SIZE: number = 1;
 /**
  * Options regarding the selection to display.
  */
-export interface ISelectionOptions {
+export interface ISelectionRenderingOptions {
 
 	/**
 	 * Size of the selection border.
@@ -68,7 +68,7 @@ export interface ISelectionColors {
  * Function used to fill the options
  * where there are no options set by the user.
  */
-export const fillOptions = (options?: ISelectionOptions) => {
+export const fillOptions = (options?: ISelectionRenderingOptions) => {
 	if (!options) {
 		options = {};
 	}

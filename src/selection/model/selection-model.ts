@@ -1,9 +1,10 @@
-import {ISelectionModel} from "./selection-model.interface";
+import {ISelectionModel, IValidationResult} from "./selection-model.interface";
 import {ISelection} from "../selection";
 import {CellRange, ICellRange} from "../../cell/range/cell-range";
 import {ICellModel} from "../../cell/model/cell-model.interface";
 import {ICell} from "../../cell/cell";
 import {CellRangeUtil} from "../../cell/range/cell-range-util";
+import {ISelectionOptions} from "../options";
 
 /**
  * Model managing a table selection.
@@ -20,7 +21,10 @@ export class SelectionModel implements ISelectionModel {
 	 */
 	private _primaryIndex: number = -1;
 
-	constructor(private readonly _cellModel: ICellModel) {
+	constructor(
+		private readonly _cellModel: ICellModel,
+		private readonly _options: ISelectionOptions
+	) {
 	}
 
 	/**
@@ -44,6 +48,15 @@ export class SelectionModel implements ISelectionModel {
 		}
 
 		this._primaryIndex = index;
+
+		// Make sure primary selection has the initial row/column set
+		const primary: ISelection = this.getPrimary();
+		if (!primary.initial) {
+			primary.initial = {
+				row: primary.range.startRow,
+				column: primary.range.startColumn
+			};
+		}
 	}
 
 	/**
@@ -57,10 +70,15 @@ export class SelectionModel implements ISelectionModel {
 	 * Add a selection to the model.
 	 * @param selection to add
 	 * @param validate whether to validate the selection first
+	 * @param subtract whether to subtract from existing selections when needed
 	 */
-	public addSelection(selection: ISelection, validate: boolean): void {
+	public addSelection(selection: ISelection, validate: boolean, subtract: boolean): void {
+		if (!this._options.allowMultiSelection) {
+			this.clear();
+		}
+
 		if (validate) {
-			const result = this._validateSelection(selection);
+			const result = this.validate(selection, subtract);
 
 			for (const s of result.toRemove) {
 				this._selections.splice(this._selections.indexOf(s), 1);
@@ -76,15 +94,44 @@ export class SelectionModel implements ISelectionModel {
 	}
 
 	/**
+	 * Remove a selection already existing in the model.
+	 * @param selection to remove
+	 */
+	public removeSelection(selection: ISelection): void {
+		const index = this._selections.indexOf(selection);
+		if (index > -1) {
+			this._selections.splice(index, 1);
+		}
+	}
+
+	/**
+	 * Validate the passed selection.
+	 * @param selection to validate
+	 * @param subtract whether to subtract from existing selections when needed
+	 */
+	public validate(selection: ISelection, subtract: boolean): IValidationResult {
+		return this._validateSelection(selection, subtract);
+	}
+
+	/**
 	 * Validate a selection.
 	 * For example to range over a complete merged cells.
 	 * @param selection to validate
+	 * @param subtract whether to also subtract if needed
 	 * @returns the selections to add and remove
 	 */
-	private _validateSelection(selection: ISelection): IValidationResult {
+	private _validateSelection(selection: ISelection, subtract: boolean): IValidationResult {
 		SelectionModel._validateCellRange(selection.range);
 		this._validateCellRangeContainAllMergedCells(selection);
-		return this._subtractIfNeeded(selection);
+
+		if (subtract) {
+			return this._subtractIfNeeded(selection);
+		} else {
+			return {
+				toAdd: [selection],
+				toRemove: []
+			};
+		}
 	}
 
 	/**
@@ -103,6 +150,10 @@ export class SelectionModel implements ISelectionModel {
 		}
 
 		for (const s of this._selections) {
+			if (s === selection) {
+				continue;
+			}
+
 			const isEnclosed: boolean = CellRangeUtil.contains(selection.range, s.range);
 			if (isEnclosed) {
 				// Divide selection that contains the new selection
@@ -710,22 +761,5 @@ export class SelectionModel implements ISelectionModel {
 
 		return previousVisibleColumn;
 	}
-
-}
-
-/**
- * Result of a selection validation.
- */
-interface IValidationResult {
-
-	/**
-	 * Selections to remove.
-	 */
-	toRemove: ISelection[];
-
-	/**
-	 * Selections to add.
-	 */
-	toAdd: ISelection[];
 
 }
