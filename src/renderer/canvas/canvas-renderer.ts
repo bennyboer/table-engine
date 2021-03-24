@@ -10,7 +10,6 @@ import {IScrollBarOptions} from "../options/scrollbar";
 import {ICell} from "../../cell/cell";
 import {ICellRenderer} from "../cell/cell-renderer";
 import {ICanvasCellRenderer} from "./cell/canvas-cell-renderer";
-import {BaseCellRenderer} from "./cell/base/base-cell-renderer";
 import {CellRange, ICellRange} from "../../cell/range/cell-range";
 import {IColor} from "../../util/color";
 import {ISelectionModel} from "../../selection/model/selection-model.interface";
@@ -185,14 +184,6 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _autoScrollContext: IAutoScrollContext | null = null;
 
 	constructor() {
-		this._registerDefaultCellRenderers();
-	}
-
-	/**
-	 * Register the HTML5 canvas default cell renderers.
-	 */
-	private _registerDefaultCellRenderers(): void {
-		this.registerCellRenderer(new BaseCellRenderer());
 	}
 
 	/**
@@ -432,31 +423,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				return;
 			}
 
-			const rangeChanged = !CellRangeUtil.equals(primary.range, range);
-			if (rangeChanged) {
-				primary.range = range;
-				repaint = true;
-			}
-
-			const initialChanged = primary.initial.row !== initial.row || primary.initial.column !== initial.column;
-			if (initialChanged) {
-				primary.initial = initial;
-				repaint = true;
-			}
-
-			const result = this._selectionModel.validate(primary, end);
-			if (end) {
-				// Remove primary again
-				this._selectionModel.removeSelection(primary);
-
-				for (const s of result.toRemove) {
-					this._selectionModel.removeSelection(s);
-				}
-				for (const s of result.toAdd) {
-					this._selectionModel.addSelection(s, false, false);
-				}
-				this._selectionModel.setPrimary(this._selectionModel.getSelections().length - result.toAdd.length);
-
+			if (this._selectionModel.modifySelection(primary, range, initial, true, end)) {
 				repaint = true;
 			}
 		}
@@ -551,10 +518,6 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param yDiff vertical offset from the viewport bounds
 	 */
 	private _updateAutoScrolling(xDiff: number, yDiff: number): void {
-		console.log(xDiff + " " + yDiff);
-
-		// this._stopAutoScrolling();
-
 		if (!!this._autoScrollContext) {
 			this._autoScrollContext.xDiff = xDiff;
 			this._autoScrollContext.yDiff = yDiff;

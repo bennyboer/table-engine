@@ -1,3 +1,75 @@
+import {ISelection} from "./selection";
+import {ICellModel} from "../cell/model/cell-model.interface";
+
+/**
+ * Selection transform that will transform selections that start in the first row
+ * or column to fill the entire selected row or column.
+ */
+export const ROW_COLUMN_HEADER_TRANSFORM: (selection: ISelection, cellModel: ICellModel, causedByMove: boolean) => boolean = (selection, cellModel, causedByMove: boolean) => {
+	if (causedByMove) {
+		// Prevent selection of the first row and column by move (keyboard navigation).
+		if (selection.initial.row === 0) {
+			selection.initial.row = 1;
+		}
+		if (selection.initial.column === 0) {
+			selection.initial.column = 1;
+		}
+		if (selection.range.startRow === 0) {
+			selection.range.startRow = 1;
+		}
+		if (selection.range.endRow === 0) {
+			selection.range.endRow = 1;
+		}
+		if (selection.range.startColumn === 0) {
+			selection.range.startColumn = 1;
+		}
+		if (selection.range.endColumn === 0) {
+			selection.range.endColumn = 1;
+		}
+	} else {
+		// Select a whole row/column or when clicking on corner cell select everything
+		if (selection.initial.row === 0 && selection.initial.column === 0) {
+			// Select all cells
+			selection.range = {
+				startRow: 1,
+				endRow: cellModel.getRowCount() - 1,
+				startColumn: 1,
+				endColumn: cellModel.getColumnCount() - 1
+			};
+			selection.initial = {
+				row: 1,
+				column: 1
+			};
+		} else if (selection.initial.row === 0) {
+			// Select whole column
+			selection.range = {
+				startRow: 1,
+				endRow: cellModel.getRowCount() - 1,
+				startColumn: selection.range.startColumn,
+				endColumn: selection.range.endColumn
+			};
+			selection.initial = {
+				row: 1,
+				column: selection.initial.column
+			};
+		} else if (selection.initial.column === 0) {
+			// Select whole row
+			selection.range = {
+				startRow: selection.range.startRow,
+				endRow: selection.range.endRow,
+				startColumn: 1,
+				endColumn: cellModel.getColumnCount() - 1
+			};
+			selection.initial = {
+				row: selection.initial.row,
+				column: 1
+			};
+		}
+	}
+
+	return true; // All other selections are allowed and do not need modification
+};
+
 /**
  * Options for the selection model.
  */
@@ -7,6 +79,15 @@ export interface ISelectionOptions {
 	 * Whether multiple selections are allowed.
 	 */
 	allowMultiSelection?: boolean;
+
+	/**
+	 * Transform for every selection added to the model.
+	 * @param selection to transform
+	 * @param cellModel the cell model
+	 * @param causedByMove whether the selection was caused by a move (keyboard navigation)
+	 * @returns whether the selection is allowed
+	 */
+	selectionTransform?: (selection: ISelection, cellModel: ICellModel, causedByMove: boolean) => boolean;
 
 }
 

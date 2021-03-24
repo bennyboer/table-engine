@@ -1,5 +1,5 @@
-import {ISelectionModel, IValidationResult} from "./selection-model.interface";
-import {ISelection} from "../selection";
+import {ISelectionModel} from "./selection-model.interface";
+import {IInitialPosition, ISelection} from "../selection";
 import {CellRange, ICellRange} from "../../cell/range/cell-range";
 import {ICellModel} from "../../cell/model/cell-model.interface";
 import {ICell} from "../../cell/cell";
@@ -78,18 +78,87 @@ export class SelectionModel implements ISelectionModel {
 		}
 
 		if (validate) {
-			const result = this.validate(selection, subtract);
-
-			for (const s of result.toRemove) {
-				this._selections.splice(this._selections.indexOf(s), 1);
+			const result = this._validateSelection(selection, subtract);
+			if (!!result) {
+				for (const s of result.toRemove) {
+					this._selections.splice(this._selections.indexOf(s), 1);
+				}
+				for (const s of result.toAdd) {
+					this._selections.push(s);
+				}
+				this.setPrimary(this._selections.length - result.toAdd.length);
 			}
-			for (const s of result.toAdd) {
-				this._selections.push(s);
-			}
-			this.setPrimary(this._selections.length - result.toAdd.length);
 		} else {
+			// When there is a selection transform we need to consult that first
+			// whether the selection is possible!
+			if (!!this._options.selectionTransform) {
+				if (!this._options.selectionTransform(selection, this._cellModel, false)) {
+					return; // Selection not allowed!
+				}
+			}
+
 			this._selections.push(selection);
 			this.setPrimary(this._selections.length - 1);
+		}
+	}
+
+	/**
+	 * Modify the passed selection, that is already in the selection model.
+	 * @param selection to modify
+	 * @param newRange to set
+	 * @param newInitial to set
+	 * @param validate whether to validate the passed selection first
+	 * @param subtract whether to subtract from existing selections when needed
+	 * @returns whether the selection model changed
+	 */
+	public modifySelection(selection: ISelection, newRange: ICellRange, newInitial: IInitialPosition, validate: boolean, subtract: boolean): boolean {
+		const oldRange = selection.range;
+		const oldInitial = selection.initial;
+
+		selection.range = newRange;
+		selection.initial = newInitial;
+
+		let undoChange: boolean = false;
+		let subtractChange: boolean = false;
+		if (validate) {
+			const result = this._validateSelection(selection, subtract);
+			if (!!result) {
+				// Remove selection first
+				this._selections.splice(this._selections.indexOf(selection), 1);
+
+				for (const s of result.toRemove) {
+					this._selections.splice(this._selections.indexOf(s), 1);
+				}
+				for (const s of result.toAdd) {
+					this._selections.push(s);
+				}
+				this.setPrimary(this._selections.length - result.toAdd.length);
+
+				subtractChange = result.toRemove.length > 0;
+			} else {
+				// Selection not allowed!
+				undoChange = true;
+			}
+		} else {
+			// When there is a selection transform we need to consult that first
+			// whether the selection is possible!
+			if (!!this._options.selectionTransform) {
+				if (!this._options.selectionTransform(selection, this._cellModel, false)) {
+					undoChange = true;
+				}
+			}
+		}
+
+		if (undoChange) {
+			selection.range = oldRange;
+			selection.initial = oldInitial;
+
+			return false;
+		} else {
+			const rangeChanged = !CellRangeUtil.equals(selection.range, oldRange);
+			const initialChanged = selection.initial.row !== oldInitial.row || selection.initial.column !== oldInitial.column;
+
+			return rangeChanged || initialChanged || subtractChange;
 		}
 	}
 
@@ -105,24 +174,23 @@ export class SelectionModel implements ISelectionModel {
 	}
 
 	/**
-	 * Validate the passed selection.
-	 * @param selection to validate
-	 * @param subtract whether to subtract from existing selections when needed
-	 */
-	public validate(selection: ISelection, subtract: boolean): IValidationResult {
-		return this._validateSelection(selection, subtract);
-	}
-
-	/**
 	 * Validate a selection.
 	 * For example to range over a complete merged cells.
 	 * @param selection to validate
 	 * @param subtract whether to also subtract if needed
-	 * @returns the selections to add and remove
+	 * @returns the selections to add and remove or null if the selection is not allowed
 	 */
-	private _validateSelection(selection: ISelection, subtract: boolean): IValidationResult {
+	private _validateSelection(selection: ISelection, subtract: boolean): IValidationResult | null {
 		SelectionModel._validateCellRange(selection.range);
 		this._validateCellRangeContainAllMergedCells(selection);
+
+		// When there is a selection transform we need to consult that first
+		// whether the selection is possible!
+		if (!!this._options.selectionTransform) {
+			if (!this._options.selectionTransform(selection, this._cellModel, false)) {
+				return null; // Selection not allowed
+			}
+		}
 
 		if (subtract) {
 			return this._subtractIfNeeded(selection);
@@ -321,7 +389,14 @@ export class SelectionModel implements ISelectionModel {
 						return false;
 					}
 
+					const oldValue = selection.range.endColumn;
 					selection.range.endColumn = newColumn;
+					if (!!this._options.selectionTransform) {
+						if (!this._options.selectionTransform(selection, this._cellModel, true)) {
+							selection.range.endColumn = oldValue; // Set old value
+							return false;
+						}
+					}
 
 					return true;
 				} else {
@@ -333,7 +408,14 @@ export class SelectionModel implements ISelectionModel {
 						return false;
 					}
 
+					const oldValue = selection.range.startColumn;
 					selection.range.startColumn = newColumn;
+					if (!!this._options.selectionTransform) {
+						if (!this._options.selectionTransform(selection, this._cellModel, true)) {
+							selection.range.startColumn = oldValue; // Set old value
+							return false;
+						}
+					}
 
 					return true;
 				}
@@ -347,7 +429,14 @@ export class SelectionModel implements ISelectionModel {
 						return false;
 					}
 
+					const oldValue = selection.range.startColumn;
 					selection.range.startColumn = newColumn;
+					if (!!this._options.selectionTransform) {
+						if (!this._options.selectionTransform(selection, this._cellModel, true)) {
+							selection.range.startColumn = oldValue; // Set old value
+							return false;
+						}
+					}
 
 					return true;
 				} else {
@@ -359,7 +448,14 @@ export class SelectionModel implements ISelectionModel {
 						return false;
 					}
 
+					const oldValue = selection.range.endColumn;
 					selection.range.endColumn = newColumn;
+					if (!!this._options.selectionTransform) {
+						if (!this._options.selectionTransform(selection, this._cellModel, true)) {
+							selection.range.endColumn = oldValue; // Set old value
+							return false;
+						}
+					}
 
 					return true;
 				}
@@ -377,7 +473,14 @@ export class SelectionModel implements ISelectionModel {
 						return false;
 					}
 
+					const oldValue = selection.range.endRow;
 					selection.range.endRow = newRow;
+					if (!!this._options.selectionTransform) {
+						if (!this._options.selectionTransform(selection, this._cellModel, true)) {
+							selection.range.endRow = oldValue; // Set old value
+							return false;
+						}
+					}
 
 					return true;
 				} else {
@@ -389,7 +492,14 @@ export class SelectionModel implements ISelectionModel {
 						return false;
 					}
 
+					const oldValue = selection.range.startRow;
 					selection.range.startRow = newRow;
+					if (!!this._options.selectionTransform) {
+						if (!this._options.selectionTransform(selection, this._cellModel, true)) {
+							selection.range.startRow = oldValue; // Set old value
+							return false;
+						}
+					}
 
 					return true;
 				}
@@ -403,7 +513,14 @@ export class SelectionModel implements ISelectionModel {
 						return false;
 					}
 
+					const oldValue = selection.range.startRow;
 					selection.range.startRow = newRow;
+					if (!!this._options.selectionTransform) {
+						if (!this._options.selectionTransform(selection, this._cellModel, true)) {
+							selection.range.startRow = oldValue; // Set old value
+							return false;
+						}
+					}
 
 					return true;
 				} else {
@@ -415,7 +532,14 @@ export class SelectionModel implements ISelectionModel {
 						return false;
 					}
 
+					const oldValue = selection.range.endRow;
 					selection.range.endRow = newRow;
+					if (!!this._options.selectionTransform) {
+						if (!this._options.selectionTransform(selection, this._cellModel, true)) {
+							selection.range.endRow = oldValue; // Set old value
+							return false;
+						}
+					}
 
 					return true;
 				}
@@ -445,8 +569,17 @@ export class SelectionModel implements ISelectionModel {
 					return false;
 				}
 
+				const oldRange = selection.range;
+				const oldInitial = selection.initial.column;
 				selection.range = this._findCellRange(selection.initial.row, previousColumn);
 				selection.initial.column = previousColumn;
+				if (!!this._options.selectionTransform) {
+					if (!this._options.selectionTransform(selection, this._cellModel, true)) {
+						selection.range = oldRange;
+						selection.initial.column = oldInitial;
+						return false;
+					}
+				}
 
 				return true;
 			} else {
@@ -458,8 +591,17 @@ export class SelectionModel implements ISelectionModel {
 					return false;
 				}
 
+				const oldRange = selection.range;
+				const oldInitial = selection.initial.column;
 				selection.range = this._findCellRange(selection.initial.row, nextColumn);
 				selection.initial.column = nextColumn;
+				if (!!this._options.selectionTransform) {
+					if (!this._options.selectionTransform(selection, this._cellModel, true)) {
+						selection.range = oldRange;
+						selection.initial.column = oldInitial;
+						return false;
+					}
+				}
 
 				return true;
 			}
@@ -475,8 +617,17 @@ export class SelectionModel implements ISelectionModel {
 					return false;
 				}
 
+				const oldRange = selection.range;
+				const oldInitial = selection.initial.row;
 				selection.range = this._findCellRange(previousRow, selection.initial.column);
 				selection.initial.row = previousRow;
+				if (!!this._options.selectionTransform) {
+					if (!this._options.selectionTransform(selection, this._cellModel, true)) {
+						selection.range = oldRange;
+						selection.initial.row = oldInitial;
+						return false;
+					}
+				}
 
 				return true;
 			} else {
@@ -488,8 +639,17 @@ export class SelectionModel implements ISelectionModel {
 					return false;
 				}
 
+				const oldRange = selection.range;
+				const oldInitial = selection.initial.row;
 				selection.range = this._findCellRange(nextRow, selection.initial.column);
 				selection.initial.row = nextRow;
+				if (!!this._options.selectionTransform) {
+					if (!this._options.selectionTransform(selection, this._cellModel, true)) {
+						selection.range = oldRange;
+						selection.initial.row = oldInitial;
+						return false;
+					}
+				}
 
 				return true;
 			}
@@ -566,19 +726,27 @@ export class SelectionModel implements ISelectionModel {
 			if (newPrimary === primary) {
 				// Primary did not change
 				if (moveToNextSelection) {
-					newPrimary.initial.row = firstVisibleRow;
-					newPrimary.initial.column = firstVisibleColumn;
+					newPrimary.initial = {
+						row: firstVisibleRow,
+						column: firstVisibleColumn
+					};
 				} else {
-					newPrimary.initial.row = lastVisibleRow;
-					newPrimary.initial.column = lastVisibleColumn;
+					newPrimary.initial = {
+						row: lastVisibleRow,
+						column: lastVisibleColumn
+					};
 				}
 			} else {
 				if (moveToNextSelection) {
-					newPrimary.initial.row = this._cellModel.findNextVisibleRow(newPrimary.range.startRow);
-					newPrimary.initial.column = this._cellModel.findNextVisibleColumn(newPrimary.range.startColumn);
+					newPrimary.initial = {
+						row: this._cellModel.findNextVisibleRow(newPrimary.range.startRow),
+						column: this._cellModel.findNextVisibleColumn(newPrimary.range.startColumn)
+					};
 				} else {
-					newPrimary.initial.row = this._cellModel.findPreviousVisibleRow(newPrimary.range.endRow);
-					newPrimary.initial.column = this._cellModel.findPreviousVisibleColumn(newPrimary.range.endColumn);
+					newPrimary.initial = {
+						row: this._cellModel.findPreviousVisibleRow(newPrimary.range.endRow),
+						column: this._cellModel.findPreviousVisibleColumn(newPrimary.range.endColumn)
+					};
 				}
 			}
 
@@ -761,5 +929,22 @@ export class SelectionModel implements ISelectionModel {
 
 		return previousVisibleColumn;
 	}
+
+}
+
+/**
+ * Result of a selection validation.
+ */
+interface IValidationResult {
+
+	/**
+	 * Selections to remove.
+	 */
+	toRemove: ISelection[];
+
+	/**
+	 * Selections to add.
+	 */
+	toAdd: ISelection[];
 
 }

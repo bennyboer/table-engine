@@ -6,6 +6,9 @@ import {TableEngine} from "../../../src/table-engine";
 import {ICanvasCellRenderer} from "../../../src/renderer/canvas/cell/canvas-cell-renderer";
 import {ICell} from "../../../src/cell/cell";
 import {IRectangle} from "../../../src/util/rect";
+import {RowColumnHeaderRenderer} from "../../../src/renderer/canvas/cell/header/row-column-header-renderer";
+import {BaseCellRenderer} from "../../../src/renderer/canvas/cell/base/base-cell-renderer";
+import {ROW_COLUMN_HEADER_TRANSFORM} from "../../../src/selection/options";
 
 @Component({
   selector: "app-root",
@@ -45,7 +48,19 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   public ngAfterViewInit(): void {
     const cellModel = AppComponent.initializeCellModel();
     this.engine = new TableEngine(this.tableContainer.nativeElement, cellModel);
+
+    // Set row/column header selection transform
+    this.engine.getOptions().selection.selectionTransform = ROW_COLUMN_HEADER_TRANSFORM;
+
+    // Set initial state of fixed rows/columns
+    this.engine.getOptions().renderer.view.fixedRows = 1;
+    this.engine.getOptions().renderer.view.fixedColumns = 1;
+
+    // Register needed cell renderers
+    this.engine.registerCellRenderer(new BaseCellRenderer());
+    this.engine.registerCellRenderer(new RowColumnHeaderRenderer());
     this.engine.registerCellRenderer(new TestCellRenderer());
+
     this.engine.initialize();
   }
 
@@ -81,9 +96,15 @@ export class AppComponent implements AfterViewInit, OnDestroy {
         }
       ],
       (row, column) => (row + 1) * (column + 1),
-      (row, column) => "base",
+      (row, column) => {
+        if (row === 0 || column === 0) {
+          return "row-column-header";
+        } else {
+          return "base";
+        }
+      },
       (row) => 30,
-      (column) => 120,
+      (column) => column === 0 ? 50 : 120,
       new Set<number>(),
       new Set<number>()
     );
