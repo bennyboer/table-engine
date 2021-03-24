@@ -16,6 +16,7 @@ import {IColor} from "../../util/color";
 import {ISelectionModel} from "../../selection/model/selection-model.interface";
 import {IInitialPosition, ISelection} from "../../selection/selection";
 import {ISelectionRenderingOptions} from "../options/selection";
+import {CellRangeUtil} from "../../cell/range/cell-range-util";
 
 /**
  * Table-engine renderer using the HTML5 canvas.
@@ -405,8 +406,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param end whether the selection will no more change (for example on mouse move end)
 	 */
 	private _updateCurrentSelection(range: ICellRange, initial: IInitialPosition, clear: boolean, push: boolean, end: boolean): void {
+		let repaint: boolean = false;
+
 		if (clear) {
 			this._selectionModel.clear();
+			repaint = true;
 		}
 
 		if (push) {
@@ -414,6 +418,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				range,
 				initial
 			}, true, end);
+			repaint = true;
 		} else {
 			// Only change and validate range of current primary selection
 			const primary = this._selectionModel.getPrimary();
@@ -421,8 +426,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				return;
 			}
 
-			primary.range = range;
-			primary.initial = initial;
+			const rangeChanged = !CellRangeUtil.equals(primary.range, range);
+			if (rangeChanged) {
+				primary.range = range;
+				repaint = true;
+			}
+
+			const initialChanged = primary.initial.row !== initial.row || primary.initial.column !== initial.column;
+			if (initialChanged) {
+				primary.initial = initial;
+				repaint = true;
+			}
 
 			const result = this._selectionModel.validate(primary, end);
 			if (end) {
@@ -436,10 +450,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					this._selectionModel.addSelection(s, false, false);
 				}
 				this._selectionModel.setPrimary(this._selectionModel.getSelections().length - result.toAdd.length);
+
+				repaint = true;
 			}
 		}
 
-		this._repaintScheduler.next();
+		if (repaint) {
+			this._repaintScheduler.next();
+		}
 	}
 
 	/**
