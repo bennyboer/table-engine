@@ -95,7 +95,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
           value: "Last cell with more text than normally"
         }
       ],
-      (row, column) => (row + 1) * (column + 1),
+      (row, column) => row * column,
       (row, column) => {
         if (row === 0 || column === 0) {
           return "row-column-header";

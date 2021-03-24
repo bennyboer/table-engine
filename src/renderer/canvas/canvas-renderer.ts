@@ -671,7 +671,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				startScrollOffset: {
 					x: this._scrollOffset.x,
 					y: this._scrollOffset.y
-				}
+				},
+				isClick: true
 			};
 			event.preventDefault();
 		}
@@ -688,6 +689,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			if (touch.identifier === this._startTouchID) {
 				const [x, y] = this._getMouseOffset(touch);
 
+				this._panningStart.isClick = false; // Finger moved, so this cannot be a tap event
 				this._onViewPortMove(x, y, this._panningStart);
 			}
 		}
@@ -701,6 +703,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		for (let i = 0; i < event.changedTouches.length; i++) {
 			const touch: Touch = event.changedTouches[i];
 			if (touch.identifier === this._startTouchID) {
+				if (event.changedTouches.length === 1 && this._panningStart.isClick) {
+					// Select cell at the position
+					const [x, y] = this._getMouseOffset(touch);
+
+					this._initialSelectionRange = this._getCellRangeAtPoint(x, y);
+					this._updateCurrentSelection(this._initialSelectionRange, {
+						row: this._initialSelectionRange.startRow,
+						column: this._initialSelectionRange.startColumn,
+					}, true, true, true);
+				}
+
 				// Stop panning
 				this._panningStart = null;
 			}
@@ -1023,10 +1036,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			return changed;
 		} else if (offset > maxOffset) {
 			const changed: boolean = this._scrollOffset.x !== maxOffset;
-			this._scrollOffset.x = maxOffset;
+			this._scrollOffset.x = Math.round(maxOffset);
 			return changed;
 		} else {
-			this._scrollOffset.x = offset;
+			this._scrollOffset.x = Math.round(offset);
 			return true;
 		}
 	}
@@ -1055,10 +1068,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			return changed;
 		} else if (offset > maxOffset) {
 			const changed: boolean = this._scrollOffset.y !== maxOffset;
-			this._scrollOffset.y = maxOffset;
+			this._scrollOffset.y = Math.round(maxOffset);
+			;
 			return changed;
 		} else {
-			this._scrollOffset.y = offset;
+			this._scrollOffset.y = Math.round(offset);
 			return true;
 		}
 	}
@@ -1421,15 +1435,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		 */
 
 		// Fetch cell range to paint for the current viewport
-		const cellRange: ICellRange = this._cellModel.getRangeForRect(viewPort);
+		const nonFixedCellsRange: ICellRange = this._cellModel.getRangeForRect({
+			left: viewPort.left + fixedColumnsWidth,
+			top: viewPort.top + fixedRowsHeight,
+			width: viewPort.width - fixedColumnsWidth,
+			height: viewPort.height - fixedRowsHeight
+		});
 
 		// Fill "normal" (non-fixed) cells first
-		const nonFixedCells = this._createCellRenderArea({
-			startRow: Math.min(cellRange.startRow + fixedRows, cellRange.endRow),
-			endRow: cellRange.endRow,
-			startColumn: Math.min(cellRange.startColumn + fixedColumns, cellRange.endColumn),
-			endColumn: cellRange.endColumn
-		}, {
+		const nonFixedCells = this._createCellRenderArea(nonFixedCellsRange, {
 			left: fixedColumnsWidth,
 			top: fixedRowsHeight,
 			width: viewPort.width - fixedColumnsWidth,
@@ -1443,8 +1457,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		// Fill fixed columns (if any)
 		if (fixedColumns > 0) {
 			result.fixedColumnCells = this._createCellRenderArea({
-				startRow: cellRange.startRow,
-				endRow: cellRange.endRow,
+				startRow: nonFixedCellsRange.startRow - fixedRows,
+				endRow: nonFixedCellsRange.endRow,
 				startColumn: 0,
 				endColumn: fixedColumns - 1
 			}, {
@@ -1460,8 +1474,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			result.fixedRowCells = this._createCellRenderArea({
 				startRow: 0,
 				endRow: fixedRows - 1,
-				startColumn: cellRange.startColumn,
-				endColumn: cellRange.endColumn
+				startColumn: nonFixedCellsRange.startColumn - fixedColumns,
+				endColumn: nonFixedCellsRange.endColumn
 			}, {
 				left: fixedColumnsWidth,
 				top: 0,
@@ -1566,6 +1580,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 			ctx.save();
 			ctx.scale(this._devicePixelRatio, this._devicePixelRatio);
+
+			/*
+			HTML5 Canvas calculates from half of a pixel which looks smoothed
+			-> Fix this by offsetting by 0.5
+			 */
+			ctx.translate(0.5, 0.5);
 
 			// Render "normal" (non-fixed) cells first
 			CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.nonFixedCells, renderingContext.selection?.inNonFixedArea);
@@ -2032,6 +2052,12 @@ interface IMouseDragContext {
 	 * Scroll offset to the start of the dragging.
 	 */
 	startScrollOffset: IScrollOffset;
+
+	/**
+	 * Whether the touch event is a click event.
+	 * This is only important for touch events to detect taps.
+	 */
+	isClick?: boolean;
 
 }
 

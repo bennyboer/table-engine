@@ -315,29 +315,30 @@ export class SelectionModel implements ISelectionModel {
 	private _updateCellRangeToContainAllMergedCells(range: ICellRange): boolean {
 		for (let row = range.startRow; row <= range.endRow; row++) {
 			for (let column = range.startColumn; column <= range.endColumn; column++) {
-				const cell: ICell = this._cellModel.getCell(row, column);
+				const cell: ICell | null = this._cellModel.getCell(row, column);
+				if (!!cell) {
+					let foundChange = false;
 
-				let foundChange = false;
+					if (cell.range.startColumn < range.startColumn) {
+						range.startColumn = cell.range.startColumn;
+						foundChange = true;
+					}
+					if (cell.range.startRow < range.startRow) {
+						range.startRow = cell.range.startRow;
+						foundChange = true;
+					}
+					if (cell.range.endColumn > range.endColumn) {
+						range.endColumn = cell.range.endColumn;
+						foundChange = true;
+					}
+					if (cell.range.endRow > range.endRow) {
+						range.endRow = cell.range.endRow;
+						foundChange = true;
+					}
 
-				if (cell.range.startColumn < range.startColumn) {
-					range.startColumn = cell.range.startColumn;
-					foundChange = true;
-				}
-				if (cell.range.startRow < range.startRow) {
-					range.startRow = cell.range.startRow;
-					foundChange = true;
-				}
-				if (cell.range.endColumn > range.endColumn) {
-					range.endColumn = cell.range.endColumn;
-					foundChange = true;
-				}
-				if (cell.range.endRow > range.endRow) {
-					range.endRow = cell.range.endRow;
-					foundChange = true;
-				}
-
-				if (foundChange) {
-					return true;
+					if (foundChange) {
+						return true;
+					}
 				}
 			}
 		}

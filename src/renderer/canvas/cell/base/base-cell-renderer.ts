@@ -44,7 +44,9 @@ export class BaseCellRenderer implements ICanvasCellRenderer {
 	 * @param bounds to render cell in
 	 */
 	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
-		ctx.fillText(`${cell.value}`, Math.round(bounds.left + bounds.width / 2), Math.round(bounds.top + bounds.height / 2));
+		if (cell.value !== null) {
+			ctx.fillText(`${cell.value}`, Math.round(bounds.left + bounds.width / 2), Math.round(bounds.top + bounds.height / 2));
+		}
 	}
 
 }

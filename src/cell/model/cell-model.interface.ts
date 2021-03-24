@@ -15,6 +15,22 @@ export interface ICellModel {
 	getCell(rowIndex: number, columnIndex: number): ICell | null;
 
 	/**
+	 * Set a value to the cell at the given row and column.
+	 * @param rowIndex index of the row
+	 * @param columnIndex index of the column
+	 * @param value to set
+	 */
+	setValue(rowIndex: number, columnIndex: number, value: any): void;
+
+	/**
+	 * Set the renderer for a cell at the given row and column.
+	 * @param rowIndex index of the row
+	 * @param columnIndex index of the column
+	 * @param rendererName name of the renderer to set
+	 */
+	setRenderer(rowIndex: number, columnIndex: number, rendererName: string): void;
+
+	/**
 	 * Get all cells in the provided range.
 	 * @param range to get cells in
 	 */

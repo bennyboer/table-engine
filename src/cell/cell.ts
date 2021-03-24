@@ -15,9 +15,9 @@ export interface ICell {
 	rendererName: string;
 
 	/**
-	 * Value of the cell - may be anything.
+	 * Value of the cell - may be anything, even null.
 	 * A concrete renderer is dealing with interpreting the value later,
 	 * thus the value type is not of concern for the library.
 	 */
-	value: any;
+	value: any | null;
 }

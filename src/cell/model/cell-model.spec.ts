@@ -1649,3 +1649,46 @@ test("[CellModel.find] Find next/previous visible row/column", () => {
 	expect(model.findPreviousVisibleColumn(4)).toBe(4);
 	expect(model.findPreviousVisibleColumn(5)).toBe(5);
 });
+
+test("[CellModel.generate] Test generating null cells and filling", () => {
+	const model = CellModel.generate(
+		[
+			{
+				range: CellRange.fromSingleRowColumn(5, 5),
+				rendererName: "base",
+				value: "Last cell"
+			}
+		],
+		(row, column) => null,
+		(row, column) => null,
+		(row) => 30,
+		(column) => 100,
+		new Set<number>(),
+		new Set<number>()
+	);
+
+	// Merge should work despite having null cells
+	model.mergeCells({
+		startRow: 1,
+		endRow: 2,
+		startColumn: 1,
+		endColumn: 2
+	});
+
+	expect(model.getCell(1, 1).rendererName).toBe("base");
+	expect(model.getCell(1, 2).rendererName).toBe("base");
+	expect(model.getCell(2, 1).rendererName).toBe("base");
+	expect(model.getCell(2, 2).rendererName).toBe("base");
+
+	expect(model.getCell(0, 0)).toBe(null);
+	expect(model.getCell(3, 3)).toBe(null);
+
+	// Fill a cell value and/or renderer name
+	model.setRenderer(0, 0, "hello");
+	expect(model.getCell(0, 0).rendererName).toBe("hello");
+	expect(model.getCell(0, 0).value).toBe(null);
+
+	model.setValue(3, 3, "Hello world!");
+	expect(model.getCell(3, 3).value).toBe("Hello world!");
+	expect(model.getCell(3, 3).rendererName).toBe("base");
+});

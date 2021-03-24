@@ -10,6 +10,11 @@ import {ICellModel} from "./cell-model.interface";
 export class CellModel implements ICellModel {
 
 	/**
+	 * The default cell renderer name to use.
+	 */
+	private static readonly DEFAULT_CELL_RENDERER_NAME: string = "base";
+
+	/**
 	 * The default row size.
 	 */
 	private static readonly DEFAULT_ROW_SIZE: number = 25;
@@ -151,7 +156,8 @@ export class CellModel implements ICellModel {
 						const value: any = emptyCellValueSupplier(row, column);
 						const rendererName: string = emptyCellRendererSupplier(row, column);
 
-						if (value !== null && value !== undefined) {
+						const hasValue: boolean = value !== null && value !== undefined;
+						if (hasValue || !!rendererName) {
 							cellLookup[row][column] = {
 								value,
 								rendererName,
@@ -200,6 +206,53 @@ export class CellModel implements ICellModel {
 	 */
 	public getCell(rowIndex: number, columnIndex: number): ICell | null {
 		return this._cellLookup[rowIndex][columnIndex];
+	}
+
+	/**
+	 * Get a cell at the given coordinates or fill with an empty one
+	 * when there is none.
+	 * @param rowIndex to get cell at
+	 * @param columnIndex to get cell at
+	 */
+	private _getCellOrFill(rowIndex: number, columnIndex: number): ICell {
+		const cell: ICell | null = this.getCell(rowIndex, columnIndex);
+		if (!!cell) {
+			return cell;
+		} else {
+			// Create new cell instance
+			const newCell: ICell = {
+				range: CellRange.fromSingleRowColumn(rowIndex, columnIndex),
+				value: null,
+				rendererName: CellModel.DEFAULT_CELL_RENDERER_NAME
+			};
+
+			// Fill in matrix
+			this._cellLookup[rowIndex][columnIndex] = newCell;
+
+			return newCell;
+		}
+	}
+
+	/**
+	 * Set a value to the cell at the given row and column.
+	 * @param rowIndex index of the row
+	 * @param columnIndex index of the column
+	 * @param value to set
+	 */
+	public setValue(rowIndex: number, columnIndex: number, value: any): void {
+		const cell: ICell = this._getCellOrFill(rowIndex, columnIndex);
+		cell.value = value;
+	}
+
+	/**
+	 * Set the renderer for a cell at the given row and column.
+	 * @param rowIndex index of the row
+	 * @param columnIndex index of the column
+	 * @param rendererName name of the renderer to set
+	 */
+	public setRenderer(rowIndex: number, columnIndex: number, rendererName: string): void {
+		const cell: ICell = this._getCellOrFill(rowIndex, columnIndex);
+		cell.rendererName = rendererName;
 	}
 
 	/**
@@ -1082,8 +1135,13 @@ export class CellModel implements ICellModel {
 			}
 		}
 
+		const cell: ICell = this._getCellOrFill(range.startRow, range.startColumn);
+
+		// Update cell range
+		cell.range.endRow = range.endRow;
+		cell.range.endColumn = range.endColumn;
+
 		// Actually merge the cell by writing cell references in the cell lookup to the most upper left corner cell
-		const cell: ICell = this.getCell(range.startRow, range.startColumn);
 		for (let row = range.startRow; row <= range.endRow; row++) {
 			for (let column = range.startColumn; column <= range.endColumn; column++) {
 				if (row === range.startRow && column === range.startColumn) {
@@ -1093,10 +1151,6 @@ export class CellModel implements ICellModel {
 				this._cellLookup[row][column] = cell;
 			}
 		}
-
-		// Update cell range
-		cell.range.endRow = range.endRow;
-		cell.range.endColumn = range.endColumn;
 
 		return true;
 	}
