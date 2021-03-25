@@ -15,6 +15,7 @@ import {IColor} from "../../util/color";
 import {ISelectionModel} from "../../selection/model/selection-model.interface";
 import {IInitialPosition, ISelection} from "../../selection/selection";
 import {ISelectionRenderingOptions} from "../options/selection";
+import {CellRangeUtil} from "../../cell/range/cell-range-util";
 
 /**
  * Table-engine renderer using the HTML5 canvas.
@@ -820,11 +821,34 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				this._isInMouseDragMode = true;
 				break;
 			case "Tab":
-				event.preventDefault();
-				this._moveInitialSelection(event.shiftKey ? -1 : 1, 0);
-				break;
 			case "Enter":
-				this._moveInitialSelection(0, event.shiftKey ? -1 : 1);
+				event.preventDefault();
+
+				if (!event.ctrlKey) {
+					const axisVertical: boolean = event.code === "Enter";
+
+					const primary: ISelection | null = this._selectionModel.getPrimary();
+					if (!!primary) {
+						// Check if selection is only a single cell
+						const cell: ICell | null = this._cellModel.getCell(primary.range.startRow, primary.range.startColumn);
+						const isSingleCell: boolean = !cell || CellRangeUtil.equals(primary.range, cell.range);
+
+						if (isSingleCell) {
+							// Single cell selected -> move selection
+							this._moveSelection(
+								axisVertical ? 0 : (event.shiftKey ? -1 : 1),
+								axisVertical ? (event.shiftKey ? -1 : 1) : 0,
+								false
+							);
+						} else {
+							// Multiple cells selected -> move only initial in selection
+							this._moveInitialSelection(
+								axisVertical ? 0 : (event.shiftKey ? -1 : 1),
+								axisVertical ? (event.shiftKey ? -1 : 1) : 0
+							);
+						}
+					}
+				}
 				break;
 			case "KeyA":
 				if (event.ctrlKey) {

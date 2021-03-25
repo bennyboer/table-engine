@@ -37,4 +37,15 @@ export class CellRangeUtil {
 			&& a.endColumn === b.endColumn;
 	}
 
+	/**
+	 * Calculate the size of the range.
+	 * @param range to calculate size for
+	 */
+	public static size(range: ICellRange): number {
+		const width: number = range.endColumn - range.startColumn + 1;
+		const height: number = range.endRow - range.startRow + 1;
+
+		return width * height;
+	}
+
 }
