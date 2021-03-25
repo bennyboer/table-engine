@@ -124,6 +124,16 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _resizeObserver: ResizeObserver;
 
 	/**
+	 * Registered listener for the on focus event.
+	 */
+	private _focusListener: (FocusEvent) => void;
+
+	/**
+	 * Registered listener for the on blur event.
+	 */
+	private _blurListener: (FocusEvent) => void;
+
+	/**
 	 * Current scroll offset.
 	 */
 	private _scrollOffset: IScrollOffset = {
@@ -182,6 +192,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Auto-scrolling is used when selecting and the mouse is outside viewport bounds.
 	 */
 	private _autoScrollContext: IAutoScrollContext | null = null;
+
+	/**
+	 * Whether the table is focused.
+	 */
+	private _isFocused: boolean = false;
 
 	constructor() {
 	}
@@ -257,6 +272,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		this._resizeObserver = new ResizeObserver((resizeEntries) => this._onResize(resizeEntries));
 		this._resizeObserver.observe(this._container);
 
+		// Listen for focus and blur events
+		this._focusListener = (event) => this._onFocus(event);
+		this._canvasElement.addEventListener("focus", this._focusListener);
+
+		this._blurListener = (event) => this._onBlur(event);
+		this._canvasElement.addEventListener("blur", this._blurListener);
+
 		// Throttle resize events
 		this._resizeThrottleSubject.asObservable().pipe(
 			takeUntil(this._onCleanup),
@@ -313,6 +335,33 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		if (!!this._resizeObserver) {
 			this._resizeObserver.disconnect();
 		}
+
+		if (!!this._focusListener) {
+			this._canvasElement.removeEventListener("focus", this._focusListener);
+		}
+		if (!!this._blurListener) {
+			this._canvasElement.removeEventListener("blur", this._blurListener);
+		}
+	}
+
+	/**
+	 * Called on a focus event (focus received).
+	 * @param event that occurred
+	 */
+	private _onFocus(event: FocusEvent): void {
+		this._isFocused = true;
+
+		this._repaintScheduler.next();
+	}
+
+	/**
+	 * Called on a blur event (focus lost).
+	 * @param event that occurred
+	 */
+	private _onBlur(event: FocusEvent): void {
+		this._isFocused = false;
+
+		this._repaintScheduler.next();
 	}
 
 	/**
@@ -833,7 +882,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						const cell: ICell | null = this._cellModel.getCell(primary.range.startRow, primary.range.startColumn);
 						const isSingleCell: boolean = !cell || CellRangeUtil.equals(primary.range, cell.range);
 
-						if (isSingleCell) {
+						if (isSingleCell && this._selectionModel.getSelections().length === 1) {
 							// Single cell selected -> move selection
 							this._moveSelection(
 								axisVertical ? 0 : (event.shiftKey ? -1 : 1),
@@ -1164,6 +1213,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		// Make it focusable (needed for key listeners for example).
 		this._canvasElement.setAttribute("tabindex", "-1");
+		this._canvasElement.style.outline = "none"; // Remove focus outline when focused
 
 		// Append it to the container
 		this._container.appendChild(this._canvasElement);
@@ -1379,6 +1429,34 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			collectionToPushTo = toAdd.inNonFixedArea;
 		}
 
+		// Offset selection properly based on selection rendering options
+		const offset: number = this._options.canvas.selection.offset;
+		if (offset !== 0) {
+			// Correct initial
+			if (!!initialBounds) {
+				if (initialBounds.top === bounds.top) {
+					initialBounds.top += offset;
+					initialBounds.height -= offset;
+				}
+				if (initialBounds.left === bounds.left) {
+					initialBounds.left += offset;
+					initialBounds.width -= offset;
+				}
+				if (initialBounds.top + initialBounds.height === bounds.top + bounds.height) {
+					initialBounds.height -= offset;
+				}
+				if (initialBounds.left + initialBounds.width === bounds.left + bounds.width) {
+					initialBounds.width -= offset;
+				}
+			}
+
+			// Correct bounds
+			bounds.left += offset;
+			bounds.top += offset;
+			bounds.width -= offset * 2;
+			bounds.height -= offset * 2;
+		}
+
 		collectionToPushTo.push({
 			bounds,
 			initial: initialBounds,
@@ -1469,6 +1547,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const selectionContext: ISelectionRenderContext = this._calculateSelectionContext(viewPort, fixedRows, fixedColumns, fixedRowsHeight, fixedColumnsWidth);
 
 		return {
+			focused: this._isFocused,
 			viewPort,
 			cells: cellsInfo,
 			scrollBar: scrollBarContext,
@@ -1789,14 +1868,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param infos rendering infos about selection rectangles to draw
 	 */
 	private static _renderSelections(ctx: CanvasRenderingContext2D, context: IRenderContext, infos: ISelectionRenderInfo[]): void {
-		ctx.fillStyle = CanvasUtil.colorToStyle(context.selection.options.secondary.backgroundColor);
-		ctx.strokeStyle = CanvasUtil.colorToStyle(context.selection.options.secondary.borderColor);
+		ctx.fillStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.secondary.backgroundColor : context.selection.options.secondary.backgroundColorUnfocused);
+		ctx.strokeStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.secondary.borderColor : context.selection.options.secondary.borderColorUnfocused);
 		ctx.lineWidth = context.selection.options.borderSize;
 
 		for (const info of infos) {
 			if (info.isPrimary) {
-				ctx.fillStyle = CanvasUtil.colorToStyle(context.selection.options.primary.backgroundColor);
-				ctx.strokeStyle = CanvasUtil.colorToStyle(context.selection.options.primary.borderColor);
+				ctx.fillStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.primary.backgroundColor : context.selection.options.primary.backgroundColorUnfocused);
+				ctx.strokeStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.primary.borderColor : context.selection.options.primary.borderColorUnfocused);
 
 				// Fill area over initial (if necessary)
 				if (info.initial.top - info.bounds.top > 0) {
@@ -1824,8 +1903,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				ctx.strokeRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.height);
 
 				// Reset colors
-				ctx.fillStyle = CanvasUtil.colorToStyle(context.selection.options.secondary.backgroundColor);
-				ctx.strokeStyle = CanvasUtil.colorToStyle(context.selection.options.secondary.borderColor);
+				ctx.fillStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.secondary.backgroundColor : context.selection.options.secondary.backgroundColorUnfocused);
+				ctx.strokeStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.secondary.borderColor : context.selection.options.secondary.borderColorUnfocused);
 			} else {
 				ctx.fillRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.height);
 				ctx.strokeRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.height);
@@ -1839,6 +1918,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
  * Context filled with data used to render the table.
  */
 interface IRenderContext {
+
+	/**
+	 * Whether the table is focused.
+	 */
+	focused: boolean;
 
 	/**
 	 * Viewport to render.

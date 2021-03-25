@@ -708,6 +708,14 @@ export class SelectionModel implements ISelectionModel {
 			isNextMovePossible = false;
 			moveToNextSelection = true;
 		}
+		if (isNextMovePossible) {
+			// Check if primary selection is only a single cell -> move impossible
+			const cell: ICell | null = this._cellModel.getCell(primary.range.startRow, primary.range.startColumn);
+			if (CellRangeUtil.equals(cell.range, primary.range)) {
+				isNextMovePossible = false;
+				moveToNextSelection = xDiff > 0 || yDiff > 0;
+			}
+		}
 
 		if (!isNextMovePossible) {
 			// Move to next or previous selection as new primary (if possible)
