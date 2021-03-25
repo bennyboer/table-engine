@@ -727,11 +727,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 */
 	private _onTouchStart(event: TouchEvent): void {
 		if (event.touches.length === 1 && !this._panningStart) {
+			event.preventDefault();
 			const touch: Touch = event.changedTouches[0];
 
 			this._startTouchID = touch.identifier;
 
 			const [x, y] = this._getMouseOffset(touch);
+
+			// Stop any auto-scrolling in progress due to previous touches
+			this._stopAutoScrolling();
 
 			this._panningStart = {
 				startX: x,
@@ -747,7 +751,6 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				},
 				isTap: true
 			};
-			event.preventDefault();
 		}
 	}
 
