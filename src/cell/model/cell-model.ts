@@ -1323,6 +1323,15 @@ export class CellModel implements ICellModel {
 		}
 	}
 
+	/**
+	 * Show all hidden rows and columns.
+	 */
+	public showAll(): void {
+		// Show all hidden rows first, then all hidden columns
+		this.showRows(Array.from(this._hiddenRows));
+		this.showColumns(Array.from(this._hiddenColumns));
+	}
+
 }
 
 /**

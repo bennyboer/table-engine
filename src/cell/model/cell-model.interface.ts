@@ -247,4 +247,9 @@ export interface ICellModel {
 	 */
 	showColumns(columnIndices: number[]): void;
 
+	/**
+	 * Show all hidden rows and columns.
+	 */
+	showAll(): void;
+
 }

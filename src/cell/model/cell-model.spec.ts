@@ -290,6 +290,19 @@ test("[CellModel.hide] Hide rows and columns", () => {
 	expect(model.getWidth()).toBe(400);
 	expect(model.getRowOffset(3)).toBe(30);
 	expect(model.getColumnOffset(1)).toBe(0);
+
+	model.showAll();
+
+	expect(model.isRowHidden(1)).toBe(false);
+	expect(model.isRowHidden(2)).toBe(false);
+	expect(model.isRowHidden(5)).toBe(false);
+	expect(model.isColumnHidden(0)).toBe(false);
+	expect(model.isColumnHidden(3)).toBe(false);
+	expect(model.isColumnHidden(1)).toBe(false);
+	expect(model.getHeight()).toBe(180);
+	expect(model.getWidth()).toBe(600);
+	expect(model.getRowOffset(3)).toBe(90);
+	expect(model.getColumnOffset(1)).toBe(100);
 });
 
 test("[CellModel.hide] Hide rows and columns - with already hidden rows/columns", () => {

@@ -10,6 +10,7 @@ import {RowColumnHeaderRenderer} from "../../../src/renderer/canvas/cell/header/
 import {BaseCellRenderer} from "../../../src/renderer/canvas/cell/base/base-cell-renderer";
 import {ROW_COLUMN_HEADER_TRANSFORM} from "../../../src/selection/options";
 import {ISelectionModel} from "../../../src/selection/model/selection-model.interface";
+import {ISelection} from "../../../src/selection/selection";
 
 @Component({
   selector: "app-root",
@@ -45,6 +46,57 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   public focusTable(): void {
     this.engine.requestFocus();
+  }
+
+  public mergeSelection(): void {
+    const primary: ISelection | null = this.engine.getSelectionModel().getPrimary();
+    if (!!primary) {
+      this.engine.getCellModel().mergeCells(primary.range);
+      this.engine.repaint();
+    }
+  }
+
+  public splitSelection(): void {
+    const primary: ISelection | null = this.engine.getSelectionModel().getPrimary();
+    if (!!primary) {
+      this.engine.getCellModel().splitCell(primary.range.startRow, primary.range.startColumn);
+      this.engine.repaint();
+    }
+  }
+
+  public showHidden(): void {
+    this.engine.getCellModel().showAll();
+    this.engine.repaint();
+  }
+
+  public hideRows(): void {
+    const selections: ISelection[] = this.engine.getSelectionModel().getSelections();
+    const toHide: number[] = [];
+    for (const s of selections) {
+      for (let row = s.range.startRow; row <= s.range.endRow; row++) {
+        toHide.push(row);
+      }
+    }
+
+    if (toHide.length > 0) {
+      this.engine.getCellModel().hideRows(toHide);
+      this.engine.repaint();
+    }
+  }
+
+  public hideColumns(): void {
+    const selections: ISelection[] = this.engine.getSelectionModel().getSelections();
+    const toHide: number[] = [];
+    for (const s of selections) {
+      for (let column = s.range.startColumn; column <= s.range.endColumn; column++) {
+        toHide.push(column);
+      }
+    }
+
+    if (toHide.length > 0) {
+      this.engine.getCellModel().hideColumns(toHide);
+      this.engine.repaint();
+    }
   }
 
   /**
