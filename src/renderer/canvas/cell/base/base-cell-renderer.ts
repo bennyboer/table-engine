@@ -3,6 +3,7 @@ import {ICell} from "../../../../cell/cell";
 import {IRectangle} from "../../../../util/rect";
 import {ICellModel} from "../../../../cell/model/cell-model.interface";
 import {ISelectionModel} from "../../../../selection/model/selection-model.interface";
+import {TableEngine} from "../../../../table-engine";
 
 /**
  * Basic cell renderer rendering every value as string.
@@ -12,10 +13,9 @@ export class BaseCellRenderer implements ICanvasCellRenderer {
 	/**
 	 * Initialize the cell renderer.
 	 * This is only called once.
-	 * @param cellModel of the table-engine
-	 * @param selectionModel of the table-engine
+	 * @param engine reference to the table-engine
 	 */
-	public initialize(cellModel: ICellModel, selectionModel: ISelectionModel): void {
+	public initialize(engine: TableEngine): void {
 		// Nothing to do
 	}
 

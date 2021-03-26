@@ -11,6 +11,8 @@ import {BaseCellRenderer} from "../../../src/renderer/canvas/cell/base/base-cell
 import {ROW_COLUMN_HEADER_TRANSFORM} from "../../../src/selection/options";
 import {ISelectionModel} from "../../../src/selection/model/selection-model.interface";
 import {ISelection} from "../../../src/selection/selection";
+import Table = WebAssembly.Table;
+import {IImageCellRendererValue, ImageCellRenderer} from "../../../src/renderer/canvas/cell/image/image-cell-renderer";
 
 @Component({
   selector: "app-root",
@@ -116,6 +118,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     // Register needed cell renderers
     this.engine.registerCellRenderer(new BaseCellRenderer());
     this.engine.registerCellRenderer(new RowColumnHeaderRenderer());
+    this.engine.registerCellRenderer(new ImageCellRenderer());
     this.engine.registerCellRenderer(new TestCellRenderer());
 
     this.engine.initialize();
@@ -145,6 +148,18 @@ export class AppComponent implements AfterViewInit, OnDestroy {
           },
           rendererName: "custom",
           value: "Hello world!"
+        },
+        {
+          range: {
+            startRow: 5,
+            endRow: 10,
+            startColumn: 5,
+            endColumn: 8
+          },
+          rendererName: "image",
+          value: {
+            src: "assets/sloth.svg"
+          } as IImageCellRendererValue
         },
         {
           range: CellRange.fromSingleRowColumn(1000, 1000),
@@ -179,7 +194,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 }
 
 class TestCellRenderer implements ICanvasCellRenderer {
-  initialize(cellModel: ICellModel, selectionModel: ISelectionModel): void {
+  initialize(engine: TableEngine): void {
   }
 
   after(ctx: CanvasRenderingContext2D): void {

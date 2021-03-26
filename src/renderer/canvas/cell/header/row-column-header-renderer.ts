@@ -3,6 +3,7 @@ import {ICell} from "../../../../cell/cell";
 import {IRectangle} from "../../../../util/rect";
 import {ICellModel} from "../../../../cell/model/cell-model.interface";
 import {ISelectionModel} from "../../../../selection/model/selection-model.interface";
+import {TableEngine} from "../../../../table-engine";
 
 /**
  * Spreadsheet like row/column headers.
@@ -34,11 +35,10 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	/**
 	 * Initialize the cell renderer.
 	 * This is only called once.
-	 * @param cellModel of the table-engine
-	 * @param selectionModel of the table-engine
+	 * @param engine reference to the table-engine
 	 */
-	public initialize(cellModel: ICellModel, selectionModel: ISelectionModel): void {
-		this._selectionModel = selectionModel;
+	public initialize(engine: TableEngine): void {
+		this._selectionModel = engine.getSelectionModel();
 	}
 
 	/**

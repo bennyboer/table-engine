@@ -11,6 +11,7 @@ import {CanvasUtil} from "../util/canvas";
 import {ScrollUtil} from "../util/scroll";
 import {ICellRenderer} from "../cell/cell-renderer";
 import {ISelectionModel} from "../../selection/model/selection-model.interface";
+import {TableEngine} from "../../table-engine";
 
 /**
  * Renderer of the table engine leveraging Skia CanvasKit.
@@ -91,13 +92,12 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 	/**
 	 * Initialize the renderer with the given options on the passed HTML container.
 	 * @param container to initialize renderer in
-	 * @param cellModel to render cells from
-	 * @param selectionModel to render selection from
+	 * @param engine reference to the table-engine
 	 * @param options of the renderer
 	 */
-	public async initialize(container: HTMLElement, cellModel: ICellModel, selectionModel: ISelectionModel, options: IRendererOptions): Promise<void> {
+	public async initialize(container: HTMLElement, engine: TableEngine, options: IRendererOptions): Promise<void> {
 		this._container = container;
-		this._cellModel = cellModel;
+		this._cellModel = engine.getCellModel();
 		this._options = options;
 
 		this._initializeRenderingCanvasElement();

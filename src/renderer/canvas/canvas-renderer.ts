@@ -16,6 +16,7 @@ import {ISelectionModel} from "../../selection/model/selection-model.interface";
 import {IInitialPosition, ISelection} from "../../selection/selection";
 import {ISelectionRenderingOptions} from "../options/selection";
 import {CellRangeUtil} from "../../cell/range/cell-range-util";
+import {TableEngine} from "../../table-engine";
 
 /**
  * Table-engine renderer using the HTML5 canvas.
@@ -41,6 +42,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Selection model to draw selections for.
 	 */
 	private _selectionModel: ISelectionModel;
+
+	/**
+	 * Reference to the table-engine.
+	 */
+	private _engine: TableEngine;
 
 	/**
 	 * Options of the renderer.
@@ -217,14 +223,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	/**
 	 * Initialize the renderer with the given options on the passed HTML container.
 	 * @param container to initialize renderer in
-	 * @param cellModel to render cells from
-	 * @param selectionModel to render selection from
+	 * @param engine reference to the table-engine
 	 * @param options of the renderer
 	 */
-	public async initialize(container: HTMLElement, cellModel: ICellModel, selectionModel: ISelectionModel, options: IRendererOptions): Promise<void> {
+	public async initialize(container: HTMLElement, engine: TableEngine, options: IRendererOptions): Promise<void> {
 		this._container = container;
-		this._cellModel = cellModel;
-		this._selectionModel = selectionModel;
+		this._engine = engine;
+		this._cellModel = engine.getCellModel();
+		this._selectionModel = engine.getSelectionModel();
 		this._options = options;
 
 		this._initializeRenderingCanvasElement();
@@ -238,7 +244,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 */
 	private _initializeCellRenderers(): void {
 		for (const cellRenderer of this._cellRendererLookup.values()) {
-			cellRenderer.initialize(this._cellModel, this._selectionModel);
+			cellRenderer.initialize(this._engine);
 		}
 	}
 
