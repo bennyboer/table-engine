@@ -45,6 +45,11 @@ export class TableEngine {
 	private readonly _events: Subject<ITableEngineEvent> = new Subject<ITableEngineEvent>();
 
 	/**
+	 * Whether the engine is already initialized.
+	 */
+	private _isInitialized: boolean = false;
+
+	/**
 	 * Create table engine and initialize it on the passed
 	 * container element.
 	 * @param container to initialize the table engine in
@@ -70,7 +75,9 @@ export class TableEngine {
 	 * This will start rendering the table.
 	 */
 	public async initialize(): Promise<void> {
+		// Initialize renderer
 		await this._renderer.initialize(this._container, this._cellModel, this._selectionModel, this._options.renderer);
+		this._isInitialized = true;
 
 		this._events.next({
 			type: TableEngineEventType.RENDERER_READY
@@ -85,6 +92,20 @@ export class TableEngine {
 	 */
 	public repaint(): void {
 		this._renderer.render();
+	}
+
+	/**
+	 * Request focus on the table.
+	 */
+	public requestFocus(): void {
+		this._renderer.requestFocus();
+	}
+
+	/**
+	 * Check whether the table is currently focused.
+	 */
+	public isFocused(): boolean {
+		return this._renderer.isFocused();
 	}
 
 	/**
@@ -120,6 +141,10 @@ export class TableEngine {
 	 * @param renderer to register
 	 */
 	public registerCellRenderer(renderer: ICellRenderer<any>): void {
+		if (this._isInitialized) {
+			throw new Error("Cannot register renderers when table-engine is already initialized");
+		}
+
 		this._renderer.registerCellRenderer(renderer);
 	}
 

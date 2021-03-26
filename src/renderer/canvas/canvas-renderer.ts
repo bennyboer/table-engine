@@ -228,8 +228,32 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		this._options = options;
 
 		this._initializeRenderingCanvasElement();
-
 		this._bindListeners();
+
+		this._initializeCellRenderers();
+	}
+
+	/**
+	 * Initialize all cell renderers.
+	 */
+	private _initializeCellRenderers(): void {
+		for (const cellRenderer of this._cellRendererLookup.values()) {
+			cellRenderer.initialize(this._cellModel, this._selectionModel);
+		}
+	}
+
+	/**
+	 * Request focus on the table.
+	 */
+	public requestFocus(): void {
+		this._canvasElement.focus();
+	}
+
+	/**
+	 * Whether the table is currently focused.
+	 */
+	public isFocused(): boolean {
+		return this._isFocused;
 	}
 
 	/**

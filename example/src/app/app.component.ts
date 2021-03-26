@@ -9,6 +9,7 @@ import {IRectangle} from "../../../src/util/rect";
 import {RowColumnHeaderRenderer} from "../../../src/renderer/canvas/cell/header/row-column-header-renderer";
 import {BaseCellRenderer} from "../../../src/renderer/canvas/cell/base/base-cell-renderer";
 import {ROW_COLUMN_HEADER_TRANSFORM} from "../../../src/selection/options";
+import {ISelectionModel} from "../../../src/selection/model/selection-model.interface";
 
 @Component({
   selector: "app-root",
@@ -40,6 +41,10 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.engine.getOptions().renderer.view.fixedRows = Math.max(this.engine.getOptions().renderer.view.fixedRows - 1, 0);
     this.engine.getOptions().renderer.view.fixedColumns = Math.max(this.engine.getOptions().renderer.view.fixedColumns - 1, 0);
     this.engine.repaint();
+  }
+
+  public focusTable(): void {
+    this.engine.requestFocus();
   }
 
   /**
@@ -122,6 +127,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 }
 
 class TestCellRenderer implements ICanvasCellRenderer {
+  initialize(cellModel: ICellModel, selectionModel: ISelectionModel): void {
+  }
+
   after(ctx: CanvasRenderingContext2D): void {
   }
 

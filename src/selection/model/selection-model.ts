@@ -371,6 +371,22 @@ export class SelectionModel implements ISelectionModel {
 	}
 
 	/**
+	 * Check if the cell at the given row and column index
+	 * is selected.
+	 * @param rowIndex to check at
+	 * @param columnIndex to check at
+	 */
+	public isSelected(rowIndex: number, columnIndex: number): boolean {
+		for (const s of this._selections) {
+			if (CellRangeUtil.contains(CellRange.fromSingleRowColumn(rowIndex, columnIndex), s.range)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Extend the passed selection in the given direction.
 	 * @param selection to extend
 	 * @param xDiff horizontal offset to extend by

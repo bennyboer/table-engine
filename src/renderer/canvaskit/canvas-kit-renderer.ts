@@ -424,4 +424,11 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 		// TODO
 	}
 
+	isFocused(): boolean {
+		return false;
+	}
+
+	requestFocus(): void {
+	}
+
 }

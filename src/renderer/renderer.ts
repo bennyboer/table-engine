@@ -31,6 +31,16 @@ export interface ITableEngineRenderer {
 	registerCellRenderer(renderer: ICellRenderer<any>): void;
 
 	/**
+	 * Request focus on the table.
+	 */
+	requestFocus(): void;
+
+	/**
+	 * Whether the table is currently focused.
+	 */
+	isFocused(): boolean;
+
+	/**
 	 * Cleanup the renderer when no more needed.
 	 */
 	cleanup(): void;

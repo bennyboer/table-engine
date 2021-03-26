@@ -23,6 +23,14 @@ export interface ISelectionModel {
 	getSelections(): ISelection[];
 
 	/**
+	 * Check if the cell at the given row and column index
+	 * is selected.
+	 * @param rowIndex to check at
+	 * @param columnIndex to check at
+	 */
+	isSelected(rowIndex: number, columnIndex: number): boolean;
+
+	/**
 	 * Add a selection to the model.
 	 * @param selection to add
 	 * @param validate whether to validate the passed selection first
