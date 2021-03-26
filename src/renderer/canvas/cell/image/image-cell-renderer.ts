@@ -94,13 +94,34 @@ export class ImageCellRenderer implements ICanvasCellRenderer {
 					height = originalHeight * scaleFactor;
 				}
 
-				ctx.drawImage(
-					image,
-					bounds.left + (bounds.width - width) / 2,
-					bounds.top + (bounds.height - height) / 2,
-					width,
-					height
-				);
+				if (width > bounds.width || height > bounds.height) {
+					// Image dimensions do not really fit into cell -> crop image
+					const overlapX: number = width > bounds.width ? width - bounds.width : 0;
+					const overlapY: number = height > bounds.height ? height - bounds.height : 0;
+
+					const actualWidth: number = width - overlapX;
+					const actualHeight: number = height - overlapY;
+
+					ctx.drawImage(
+						image,
+						overlapX / 2,
+						overlapY / 2,
+						actualWidth,
+						actualHeight,
+						bounds.left + (bounds.width - actualWidth) / 2,
+						bounds.top + (bounds.height - actualHeight) / 2,
+						actualWidth,
+						actualHeight
+					);
+				} else {
+					ctx.drawImage(
+						image,
+						bounds.left + (bounds.width - width) / 2,
+						bounds.top + (bounds.height - height) / 2,
+						width,
+						height
+					);
+				}
 			} else {
 				ctx.fillText("Loading...", Math.round(bounds.left + bounds.width / 2), Math.round(bounds.top + bounds.height / 2));
 			}
