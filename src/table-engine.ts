@@ -8,6 +8,8 @@ import {TableEngineEventType} from "./event/event-type";
 import {ICellRenderer} from "./renderer/cell/cell-renderer";
 import {ISelectionModel} from "./selection/model/selection-model.interface";
 import {SelectionModel} from "./selection/model/selection-model";
+import {IBorderModel} from "./border/model/border-model.interface";
+import {BorderModel} from "./border/model/border-model";
 
 /**
  * Entry point of the table engine library.
@@ -28,6 +30,11 @@ export class TableEngine {
 	 * Selection model of the table engine.
 	 */
 	private readonly _selectionModel: ISelectionModel;
+
+	/**
+	 * Border model of the table engine.
+	 */
+	private readonly _borderModel: IBorderModel;
 
 	/**
 	 * Options customizing the table-engine behavior.
@@ -65,6 +72,9 @@ export class TableEngine {
 
 		// Initialize selection model
 		this._selectionModel = new SelectionModel(this._cellModel, this._options.selection);
+
+		// Initialize border model
+		this._borderModel = new BorderModel(this._cellModel, this._options.border);
 
 		// Initialize renderer
 		this._renderer = RendererFactory.getRendererInstance(this._options.renderer.type);
@@ -127,6 +137,13 @@ export class TableEngine {
 	 */
 	public getSelectionModel(): ISelectionModel {
 		return this._selectionModel;
+	}
+
+	/**
+	 * Get the table engines border model.
+	 */
+	public getBorderModel(): IBorderModel {
+		return this._borderModel;
 	}
 
 	/**

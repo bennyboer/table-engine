@@ -1,5 +1,6 @@
 import {IRendererOptions, fillOptions as fillRendererOptions} from "./renderer/options";
 import {ISelectionOptions, fillOptions as fillSelectionOptions} from "./selection/options";
+import {IBorderOptions, fillOptions as fillBorderOptions} from "./border/options";
 
 /**
  * Options used to modify the table engine behavior.
@@ -15,6 +16,11 @@ export interface ITableEngineOptions {
 	 * Options regarding the table-engines selection model.
 	 */
 	selection?: ISelectionOptions;
+
+	/**
+	 * Options regarding the table-engines border model.
+	 */
+	border?: IBorderOptions;
 
 }
 
@@ -36,6 +42,11 @@ export const fillOptions = (options?: ITableEngineOptions) => {
 		options.selection = {};
 	}
 	options.selection = fillSelectionOptions(options.selection);
+
+	if (!options.border) {
+		options.border = {};
+	}
+	options.border = fillBorderOptions(options.border);
 
 	return options;
 };
