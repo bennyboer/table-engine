@@ -12,6 +12,7 @@ import {ROW_COLUMN_HEADER_TRANSFORM} from "../../../src/selection/options";
 import {ISelection} from "../../../src/selection/selection";
 import {IImageCellRendererValue, ImageCellRenderer} from "../../../src/renderer/canvas/cell/image/image-cell-renderer";
 import {BorderStyle} from "../../../src/border/border-style";
+import {IColor} from "../../../src/util/color";
 
 @Component({
   selector: "app-root",
@@ -23,6 +24,16 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   @ViewChild("tableContainer")
   public tableContainer!: ElementRef;
+
+  /**
+   * Currently selected border color.
+   */
+  public borderColor: string = "rgba(255, 0, 0, 1.0)";
+
+  /**
+   * Currently selected border size.
+   */
+  public borderSize: number = 1;
 
   /**
    * Table engine reference.
@@ -96,6 +107,78 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
     if (toHide.length > 0) {
       this.engine.getCellModel().hideColumns(toHide);
+      this.engine.repaint();
+    }
+  }
+
+  private static _rgbaStringToColor(rgbaStr: string): IColor {
+    rgbaStr = rgbaStr.startsWith("rgba") ? rgbaStr.substring(5, rgbaStr.length - 1) : rgbaStr.substring(4, rgbaStr.length - 1);
+    const parts = rgbaStr.split(",");
+
+    return {
+      red: parseInt(parts[0].trim()),
+      green: parseInt(parts[1].trim()),
+      blue: parseInt(parts[2].trim()),
+      alpha: parts.length === 4 ? parseFloat(parts[3].trim()) : 1.0
+    }
+  }
+
+  public setBorderTop(): void {
+    const primary: ISelection | null = this.engine.getSelectionModel().getPrimary();
+    if (!!primary) {
+      this.engine.getBorderModel().setBorder({
+        top: {
+          size: this.borderSize,
+          style: BorderStyle.SOLID,
+          color: AppComponent._rgbaStringToColor(this.borderColor)
+        }
+      }, primary.range);
+
+      this.engine.repaint();
+    }
+  }
+
+  public setBorderLeft(): void {
+    const primary: ISelection | null = this.engine.getSelectionModel().getPrimary();
+    if (!!primary) {
+      this.engine.getBorderModel().setBorder({
+        left: {
+          size: this.borderSize,
+          style: BorderStyle.SOLID,
+          color: AppComponent._rgbaStringToColor(this.borderColor)
+        }
+      }, primary.range);
+
+      this.engine.repaint();
+    }
+  }
+
+  public setBorderBottom(): void {
+    const primary: ISelection | null = this.engine.getSelectionModel().getPrimary();
+    if (!!primary) {
+      this.engine.getBorderModel().setBorder({
+        bottom: {
+          size: this.borderSize,
+          style: BorderStyle.SOLID,
+          color: AppComponent._rgbaStringToColor(this.borderColor)
+        }
+      }, primary.range);
+
+      this.engine.repaint();
+    }
+  }
+
+  public setBorderRight(): void {
+    const primary: ISelection | null = this.engine.getSelectionModel().getPrimary();
+    if (!!primary) {
+      this.engine.getBorderModel().setBorder({
+        right: {
+          size: this.borderSize,
+          style: BorderStyle.SOLID,
+          color: AppComponent._rgbaStringToColor(this.borderColor)
+        }
+      }, primary.range);
+
       this.engine.repaint();
     }
   }

@@ -20,6 +20,11 @@ export interface IBorderSide {
 	priority?: number;
 
 	/**
+	 * Whether the border side is the default border side.
+	 */
+	isDefault?: boolean;
+
+	/**
 	 * Style of the border line.
 	 */
 	style: BorderStyle;

@@ -24,6 +24,7 @@ const DEFAULT_BORDER_COLLISION_RESOLVER: (sideA: IBorderSide, sideB: IBorderSide
  */
 const DEFAULT_BORDER_SIDE: IBorderSide = {
 	priority: 0,
+	isDefault: true,
 	color: {red: 230, green: 230, blue: 230, alpha: 1.0},
 	size: 1,
 	style: BorderStyle.SOLID

@@ -2024,20 +2024,22 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param sides to determine dominant border side in
 	 */
 	private static _determineDominantBorderSide(sides: IBorderSide[]): IBorderSide {
-		let dominant: IBorderSide = sides[0];
-		for (let i = 1; i < sides.length; i++) {
-			if (!sides[i]) {
-				continue; // Ignore null or undefined border sides
+		let dominant: IBorderSide = null;
+		for (const side of sides) {
+			if (!side) {
+				continue;
 			}
 
 			if (!dominant) {
-				dominant = sides[i];
-			} else if (sides[i].size > dominant.size) {
-				dominant = sides[i];
-			} else if (sides[i].size === dominant.size) {
+				dominant = side;
+			} else if (side.size > dominant.size) {
+				dominant = side;
+			} else if (side.size === dominant.size) {
 				// Has same size -> let the color density decide (higher density wins)
-				if (CanvasRenderer._calculateColorDensity(sides[i].color) > CanvasRenderer._calculateColorDensity(dominant.color)) {
-					dominant = sides[i];
+				if (dominant.isDefault) {
+					dominant = side;
+				} else if (!side.isDefault && CanvasRenderer._calculateColorDensity(side.color) < CanvasRenderer._calculateColorDensity(dominant.color)) {
+					dominant = side;
 				}
 			}
 		}

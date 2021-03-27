@@ -19,6 +19,7 @@
     "@angular/platform-browser": "~11.2.5",
     "@angular/platform-browser-dynamic": "~11.2.5",
     "@angular/router": "~11.2.5",
+    "ngx-color-picker": "^11.0.0",
     "rxjs": "~6.6.0",
     "table-engine": "file:../lib",
     "tslib": "^2.0.0",

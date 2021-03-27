@@ -7,15 +7,26 @@
   </div>
 
   <div class="controls-container">
-    <button (click)="repaint()">Repaint</button>
-    <button (click)="addOneFixedRowsColumns()">Add 1 fixed row/column</button>
-    <button (click)="removeOneFixedRowsColumns()">Remove 1 fixed row/column</button>
-    <button (click)="focusTable()">Focus table programmatically</button>
-    <button (click)="mergeSelection()">Merge selected cells</button>
-    <button (click)="splitSelection()">Split selected merged cells</button>
-    <button (click)="hideRows()">Hide selected rows</button>
-    <button (click)="hideColumns()">Hide selected columns</button>
-    <button (click)="showHidden()">Show all hidden rows/columns</button>
+    <div>
+      <button (click)="repaint()">Repaint</button>
+      <button (click)="addOneFixedRowsColumns()">Add 1 fixed row/column</button>
+      <button (click)="removeOneFixedRowsColumns()">Remove 1 fixed row/column</button>
+      <button (click)="focusTable()">Focus table programmatically</button>
+      <button (click)="mergeSelection()">Merge selected cells</button>
+      <button (click)="splitSelection()">Split selected merged cells</button>
+      <button (click)="hideRows()">Hide selected rows</button>
+      <button (click)="hideColumns()">Hide selected columns</button>
+      <button (click)="showHidden()">Show all hidden rows/columns</button>
+    </div>
+
+    <div>
+      <input [(colorPicker)]="borderColor" [style.background]="borderColor" cpOutputFormat="rgba">
+      <input type="number" name="borderSizeSpinner" [(ngModel)]="borderSize">
+      <button (click)="setBorderTop()">Set border top</button>
+      <button (click)="setBorderLeft()">Set border left</button>
+      <button (click)="setBorderBottom()">Set border bottom</button>
+      <button (click)="setBorderRight()">Set border right</button>
+    </div>
   </div>
 
 </div>
