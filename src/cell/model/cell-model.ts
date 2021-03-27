@@ -3,6 +3,7 @@ import {CellRange, ICellRange} from "../range/cell-range";
 import {CellRangeUtil} from "../range/cell-range-util";
 import {IRectangle} from "../../util/rect";
 import {ICellModel} from "./cell-model.interface";
+import {IBorder} from "../../border/border";
 
 /**
  * Model managing cells and their position and size in the table.
@@ -203,9 +204,18 @@ export class CellModel implements ICellModel {
 	 * Get a cell at the given coordinates.
 	 * @param rowIndex to get cell at
 	 * @param columnIndex to get cell at
+	 * @param fill whether to fill the cell lookup with a new cell instance, if it is currently null (Default: false)
 	 */
-	public getCell(rowIndex: number, columnIndex: number): ICell | null {
-		return this._cellLookup[rowIndex][columnIndex];
+	public getCell(rowIndex: number, columnIndex: number, fill?: boolean): ICell | null {
+		if (fill === undefined || fill === null) {
+			fill = false;
+		}
+
+		if (!fill) {
+			return this._cellLookup[rowIndex][columnIndex];
+		} else {
+			return this._getCellOrFill(rowIndex, columnIndex);
+		}
 	}
 
 	/**
@@ -1168,14 +1178,85 @@ export class CellModel implements ICellModel {
 			return;
 		}
 
-		// Reset cell lookup to empty cell for all cells but the most upper left one
+		const border: IBorder | null = cell.border;
+
+		// Reset cell lookup to empty cell for all cells but the most upper left one (if no borders are set to the side).
 		for (let row = cell.range.startRow; row <= cell.range.endRow; row++) {
 			for (let column = cell.range.startColumn; column <= cell.range.endColumn; column++) {
-				if (row === cell.range.startRow && column === cell.range.startColumn) {
-					continue;
+				let toSet: ICell | null = row === cell.range.startRow && column === cell.range.startColumn ? cell : null;
+
+				if (!!border) {
+					if (row === cell.range.startRow && !!border.top) {
+						// Keep upper border
+						if (!toSet) {
+							toSet = {
+								range: CellRange.fromSingleRowColumn(row, column),
+								value: null,
+								rendererName: cell.rendererName,
+								border: {}
+							};
+						}
+						toSet.border.top = {
+							size: border.top.size,
+							color: border.top.color,
+							style: border.top.style,
+							priority: border.top.priority
+						};
+					}
+					if (row === cell.range.endRow && !!border.bottom) {
+						// Keep lower border
+						if (!toSet) {
+							toSet = {
+								range: CellRange.fromSingleRowColumn(row, column),
+								value: null,
+								rendererName: cell.rendererName,
+								border: {}
+							};
+						}
+						toSet.border.bottom = {
+							size: border.bottom.size,
+							color: border.bottom.color,
+							style: border.bottom.style,
+							priority: border.bottom.priority
+						};
+					}
+					if (column === cell.range.startColumn && !!border.left) {
+						// Keep left border
+						if (!toSet) {
+							toSet = {
+								range: CellRange.fromSingleRowColumn(row, column),
+								value: null,
+								rendererName: cell.rendererName,
+								border: {}
+							};
+						}
+						toSet.border.left = {
+							size: border.left.size,
+							color: border.left.color,
+							style: border.left.style,
+							priority: border.left.priority
+						};
+					}
+					if (column === cell.range.endColumn && !!border.right) {
+						// Keep right border
+						if (!toSet) {
+							toSet = {
+								range: CellRange.fromSingleRowColumn(row, column),
+								value: null,
+								rendererName: cell.rendererName,
+								border: {}
+							};
+						}
+						toSet.border.right = {
+							size: border.right.size,
+							color: border.right.color,
+							style: border.right.style,
+							priority: border.right.priority
+						};
+					}
 				}
 
-				this._cellLookup[row][column] = null;
+				this._cellLookup[row][column] = toSet;
 			}
 		}
 

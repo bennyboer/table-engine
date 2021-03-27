@@ -11,8 +11,9 @@ export interface ICellModel {
 	 * Get a cell at the given coordinates.
 	 * @param rowIndex to get cell at
 	 * @param columnIndex to get cell at
+	 * @param fill whether to fill the cell lookup with a new cell instance, if it is currently null (Default: false)
 	 */
-	getCell(rowIndex: number, columnIndex: number): ICell | null;
+	getCell(rowIndex: number, columnIndex: number, fill?: boolean): ICell | null;
 
 	/**
 	 * Set a value to the cell at the given row and column.

@@ -9,10 +9,9 @@ import {IRectangle} from "../../../src/util/rect";
 import {RowColumnHeaderRenderer} from "../../../src/renderer/canvas/cell/header/row-column-header-renderer";
 import {BaseCellRenderer} from "../../../src/renderer/canvas/cell/base/base-cell-renderer";
 import {ROW_COLUMN_HEADER_TRANSFORM} from "../../../src/selection/options";
-import {ISelectionModel} from "../../../src/selection/model/selection-model.interface";
 import {ISelection} from "../../../src/selection/selection";
-import Table = WebAssembly.Table;
 import {IImageCellRendererValue, ImageCellRenderer} from "../../../src/renderer/canvas/cell/image/image-cell-renderer";
+import {BorderStyle} from "../../../src/border/border-style";
 
 @Component({
   selector: "app-root",
@@ -120,6 +119,66 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.engine.registerCellRenderer(new RowColumnHeaderRenderer());
     this.engine.registerCellRenderer(new ImageCellRenderer());
     this.engine.registerCellRenderer(new TestCellRenderer());
+
+    // Set some borders
+    this.engine.getBorderModel().setBorder({
+      left: {
+        style: BorderStyle.SOLID,
+        size: 5,
+        color: {red: 255, blue: 0, green: 0, alpha: 1},
+      }
+    }, {
+      startRow: 10,
+      endRow: 13,
+      startColumn: 3,
+      endColumn: 5
+    });
+
+    this.engine.getBorderModel().setBorder({
+      left: {
+        style: BorderStyle.SOLID,
+        size: 2,
+        color: {red: 255, blue: 0, green: 0, alpha: 1},
+      },
+      top: {
+        style: BorderStyle.SOLID,
+        size: 2,
+        color: {red: 255, blue: 0, green: 0, alpha: 1},
+      },
+      bottom: {
+        style: BorderStyle.SOLID,
+        size: 2,
+        color: {red: 255, blue: 0, green: 0, alpha: 1},
+      },
+      right: {
+        style: BorderStyle.SOLID,
+        size: 2,
+        color: {red: 255, blue: 0, green: 0, alpha: 1},
+      }
+    }, {
+      startRow: 2,
+      endRow: 4,
+      startColumn: 2,
+      endColumn: 3
+    });
+
+    this.engine.getBorderModel().setBorder({
+      right: {
+        style: BorderStyle.SOLID,
+        size: 2,
+        color: {red: 0, blue: 255, green: 0, alpha: 1},
+      },
+      bottom: {
+        style: BorderStyle.SOLID,
+        size: 3,
+        color: {red: 0, blue: 0, green: 255, alpha: 1},
+      }
+    }, {
+      startRow: 3,
+      endRow: 3,
+      startColumn: 1,
+      endColumn: 1
+    });
 
     this.engine.initialize();
   }

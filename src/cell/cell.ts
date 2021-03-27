@@ -1,4 +1,5 @@
 import {ICellRange} from "./range/cell-range";
+import {IBorder} from "../border/border";
 
 /**
  * Cell representation of the table engine.
@@ -20,4 +21,10 @@ export interface ICell {
 	 * thus the value type is not of concern for the library.
 	 */
 	value: any | null;
+
+	/**
+	 * Border of the cell.
+	 * Should only be managed by using the border model.
+	 */
+	border?: IBorder;
 }

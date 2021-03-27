@@ -17,7 +17,7 @@ export interface IBorderSide {
 	 * then we can say that B has been set at a later time by the user
 	 * than A and show B instead of A.
 	 */
-	priority: number;
+	priority?: number;
 
 	/**
 	 * Style of the border line.

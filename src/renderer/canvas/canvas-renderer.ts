@@ -17,6 +17,9 @@ import {IInitialPosition, ISelection} from "../../selection/selection";
 import {ISelectionRenderingOptions} from "../options/selection";
 import {CellRangeUtil} from "../../cell/range/cell-range-util";
 import {TableEngine} from "../../table-engine";
+import {IBorderModel} from "../../border/model/border-model.interface";
+import {IBorder} from "../../border/border";
+import {IBorderSide} from "../../border/border-side";
 
 /**
  * Table-engine renderer using the HTML5 canvas.
@@ -42,6 +45,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Selection model to draw selections for.
 	 */
 	private _selectionModel: ISelectionModel;
+
+	/**
+	 * Border model to draw borders from.
+	 */
+	private _borderModel: IBorderModel;
 
 	/**
 	 * Reference to the table-engine.
@@ -231,6 +239,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		this._engine = engine;
 		this._cellModel = engine.getCellModel();
 		this._selectionModel = engine.getSelectionModel();
+		this._borderModel = engine.getBorderModel();
 		this._options = options;
 
 		this._initializeRenderingCanvasElement();
@@ -1347,7 +1356,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		const result: ISelectionRenderContext = {
 			options: this._options.canvas.selection,
-			other: [],
+			inFixedCorner: [],
 			inNonFixedArea: [],
 			inFixedColumns: [],
 			inFixedRows: []
@@ -1453,7 +1462,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		let collectionToPushTo: ISelectionRenderInfo[];
 		if (isStartInFixedRows && isStartInFixedColumns) {
-			collectionToPushTo = toAdd.other;
+			collectionToPushTo = toAdd.inFixedCorner;
 		} else if (isStartInFixedRows) {
 			collectionToPushTo = toAdd.inFixedRows;
 		} else if (isStartInFixedColumns) {
@@ -1575,9 +1584,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			? this._cellModel.getColumnOffset(fixedColumns - 1) + (this._cellModel.isColumnHidden(fixedColumns - 1) ? 0.0 : this._cellModel.getColumnSize(fixedColumns - 1))
 			: 0;
 
-		const cellsInfo = this._createCellRenderingInfo(viewPort, fixedRows, fixedColumns, fixedRowsHeight, fixedColumnsWidth);
+		const cellsInfo: ICellRenderContextCollection = this._createCellRenderingInfo(viewPort, fixedRows, fixedColumns, fixedRowsHeight, fixedColumnsWidth);
 		const scrollBarContext: IScrollBarRenderContext = this._calculateScrollBarContext(viewPort, fixedRowsHeight, fixedColumnsWidth);
 		const selectionContext: ISelectionRenderContext = this._calculateSelectionContext(viewPort, fixedRows, fixedColumns, fixedRowsHeight, fixedColumnsWidth);
+		const borderContext: IBorderRenderContext = this._calculateBorderContext(cellsInfo);
 
 		return {
 			focused: this._isFocused,
@@ -1585,8 +1595,64 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			cells: cellsInfo,
 			scrollBar: scrollBarContext,
 			selection: selectionContext,
+			borders: borderContext,
 			renderers: this._cellRendererLookup
 		}
+	}
+
+	/**
+	 * Calculate the border rendering context.
+	 * @param cellsInfo to calculate borders for
+	 */
+	private _calculateBorderContext(cellsInfo: ICellRenderContextCollection): IBorderRenderContext {
+		return {
+			inFixedCorner: !!cellsInfo.fixedCornerCells ? this._calculateBorderInfo(this._borderModel.getBorders(cellsInfo.fixedCornerCells.cellRange), cellsInfo.fixedCornerCells.cellRange, false, false) : [],
+			inFixedColumns: !!cellsInfo.fixedColumnCells ? this._calculateBorderInfo(this._borderModel.getBorders(cellsInfo.fixedColumnCells.cellRange), cellsInfo.fixedColumnCells.cellRange, false, true) : [],
+			inFixedRows: !!cellsInfo.fixedRowCells ? this._calculateBorderInfo(this._borderModel.getBorders(cellsInfo.fixedRowCells.cellRange), cellsInfo.fixedRowCells.cellRange, true, false) : [],
+			inNonFixedArea: this._calculateBorderInfo(this._borderModel.getBorders(cellsInfo.nonFixedCells.cellRange), cellsInfo.nonFixedCells.cellRange, true, true)
+		};
+	}
+
+	/**
+	 * Calculate the border infos for rendering borders.
+	 * @param borders to calculate infos for
+	 * @param range of the borders
+	 * @param adjustBoundsX whether to adjust bounds due to scrolling
+	 * @param adjustBoundsY whether to adjust bounds due to scrolling
+	 */
+	private _calculateBorderInfo(borders: IBorder[][], range: ICellRange, adjustBoundsX: boolean, adjustBoundsY: boolean): IBorderInfo[][] {
+		const result: IBorderInfo[][] = [];
+
+		for (let row = range.startRow; row <= range.endRow; row++) {
+			const isRowHidden: boolean = this._cellModel.isRowHidden(row);
+			if (!isRowHidden) {
+				const borderInfos: IBorderInfo[] = [];
+
+				for (let column = range.startColumn; column <= range.endColumn; column++) {
+					const isColumnHidden: boolean = this._cellModel.isColumnHidden(column);
+					if (!isColumnHidden) {
+						const info: IBorderInfo = {
+							border: borders[row - range.startRow][column - range.startColumn],
+							bounds: this._cellModel.getBounds(CellRange.fromSingleRowColumn(row, column))
+						};
+
+						// Correct bounds for current scroll offsets
+						if (adjustBoundsY) {
+							info.bounds.top -= this._scrollOffset.y;
+						}
+						if (adjustBoundsX) {
+							info.bounds.left -= this._scrollOffset.x;
+						}
+
+						borderInfos.push(info);
+					}
+				}
+
+				result.push(borderInfos);
+			}
+		}
+
+		return result;
 	}
 
 	/**
@@ -1715,6 +1781,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 
 		return {
+			cellRange: range,
 			viewPortBounds: viewPortBounds,
 			cellsPerRenderer
 		};
@@ -1764,17 +1831,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			ctx.translate(0.5, 0.5);
 
 			// Render "normal" (non-fixed) cells first
-			CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.nonFixedCells, renderingContext.selection?.inNonFixedArea);
+			CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.nonFixedCells, renderingContext.borders.inNonFixedArea, renderingContext.selection?.inNonFixedArea);
 
 			// Then render fixed cells (if any).
 			if (!!renderingContext.cells.fixedColumnCells) {
-				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedColumnCells, renderingContext.selection?.inFixedColumns);
+				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedColumnCells, renderingContext.borders.inFixedColumns, renderingContext.selection?.inFixedColumns);
 			}
 			if (!!renderingContext.cells.fixedRowCells) {
-				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedRowCells, renderingContext.selection?.inFixedRows);
+				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedRowCells, renderingContext.borders.inFixedRows, renderingContext.selection?.inFixedRows);
 			}
 			if (!!renderingContext.cells.fixedCornerCells) {
-				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedCornerCells, renderingContext.selection?.other);
+				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedCornerCells, renderingContext.borders.inFixedCorner, renderingContext.selection?.inFixedCorner);
 			}
 
 			// Render scrollbars
@@ -1792,16 +1859,18 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param ctx to render with
 	 * @param context the rendering context
 	 * @param cellArea to render for the area
+	 * @param borders to render
 	 * @param selectionInfos to render for the area
 	 */
 	private static _renderArea(
 		ctx: CanvasRenderingContext2D,
 		context: IRenderContext,
 		cellArea: ICellAreaRenderContext,
+		borders: IBorderInfo[][],
 		selectionInfos?: ISelectionRenderInfo[]
 	): void {
 		CanvasRenderer._renderAreaCells(ctx, context, cellArea);
-		CanvasRenderer._renderBordersPerRenderer(ctx, context, cellArea);
+		CanvasRenderer._renderBorders(ctx, context, borders);
 
 		// Render selection that may be displayed the area
 		if (!!selectionInfos) {
@@ -1841,26 +1910,73 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Render borders for the passed cellsPerRenderer map.
 	 * @param ctx to render with
 	 * @param context the rendering context
-	 * @param cellArea to render
+	 * @param borders to render
 	 */
-	private static _renderBordersPerRenderer(ctx: CanvasRenderingContext2D, context: IRenderContext, cellArea: ICellAreaRenderContext): void {
-		for (const [rendererName, cellsToRender] of cellArea.cellsPerRenderer.entries()) {
-			for (const cellToRender of cellsToRender) {
-				const bounds: IRectangle = cellToRender.bounds;
+	private static _renderBorders(ctx: CanvasRenderingContext2D, context: IRenderContext, borders: IBorderInfo[][]): void {
+		for (let row = 0; row < borders.length; row++) {
+			for (let column = 0; column < borders[row].length; column++) {
+				const borderInfo: IBorderInfo = borders[row][column];
+				const bounds: IRectangle = borderInfo.bounds;
 
-				ctx.strokeStyle = "#EAEAEA";
-				ctx.lineWidth = 1;
+				// Draw upper border only for first row
+				if (row === 0) {
+					if (!!borderInfo.border.top) {
+						CanvasRenderer._applyBorderStyle(ctx, borderInfo.border.top);
 
-				ctx.beginPath();
+						ctx.beginPath();
+						ctx.moveTo(bounds.left, bounds.top);
+						ctx.lineTo(bounds.left + bounds.width, bounds.top);
+						ctx.stroke();
+					}
+				}
 
-				// Draw only the bottom and right border for now until we have the border model
-				ctx.moveTo(bounds.left, bounds.top + bounds.height);
-				ctx.lineTo(bounds.left + bounds.width, bounds.top + bounds.height);
-				ctx.lineTo(bounds.left + bounds.width, bounds.top);
+				// Draw left border only for first column
+				if (column === 0) {
+					if (!!borderInfo.border.left) {
+						CanvasRenderer._applyBorderStyle(ctx, borderInfo.border.left);
 
-				ctx.stroke();
+						ctx.beginPath();
+						ctx.moveTo(bounds.left, bounds.top);
+						ctx.lineTo(bounds.left, bounds.top + bounds.height);
+						ctx.stroke();
+					}
+				}
+
+				const left: IBorderInfo | null = column > 0 ? borders[row][column - 1] : null;
+
+				// Draw right border
+				if (!!borderInfo.border.right) {
+					CanvasRenderer._applyBorderStyle(ctx, borderInfo.border.right);
+
+					ctx.beginPath();
+					ctx.moveTo(bounds.left + bounds.width, bounds.top);
+					ctx.lineTo(bounds.left + bounds.width, bounds.top + bounds.height);
+					ctx.stroke();
+				}
+
+				// Draw lower border
+				if (!!borderInfo.border.bottom) {
+					CanvasRenderer._applyBorderStyle(ctx, borderInfo.border.bottom);
+
+					ctx.beginPath();
+					ctx.moveTo(bounds.left, bounds.top + bounds.height);
+					ctx.lineTo(bounds.left + bounds.width, bounds.top + bounds.height);
+					ctx.stroke();
+				}
 			}
 		}
+	}
+
+	/**
+	 * Apply the border style of the passed border side.
+	 * @param ctx to apply style to
+	 * @param side to get style from
+	 */
+	private static _applyBorderStyle(ctx: CanvasRenderingContext2D, side: IBorderSide): void {
+		ctx.strokeStyle = CanvasUtil.colorToStyle(side.color);
+		ctx.lineWidth = side.size;
+
+		// TODO Set dashed/dotted when needed
 	}
 
 	/**
@@ -1973,14 +2089,63 @@ interface IRenderContext {
 	scrollBar: IScrollBarRenderContext;
 
 	/**
-	 * Rendering context of the selectiojns.
+	 * Rendering context of the selections.
 	 */
 	selection?: ISelectionRenderContext;
+
+	/**
+	 * Rendering context of the borders.
+	 */
+	borders: IBorderRenderContext;
 
 	/**
 	 * Lookup for cell renderers.
 	 */
 	renderers: Map<string, ICanvasCellRenderer>;
+
+}
+
+/**
+ * Rendering context of borders.
+ */
+interface IBorderRenderContext {
+
+	/**
+	 * Borders completely contained in the non-fixed area.
+	 */
+	inNonFixedArea: IBorderInfo[][];
+
+	/**
+	 * Borders completely contained in non-fixed area or fixed rows area.
+	 */
+	inFixedRows: IBorderInfo[][];
+
+	/**
+	 * Borders completely contained in non-fixed area or fixed columns area.
+	 */
+	inFixedColumns: IBorderInfo[][];
+
+	/**
+	 * Borders to be displayed above all areas.
+	 */
+	inFixedCorner: IBorderInfo[][];
+
+}
+
+/**
+ * Infos used to draw borders.
+ */
+interface IBorderInfo {
+
+	/**
+	 * Bounds of the cell to paint borders for.
+	 */
+	bounds: IRectangle;
+
+	/**
+	 * Border to paint for the cell.
+	 */
+	border: IBorder;
 
 }
 
@@ -2012,7 +2177,7 @@ interface ISelectionRenderContext {
 	/**
 	 * Selection rectangles to be displayed above all areas.
 	 */
-	other: ISelectionRenderInfo[];
+	inFixedCorner: ISelectionRenderInfo[];
 
 }
 
@@ -2076,6 +2241,11 @@ interface ICellAreaRenderContext {
 	 * Total bounds of the cell area in the viewport.
 	 */
 	viewPortBounds: IRectangle;
+
+	/**
+	 * Displayed cell range in the area.
+	 */
+	cellRange: ICellRange;
 
 	/**
 	 * Cells to render per renderer name.
