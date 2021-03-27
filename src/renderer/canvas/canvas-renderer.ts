@@ -1916,12 +1916,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		for (let row = 0; row < borders.length; row++) {
 			for (let column = 0; column < borders[row].length; column++) {
 				const borderInfo: IBorderInfo = borders[row][column];
+
 				const bounds: IRectangle = borderInfo.bounds;
+				const border: IBorder = borderInfo.border;
 
 				// Draw upper border only for first row
 				if (row === 0) {
-					if (!!borderInfo.border.top) {
-						CanvasRenderer._applyBorderStyle(ctx, borderInfo.border.top);
+					if (!!border.top) {
+						CanvasRenderer._applyBorderStyle(ctx, border.top);
 
 						ctx.beginPath();
 						ctx.moveTo(bounds.left, bounds.top);
@@ -1932,8 +1934,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 				// Draw left border only for first column
 				if (column === 0) {
-					if (!!borderInfo.border.left) {
-						CanvasRenderer._applyBorderStyle(ctx, borderInfo.border.left);
+					if (!!border.left) {
+						CanvasRenderer._applyBorderStyle(ctx, border.left);
 
 						ctx.beginPath();
 						ctx.moveTo(bounds.left, bounds.top);
@@ -1942,29 +1944,113 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					}
 				}
 
-				const left: IBorderInfo | null = column > 0 ? borders[row][column - 1] : null;
-
 				// Draw right border
-				if (!!borderInfo.border.right) {
-					CanvasRenderer._applyBorderStyle(ctx, borderInfo.border.right);
+				if (!!border.right) {
+					const upperCrossingBorderEnvironment = CanvasRenderer._determineCrossingBorderEnvironment(
+						[border.right, (row > 0 ? borders[row - 1][column].border.right : null)],
+						[border.top, (column < borders[row].length - 1 ? borders[row][column + 1].border.top : null)]
+					);
+					let topOffset: number = (upperCrossingBorderEnvironment.dominantBorderSide === border.right ? -1 : 1) * (!!upperCrossingBorderEnvironment.dominantHorizontalSide ? upperCrossingBorderEnvironment.dominantHorizontalSide.size / 2 : 0);
+
+					const lowerCrossingBorderEnvironment = CanvasRenderer._determineCrossingBorderEnvironment(
+						[border.right, (row < borders.length - 1 ? borders[row + 1][column].border.right : null)],
+						[border.bottom, (column < borders[row].length - 1 ? borders[row][column + 1].border.bottom : null)]
+					);
+					let bottomOffset: number = (lowerCrossingBorderEnvironment.dominantBorderSide === border.right ? -1 : 1) * (!!lowerCrossingBorderEnvironment.dominantHorizontalSide ? lowerCrossingBorderEnvironment.dominantHorizontalSide.size / 2 : 0);
+
+					CanvasRenderer._applyBorderStyle(ctx, border.right);
 
 					ctx.beginPath();
-					ctx.moveTo(bounds.left + bounds.width, bounds.top);
-					ctx.lineTo(bounds.left + bounds.width, bounds.top + bounds.height);
+					ctx.moveTo(bounds.left + bounds.width, bounds.top + topOffset);
+					ctx.lineTo(bounds.left + bounds.width, bounds.top + bounds.height - bottomOffset);
 					ctx.stroke();
 				}
 
 				// Draw lower border
-				if (!!borderInfo.border.bottom) {
-					CanvasRenderer._applyBorderStyle(ctx, borderInfo.border.bottom);
+				if (!!border.bottom) {
+					const leftCrossingBorderEnvironment = CanvasRenderer._determineCrossingBorderEnvironment(
+						[border.left, (row < borders.length - 1 ? borders[row + 1][column].border.left : null)],
+						[border.bottom, (column > 0 ? borders[row][column - 1].border.bottom : null)]
+					);
+					let leftOffset: number = (leftCrossingBorderEnvironment.dominantBorderSide === border.bottom ? -1 : 1) * (!!leftCrossingBorderEnvironment.dominantVerticalSide ? leftCrossingBorderEnvironment.dominantVerticalSide.size / 2 : 0);
+
+					const rightCrossingBorderEnvironment = CanvasRenderer._determineCrossingBorderEnvironment(
+						[border.right, (row < borders.length - 1 ? borders[row + 1][column].border.right : null)],
+						[border.bottom, (column < borders[row].length - 1 ? borders[row][column + 1].border.bottom : null)]
+					);
+					let rightOffset: number = (rightCrossingBorderEnvironment.dominantBorderSide === border.bottom ? -1 : 1) * (!!rightCrossingBorderEnvironment.dominantVerticalSide ? rightCrossingBorderEnvironment.dominantVerticalSide.size / 2 : 0);
+
+					CanvasRenderer._applyBorderStyle(ctx, border.bottom);
 
 					ctx.beginPath();
-					ctx.moveTo(bounds.left, bounds.top + bounds.height);
-					ctx.lineTo(bounds.left + bounds.width, bounds.top + bounds.height);
+					ctx.moveTo(bounds.left + leftOffset, bounds.top + bounds.height);
+					ctx.lineTo(bounds.left + bounds.width - rightOffset, bounds.top + bounds.height);
 					ctx.stroke();
 				}
 			}
 		}
+	}
+
+	/**
+	 * Determine the environment describing crossing border sides.
+	 * @param verticalSides border sides running vertically
+	 * @param horizontalSides border sides running horizontally
+	 */
+	private static _determineCrossingBorderEnvironment(verticalSides: IBorderSide[], horizontalSides: IBorderSide[]): ICrossingBorderEnvironment {
+		return {
+			dominantBorderSide: CanvasRenderer._determineDominantBorderSide([...verticalSides, ...horizontalSides]),
+			dominantHorizontalSide: CanvasRenderer._determineDominantBorderSide(horizontalSides),
+			dominantVerticalSide: CanvasRenderer._determineDominantBorderSide(verticalSides)
+		}
+	}
+
+	/**
+	 * Calculate the maximum border side size in the given samples.
+	 * @param sides to calculate maximum border side size in
+	 */
+	private static _calculateMaxBorderSideSize(sides: IBorderSide[]): number {
+		let maxSize: number = 0;
+		for (const side of sides) {
+			if (!!side && side.size > maxSize) {
+				maxSize = side.size;
+			}
+		}
+
+		return maxSize;
+	}
+
+	/**
+	 * Determine the dominant border side among the passed.
+	 * @param sides to determine dominant border side in
+	 */
+	private static _determineDominantBorderSide(sides: IBorderSide[]): IBorderSide {
+		let dominant: IBorderSide = sides[0];
+		for (let i = 1; i < sides.length; i++) {
+			if (!sides[i]) {
+				continue; // Ignore null or undefined border sides
+			}
+
+			if (!dominant) {
+				dominant = sides[i];
+			} else if (sides[i].size > dominant.size) {
+				dominant = sides[i];
+			} else if (sides[i].size === dominant.size) {
+				// Has same size -> let the color density decide (higher density wins)
+				if (CanvasRenderer._calculateColorDensity(sides[i].color) > CanvasRenderer._calculateColorDensity(dominant.color)) {
+					dominant = sides[i];
+				}
+			}
+		}
+
+		return dominant;
+	}
+
+	/**
+	 * Calculate the density of the passed color.
+	 * @param color to calculate density for
+	 */
+	private static _calculateColorDensity(color: IColor): number {
+		return ((color.red << 16) + (color.green << 8) + color.blue) * color.alpha;
 	}
 
 	/**
@@ -2472,5 +2558,27 @@ interface IAutoScrollContext {
 	 * Acceleration per second (may be negative (slowing) or positive (accelerating))
 	 */
 	acceleration: number;
+
+}
+
+/**
+ * Environment of crossing borders.
+ */
+interface ICrossingBorderEnvironment {
+
+	/**
+	 * Reference to the dominant border side.
+	 */
+	dominantBorderSide: IBorderSide;
+
+	/**
+	 * Reference to the dominant horizontal border side.
+	 */
+	dominantHorizontalSide: IBorderSide;
+
+	/**
+	 * Reference to the dominant horizontal border side.
+	 */
+	dominantVerticalSide: IBorderSide;
 
 }

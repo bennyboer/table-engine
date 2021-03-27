@@ -1,7 +1,6 @@
 import {ICanvasCellRenderer} from "../canvas-cell-renderer";
 import {ICell} from "../../../../cell/cell";
 import {IRectangle} from "../../../../util/rect";
-import {ICellModel} from "../../../../cell/model/cell-model.interface";
 import {ISelectionModel} from "../../../../selection/model/selection-model.interface";
 import {TableEngine} from "../../../../table-engine";
 

@@ -147,13 +147,13 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       },
       bottom: {
         style: BorderStyle.SOLID,
-        size: 2,
-        color: {red: 255, blue: 0, green: 0, alpha: 1},
+        size: 10,
+        color: {red: 150, blue: 100, green: 100, alpha: 1},
       },
       right: {
-        style: BorderStyle.SOLID,
-        size: 2,
-        color: {red: 255, blue: 0, green: 0, alpha: 1},
+        style: BorderStyle.DOTTED,
+        size: 20,
+        color: {red: 0, blue: 255, green: 0, alpha: 1},
       }
     }, {
       startRow: 2,
@@ -178,6 +178,24 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       endRow: 3,
       startColumn: 1,
       endColumn: 1
+    });
+
+    this.engine.getBorderModel().setBorder({
+      left: {
+        style: BorderStyle.SOLID,
+        size: 2,
+        color: {red: 255, blue: 0, green: 100, alpha: 1},
+      },
+      bottom: {
+        style: BorderStyle.SOLID,
+        size: 1,
+        color: {red: 0, blue: 0, green: 255, alpha: 1},
+      }
+    }, {
+      startRow: 4,
+      endRow: 4,
+      startColumn: 4,
+      endColumn: 4
     });
 
     this.engine.initialize();
