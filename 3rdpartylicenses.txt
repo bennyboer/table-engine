@@ -4,6 +4,9 @@ MIT
 @angular/core
 MIT
 
+@angular/forms
+MIT
+
 @angular/platform-browser
 MIT
 
@@ -39,6 +42,9 @@ BSD-3-Clause
 
 --------------------------------------------------------------------------------
 
+
+ngx-color-picker
+MIT
 
 rxjs
 Apache-2.0
