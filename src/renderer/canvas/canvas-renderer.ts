@@ -20,6 +20,7 @@ import {TableEngine} from "../../table-engine";
 import {IBorderModel} from "../../border/model/border-model.interface";
 import {IBorder} from "../../border/border";
 import {IBorderSide} from "../../border/border-side";
+import {BorderStyle} from "../../border/border-style";
 
 /**
  * Table-engine renderer using the HTML5 canvas.
@@ -1989,6 +1990,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				}
 			}
 		}
+
+		// Clear line dash setting
+		ctx.setLineDash([]);
 	}
 
 	/**
@@ -2064,7 +2068,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		ctx.strokeStyle = CanvasUtil.colorToStyle(side.color);
 		ctx.lineWidth = side.size;
 
-		// TODO Set dashed/dotted when needed
+		if (side.style === BorderStyle.SOLID) {
+			ctx.setLineDash([]);
+		} else if (side.style === BorderStyle.DOTTED) {
+			ctx.setLineDash([1, 1]);
+		} else if (side.style === BorderStyle.DASHED) {
+			ctx.setLineDash([5, 5]);
+		}
 	}
 
 	/**

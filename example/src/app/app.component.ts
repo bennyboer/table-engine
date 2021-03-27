@@ -36,6 +36,11 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   public borderSize: number = 1;
 
   /**
+   * Currently selected border style.
+   */
+  public borderStyle: string = "solid";
+
+  /**
    * Table engine reference.
    */
   private engine: TableEngine;
@@ -111,6 +116,16 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  private static _borderStyleNameToStyle(styleName: string): BorderStyle {
+    if (styleName === "solid") {
+      return BorderStyle.SOLID;
+    } else if (styleName === "dotted") {
+      return BorderStyle.DOTTED;
+    } else {
+      return BorderStyle.DASHED;
+    }
+  }
+
   private static _rgbaStringToColor(rgbaStr: string): IColor {
     rgbaStr = rgbaStr.startsWith("rgba") ? rgbaStr.substring(5, rgbaStr.length - 1) : rgbaStr.substring(4, rgbaStr.length - 1);
     const parts = rgbaStr.split(",");
@@ -129,7 +144,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       this.engine.getBorderModel().setBorder({
         top: {
           size: this.borderSize,
-          style: BorderStyle.SOLID,
+          style: AppComponent._borderStyleNameToStyle(this.borderStyle),
           color: AppComponent._rgbaStringToColor(this.borderColor)
         }
       }, primary.range);
@@ -144,7 +159,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       this.engine.getBorderModel().setBorder({
         left: {
           size: this.borderSize,
-          style: BorderStyle.SOLID,
+          style: AppComponent._borderStyleNameToStyle(this.borderStyle),
           color: AppComponent._rgbaStringToColor(this.borderColor)
         }
       }, primary.range);
@@ -159,7 +174,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       this.engine.getBorderModel().setBorder({
         bottom: {
           size: this.borderSize,
-          style: BorderStyle.SOLID,
+          style: AppComponent._borderStyleNameToStyle(this.borderStyle),
           color: AppComponent._rgbaStringToColor(this.borderColor)
         }
       }, primary.range);
@@ -174,7 +189,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       this.engine.getBorderModel().setBorder({
         right: {
           size: this.borderSize,
-          style: BorderStyle.SOLID,
+          style: AppComponent._borderStyleNameToStyle(this.borderStyle),
           color: AppComponent._rgbaStringToColor(this.borderColor)
         }
       }, primary.range);
@@ -203,82 +218,33 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.engine.registerCellRenderer(new ImageCellRenderer());
     this.engine.registerCellRenderer(new TestCellRenderer());
 
-    // Set some borders
+    // Set an example border
     this.engine.getBorderModel().setBorder({
-      left: {
+      right: {
         style: BorderStyle.SOLID,
-        size: 5,
-        color: {red: 255, blue: 0, green: 0, alpha: 1},
-      }
-    }, {
-      startRow: 10,
-      endRow: 13,
-      startColumn: 3,
-      endColumn: 5
-    });
-
-    this.engine.getBorderModel().setBorder({
-      left: {
-        style: BorderStyle.SOLID,
-        size: 2,
-        color: {red: 255, blue: 0, green: 0, alpha: 1},
-      },
-      top: {
-        style: BorderStyle.SOLID,
-        size: 2,
+        size: 1,
         color: {red: 255, blue: 0, green: 0, alpha: 1},
       },
       bottom: {
         style: BorderStyle.SOLID,
-        size: 10,
-        color: {red: 150, blue: 100, green: 100, alpha: 1},
+        size: 2,
+        color: {red: 0, blue: 0, green: 255, alpha: 1},
       },
-      right: {
-        style: BorderStyle.DOTTED,
-        size: 20,
+      left: {
+        style: BorderStyle.SOLID,
+        size: 3,
         color: {red: 0, blue: 255, green: 0, alpha: 1},
+      },
+      top: {
+        style: BorderStyle.SOLID,
+        size: 4,
+        color: {red: 255, blue: 0, green: 100, alpha: 1},
       }
     }, {
       startRow: 2,
       endRow: 4,
       startColumn: 2,
       endColumn: 3
-    });
-
-    this.engine.getBorderModel().setBorder({
-      right: {
-        style: BorderStyle.SOLID,
-        size: 2,
-        color: {red: 0, blue: 255, green: 0, alpha: 1},
-      },
-      bottom: {
-        style: BorderStyle.SOLID,
-        size: 3,
-        color: {red: 0, blue: 0, green: 255, alpha: 1},
-      }
-    }, {
-      startRow: 3,
-      endRow: 3,
-      startColumn: 1,
-      endColumn: 1
-    });
-
-    this.engine.getBorderModel().setBorder({
-      left: {
-        style: BorderStyle.SOLID,
-        size: 2,
-        color: {red: 255, blue: 0, green: 100, alpha: 1},
-      },
-      bottom: {
-        style: BorderStyle.SOLID,
-        size: 1,
-        color: {red: 0, blue: 0, green: 255, alpha: 1},
-      }
-    }, {
-      startRow: 4,
-      endRow: 4,
-      startColumn: 4,
-      endColumn: 4
     });
 
     this.engine.initialize();

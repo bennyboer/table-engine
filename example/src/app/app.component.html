@@ -22,6 +22,11 @@
     <div>
       <input [(colorPicker)]="borderColor" [style.background]="borderColor" cpOutputFormat="rgba">
       <input type="number" name="borderSizeSpinner" [(ngModel)]="borderSize">
+      <select name="borderStyle" [(ngModel)]="borderStyle">
+        <option value="solid">Solid</option>
+        <option value="dashed">Dashed</option>
+        <option value="dotted">Dotted</option>
+      </select>
       <button (click)="setBorderTop()">Set border top</button>
       <button (click)="setBorderLeft()">Set border left</button>
       <button (click)="setBorderBottom()">Set border bottom</button>
