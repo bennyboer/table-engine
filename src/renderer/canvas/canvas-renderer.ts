@@ -198,9 +198,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _startTouchID: number | null = null;
 
 	/**
+	 * ID of the second starting zooming via pinch gesture.
+	 */
+	private _secondTouchID: number | null = null;
+
+	/**
 	 * Context of the current panning of the workspace (using fingers).
 	 */
 	private _panningStart: ITouchPanContext | null = null;
+
+	/**
+	 * Context of the current zooming using touch (pinch gesture).
+	 */
+	private _touchZoomContext: ITouchZoomContext | null = null;
 
 	/**
 	 * The initially selected cell range of the current selection process (if in progress).
@@ -787,11 +797,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 			this._startTouchID = touch.identifier;
 
-			const [x, y] = this._getMouseOffset(touch);
-
 			// Stop any auto-scrolling in progress due to previous touches
 			this._stopAutoScrolling();
 
+			const [x, y] = this._getMouseOffset(touch);
 			this._panningStart = {
 				startX: x,
 				startY: y,
@@ -806,6 +815,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				},
 				isTap: true
 			};
+		} else if (event.touches.length === 2 && this._secondTouchID === null) {
+			this._secondTouchID = event.touches[1].identifier;
+
+			const [x2, y2] = this._getMouseOffset(event.touches[1]);
+			const [x1, y1] = this._getMouseOffset(event.touches[0]);
+			this._touchZoomContext = {
+				startTouchDistance: Math.hypot(x2 - x1, y2 - y1),
+				startZoom: this._zoom
+			};
 		}
 	}
 
@@ -814,6 +832,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onTouchMove(event: TouchEvent): void {
+		if (event.touches.length === 2 && this._touchZoomContext !== null) {
+			// Zoom by pinching
+			const [x2, y2]: number[] = this._getMouseOffset(event.touches[1]);
+			const [x1, y1]: number[] = this._getMouseOffset(event.touches[0]);
+
+			const currentFingerDistance: number = Math.hypot(x2 - x1, y2 - y1);
+
+			this.setZoom(this._touchZoomContext.startZoom * currentFingerDistance / this._touchZoomContext.startTouchDistance);
+			return;
+		}
+
 		if (!!this._panningStart && event.changedTouches.length === 1) {
 			const touch: Touch = event.changedTouches[0];
 
@@ -864,6 +893,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 				// Stop panning
 				this._panningStart = null;
+			} else if (touch.identifier === this._secondTouchID) {
+				this._secondTouchID = null;
+				this._touchZoomContext = null;
 			}
 		}
 	}
@@ -2569,6 +2601,23 @@ interface IMouseDragContext {
 }
 
 /**
+ * Context holding info about a current touch zooming via pinch gesture.
+ */
+interface ITouchZoomContext {
+
+	/**
+	 * Initial distance between the two fingers.
+	 */
+	startTouchDistance: number;
+
+	/**
+	 * Zoom level when zooming has started.
+	 */
+	startZoom: number;
+
+}
+
+/**
  * Context holding info about a workspace dragging via touch.
  */
 interface ITouchPanContext extends IMouseDragContext {
@@ -2579,7 +2628,7 @@ interface ITouchPanContext extends IMouseDragContext {
 	isTap: boolean;
 
 	/**
-	 * Last x position..
+	 * Last x position.
 	 */
 	lastX: number;
 
