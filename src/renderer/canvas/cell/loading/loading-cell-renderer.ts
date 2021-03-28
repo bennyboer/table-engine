@@ -35,16 +35,6 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	private static readonly HORIZONTAL_PADDING: number = 30;
 
 	/**
-	 * Cells to animate the loading animation in.
-	 */
-	private _cellsToAnimate: Map<ICell, ICellInfo> = new Map<ICell, ICellInfo>();
-
-	/**
-	 * Currently requested animation frame ID.
-	 */
-	private _animationFrameID: number | null = null;
-
-	/**
 	 * The last animation timestamp.
 	 */
 	private _lastTimestamp: number | null = null;
@@ -68,11 +58,6 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	 * Context of the current rendering cycle.
 	 */
 	private _context: IRenderContext;
-
-	/**
-	 * Whether the rendering is due to the animation.
-	 */
-	private _isAnimationRender: boolean = false;
 
 	/**
 	 * Reference to the table-engine.
@@ -106,7 +91,18 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 		this._ctx = ctx;
 		this._context = context;
 
-		this._stopAnimation();
+		// Calculate animation progress
+		const timestamp = window.performance.now();
+		if (!!this._lastTimestamp) {
+			const diff = timestamp - this._lastTimestamp;
+			this._progress += diff / LoadingCellRenderer.DURATION_MS;
+			if (this._progress > 1.0) {
+				this._progress = 0.0;
+			}
+
+			this._transformedProgress = LoadingCellRenderer._easeInOut(this._progress);
+		}
+		this._lastTimestamp = timestamp;
 
 		// Prepare fill style for all cells to render
 		LoadingCellRenderer._prepareFillStyle(ctx, this._transformedProgress);
@@ -118,19 +114,8 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	 * @param ctx to render with
 	 */
 	public after(ctx: CanvasRenderingContext2D): void {
-		// Start animating
-		this._animationFrameID = window.requestAnimationFrame((timestamp) => this._nextAnimationStep(timestamp));
-	}
-
-	/**
-	 * Stop the animation (if currently running).
-	 */
-	private _stopAnimation(): void {
-		if (this._animationFrameID !== null) {
-			window.cancelAnimationFrame(this._animationFrameID);
-			this._animationFrameID = null;
-		}
-		this._cellsToAnimate.clear();
+		// Request another repaint for the animation
+		this._engine.repaint();
 	}
 
 	/**
@@ -148,39 +133,7 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	 * the current viewport.
 	 */
 	public cleanup(): void {
-		this._stopAnimation();
-	}
-
-	/**
-	 * Execute the next animation step.
-	 * @param timestamp current timestamp
-	 */
-	private _nextAnimationStep(timestamp: number): void {
-		if (this._lastTimestamp !== null) {
-			// Calculate progress
-			const diff = timestamp - this._lastTimestamp;
-			this._progress += diff / LoadingCellRenderer.DURATION_MS;
-			if (this._progress > 1.0) {
-				this._progress = 0.0;
-			}
-
-			// Repaint cells
-			this._isAnimationRender = true;
-			this._transformedProgress = LoadingCellRenderer._easeInOut(this._progress);
-
-			// Prepare current animation fill color once for all cells to render
-			LoadingCellRenderer._prepareFillStyle(this._ctx, this._transformedProgress);
-
-			for (const info of this._cellsToAnimate.values()) {
-				this.render(this._ctx, info.cell, info.bounds);
-			}
-			this._isAnimationRender = false;
-		}
-
-		this._lastTimestamp = timestamp;
-
-		// Schedule next animation frame
-		this._animationFrameID = window.requestAnimationFrame((timestamp) => this._nextAnimationStep(timestamp));
+		// Nothing to cleanup
 	}
 
 	/**
@@ -201,62 +154,33 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	 * @param bounds to render cell in
 	 */
 	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
-		let rect: IRectangle;
-		if (!this._isAnimationRender) {
-			const width: number = Math.max(Math.min(bounds.width - LoadingCellRenderer.HORIZONTAL_PADDING * 2, LoadingCellRenderer.MAX_WIDTH), 2);
-			const height: number = Math.max(Math.min(bounds.height - LoadingCellRenderer.VERTICAL_PADDING * 2, LoadingCellRenderer.MAX_HEIGHT), 2);
+		const width: number = Math.max(Math.min(bounds.width - LoadingCellRenderer.HORIZONTAL_PADDING * 2, LoadingCellRenderer.MAX_WIDTH), 2);
+		const height: number = Math.max(Math.min(bounds.height - LoadingCellRenderer.VERTICAL_PADDING * 2, LoadingCellRenderer.MAX_HEIGHT), 2);
 
-			rect = {
-				top: bounds.top + (bounds.height - height) / 2,
-				left: bounds.left + (bounds.width - width) / 2,
-				width,
-				height,
-			};
+		let rect: IRectangle = {
+			top: bounds.top + (bounds.height - height) / 2,
+			left: bounds.left + (bounds.width - width) / 2,
+			width,
+			height,
+		};
 
-			this._cellsToAnimate.set(cell, {
-				cell,
-				bounds: rect
+		const value: ILoadingCellRendererValue = cell.value as ILoadingCellRendererValue;
+		if (value.promiseSupplier !== undefined && !value.isLoading) {
+			value.isLoading = true;
+
+			// Start loading the value of the cell
+			value.promiseSupplier().then((v) => {
+				cell.rendererName = value.cellRenderer;
+				cell.value = v;
+
+				// Cause table repaint
+				this._engine.repaint();
 			});
-
-			const value: ILoadingCellRendererValue = cell.value as ILoadingCellRendererValue;
-			if (value.promiseSupplier !== undefined && !value.isLoading) {
-				value.isLoading = true;
-
-				// Start loading the value of the cell
-				value.promiseSupplier().then((v) => {
-					this._cellsToAnimate.delete(cell);
-
-					cell.rendererName = value.cellRenderer;
-					cell.value = v;
-
-					// Cause table repaint
-					this._engine.repaint();
-				});
-			}
-		} else {
-			rect = bounds;
 		}
 
 		ctx.fillRect(rect.left, rect.top, rect.width, rect.height);
 		ctx.fill();
 	}
-
-}
-
-/**
- * Info about a cell to render.
- */
-interface ICellInfo {
-
-	/**
-	 * Cell to render.
-	 */
-	cell: ICell;
-
-	/**
-	 * The cells bounds.
-	 */
-	bounds: IRectangle;
 
 }
 
