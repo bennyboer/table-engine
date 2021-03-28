@@ -213,6 +213,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 */
 	private _isFocused: boolean = false;
 
+	/**
+	 * Names of cell renderers used in the last rendering cycle.
+	 */
+	private _lastUsedCellRenderers: Set<string> = new Set<string>();
+
 	constructor() {
 	}
 
@@ -335,7 +340,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				leading: false,
 				trailing: true
 			})
-		).subscribe(() => this.render());
+		).subscribe(() => this._render());
 	}
 
 	/**
@@ -829,7 +834,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _onTouchEnd(event: TouchEvent): void {
 		for (let i = 0; i < event.changedTouches.length; i++) {
 			const touch: Touch = event.changedTouches[i];
-			if (touch.identifier === this._startTouchID) {
+			if (touch.identifier === this._startTouchID && this._panningStart) {
 				const [x, y] = this._getMouseOffset(touch);
 
 				this._updateAutoScrolling(
@@ -840,10 +845,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 				if (event.changedTouches.length === 1 && this._panningStart.isTap) {
 					// Select cell at the position
-					this._initialSelectionRange = this._getCellRangeAtPoint(x, y);
-					this._updateCurrentSelection(this._initialSelectionRange, {
-						row: this._initialSelectionRange.startRow,
-						column: this._initialSelectionRange.startColumn,
+					const selectionRange: ICellRange = this._getCellRangeAtPoint(x, y);
+					this._updateCurrentSelection(selectionRange, {
+						row: selectionRange.startRow,
+						column: selectionRange.startColumn,
 					}, true, true, true);
 				}
 
@@ -1685,13 +1690,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			height: viewPort.height - fixedRowsHeight
 		});
 
+		const usedCellRendererNames: Set<string> = new Set<string>();
+
 		// Fill "normal" (non-fixed) cells first
 		const nonFixedCells = this._createCellRenderArea(nonFixedCellsRange, {
 			left: fixedColumnsWidth,
 			top: fixedRowsHeight,
 			width: viewPort.width - fixedColumnsWidth,
 			height: viewPort.height - fixedRowsHeight
-		}, true, true);
+		}, true, true, usedCellRendererNames);
 
 		const result: ICellRenderContextCollection = {
 			nonFixedCells
@@ -1709,7 +1716,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				top: fixedRowsHeight,
 				width: fixedColumnsWidth,
 				height: viewPort.height - fixedRowsHeight
-			}, false, true);
+			}, false, true, usedCellRendererNames);
 		}
 
 		// Fill fixed rows (if any)
@@ -1724,7 +1731,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				top: 0,
 				width: viewPort.width - fixedColumnsWidth,
 				height: fixedRowsHeight
-			}, true, false);
+			}, true, false, usedCellRendererNames);
 		}
 
 		// Fill fixed corner cells (if any)
@@ -1739,8 +1746,16 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				top: 0,
 				width: fixedColumnsWidth,
 				height: fixedRowsHeight
-			}, false, false);
+			}, false, false, usedCellRendererNames);
 		}
+
+		// Cleanup cell renderers that have been used in previous rendering cycles but now not anymore
+		for (const previouslyUsedCellRendererName of this._lastUsedCellRenderers) {
+			if (!usedCellRendererNames.has(previouslyUsedCellRendererName)) {
+				this._cellRendererLookup.get(previouslyUsedCellRendererName).cleanup();
+			}
+		}
+		this._lastUsedCellRenderers = usedCellRendererNames;
 
 		return result;
 	}
@@ -1751,9 +1766,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param viewPortBounds of the range
 	 * @param adjustBoundsX whether to adjust the x bounds
 	 * @param adjustBoundsY whether to adjust the y bounds
+	 * @param usedCellRendererNames set of used cell renderer names
 	 * @returns mapping of renderer names to all cells that need to be rendered with the renderer
 	 */
-	private _createCellRenderArea(range: ICellRange, viewPortBounds: IRectangle, adjustBoundsX: boolean, adjustBoundsY: boolean): ICellAreaRenderContext {
+	private _createCellRenderArea(range: ICellRange, viewPortBounds: IRectangle, adjustBoundsX: boolean, adjustBoundsY: boolean, usedCellRendererNames: Set<string>): ICellAreaRenderContext {
 		const cellsPerRenderer = new Map<string, ICellRenderInfo[]>();
 		const cells = this._cellModel.getCells(range);
 
@@ -1773,6 +1789,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			if (!cellsToRender) {
 				cellsToRender = [];
 				cellsPerRenderer.set(cell.rendererName, cellsToRender);
+				usedCellRendererNames.add(cell.rendererName);
 			}
 
 			cellsToRender.push({
@@ -1802,9 +1819,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
-	 * (Re)-Render the table.
+	 * Immediately render the table.
 	 */
-	public render(): void {
+	private _render(): void {
 		let creatingRenderingContextTime = window.performance.now();
 		const renderingContext: IRenderContext = this._createRenderingContext();
 		creatingRenderingContextTime = window.performance.now() - creatingRenderingContextTime;
@@ -1822,6 +1839,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 			let renderingTime = window.performance.now();
 
+			ctx.restore();
 			ctx.save();
 			ctx.scale(this._devicePixelRatio, this._devicePixelRatio);
 
@@ -1848,10 +1866,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			// Render scrollbars
 			CanvasRenderer._renderScrollBars(ctx, renderingContext);
 
-			ctx.restore();
-
 			console.log(`RENDERING: ${window.performance.now() - renderingTime}ms, CREATING RENDERING CONTEXT: ${creatingRenderingContextTime}ms`);
 		});
+	}
+
+	/**
+	 * (Re)-Render the table.
+	 */
+	public render(): void {
+		if (!this._lastRenderingContext) {
+			this._render();
+		} else {
+			this._repaintScheduler.next();
+		}
 	}
 
 	/**
@@ -1895,15 +1922,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				throw new Error(`Could not find cell renderer for name '${rendererName}'`);
 			}
 
-			// Tell cell renderer that we will soon render a bunch of cells with it.
-			cellRenderer.before(ctx);
+			if (cellsToRender.length === 0) {
+				cellRenderer.cleanup();
+			} else {
+				// Tell cell renderer that we will soon render a bunch of cells with it.
+				cellRenderer.before(ctx, context);
 
-			for (const cellToRender of cellsToRender) {
-				cellRenderer.render(ctx, cellToRender.cell, cellToRender.bounds);
+				for (const cellToRender of cellsToRender) {
+					cellRenderer.render(ctx, cellToRender.cell, cellToRender.bounds);
+				}
+
+				// Notify cell renderer that we have rendered all cells for this rendering cycle.
+				cellRenderer.after(ctx);
 			}
-
-			// Notify cell renderer that we have rendered all cells for this rendering cycle.
-			cellRenderer.after(ctx);
 		}
 	}
 
@@ -2164,7 +2195,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 /**
  * Context filled with data used to render the table.
  */
-interface IRenderContext {
+export interface IRenderContext {
 
 	/**
 	 * Whether the table is focused.

@@ -13,6 +13,10 @@ import {ISelection} from "../../../src/selection/selection";
 import {IImageCellRendererValue, ImageCellRenderer} from "../../../src/renderer/canvas/cell/image/image-cell-renderer";
 import {BorderStyle} from "../../../src/border/border-style";
 import {IColor} from "../../../src/util/color";
+import {
+  ILoadingCellRendererValue,
+  LoadingCellRenderer
+} from "../../../src/renderer/canvas/cell/loading/loading-cell-renderer";
 
 @Component({
   selector: "app-root",
@@ -216,7 +220,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.engine.registerCellRenderer(new BaseCellRenderer());
     this.engine.registerCellRenderer(new RowColumnHeaderRenderer());
     this.engine.registerCellRenderer(new ImageCellRenderer());
-    this.engine.registerCellRenderer(new TestCellRenderer());
+    this.engine.registerCellRenderer(new LoadingCellRenderer());
 
     // Set an example border
     this.engine.getBorderModel().setBorder({
@@ -267,30 +271,36 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       [
         {
           range: {
-            startRow: 15,
-            endRow: 18,
-            startColumn: 8,
-            endColumn: 9
-          },
-          rendererName: "custom",
-          value: "Hello world!"
-        },
-        {
-          range: {
             startRow: 5,
             endRow: 10,
             startColumn: 5,
             endColumn: 8
           },
-          rendererName: "image",
-          value: {
-            src: "assets/sloth.svg"
-          } as IImageCellRendererValue
+          rendererName: "loading",
+          value:
+            {
+              cellRenderer: "image",
+              promiseSupplier: async () => {
+                return new Promise(resolve => setTimeout(() => resolve({
+                  src: "assets/sloth.svg"
+                } as IImageCellRendererValue), 3000))
+              },
+            } as ILoadingCellRendererValue
         },
         {
           range: CellRange.fromSingleRowColumn(1000, 1000),
           rendererName: "base",
           value: "Last cell with more text than normally"
+        },
+        {
+          range: CellRange.fromSingleRowColumn(10, 2),
+          rendererName: "loading",
+          value: {
+            cellRenderer: "base",
+            promiseSupplier: async () => {
+              return new Promise(resolve => setTimeout(() => resolve("Done 😀"), 2000))
+            },
+          } as ILoadingCellRendererValue
         }
       ],
       (row, column) => row * column,
@@ -301,7 +311,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
           return "base";
         }
       },
-      (row) => 30,
+      (row) => 25,
       (column) => column === 0 ? 50 : 120,
       new Set<number>(),
       new Set<number>()
@@ -315,28 +325,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     });
 
     return model;
-  }
-
-}
-
-class TestCellRenderer implements ICanvasCellRenderer {
-  initialize(engine: TableEngine): void {
-  }
-
-  after(ctx: CanvasRenderingContext2D): void {
-  }
-
-  before(ctx: CanvasRenderingContext2D): void {
-  }
-
-  getName(): string {
-    return "custom";
-  }
-
-  render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
-    ctx.fillStyle = `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
-
-    ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
   }
 
 }

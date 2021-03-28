@@ -4,6 +4,7 @@ import {IRectangle} from "../../../../util/rect";
 import {ICellModel} from "../../../../cell/model/cell-model.interface";
 import {ISelectionModel} from "../../../../selection/model/selection-model.interface";
 import {TableEngine} from "../../../../table-engine";
+import {IRenderContext} from "../../canvas-renderer";
 
 /**
  * Basic cell renderer rendering every value as string.
@@ -31,8 +32,9 @@ export class BaseCellRenderer implements ICanvasCellRenderer {
 	 * Called before rendering ALL cells to render for this renderer
 	 * in the current rendering cycle.
 	 * @param ctx to render with
+	 * @param context of the current rendering cycle
 	 */
-	public before(ctx: CanvasRenderingContext2D): void {
+	public before(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
 		// TODO Make those things customizable (Renderer options?)
 		ctx.font = "12px sans-serif";
 		ctx.fillStyle = "#333333";
@@ -47,6 +49,14 @@ export class BaseCellRenderer implements ICanvasCellRenderer {
 	 */
 	public after(ctx: CanvasRenderingContext2D): void {
 		// Nothing to do
+	}
+
+	/**
+	 * Called when there are no cells that need to be rendered with the renderer in
+	 * the current viewport.
+	 */
+	public cleanup(): void {
+		// Nothing to cleanup
 	}
 
 	/**

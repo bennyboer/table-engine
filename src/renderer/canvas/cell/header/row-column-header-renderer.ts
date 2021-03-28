@@ -3,6 +3,7 @@ import {ICell} from "../../../../cell/cell";
 import {IRectangle} from "../../../../util/rect";
 import {ISelectionModel} from "../../../../selection/model/selection-model.interface";
 import {TableEngine} from "../../../../table-engine";
+import {IRenderContext} from "../../canvas-renderer";
 
 /**
  * Spreadsheet like row/column headers.
@@ -52,8 +53,9 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	 * Called before rendering ALL cells to render for this renderer
 	 * in the current rendering cycle.
 	 * @param ctx to render with
+	 * @param context of the current rendering cycle
 	 */
-	public before(ctx: CanvasRenderingContext2D): void {
+	public before(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
 		// TODO Make those things customizable (Renderer options?)
 		ctx.textBaseline = "middle";
 		ctx.textAlign = "center";
@@ -102,6 +104,14 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 			// Generate row header
 			return `${row}`;
 		}
+	}
+
+	/**
+	 * Called when there are no cells that need to be rendered with the renderer in
+	 * the current viewport.
+	 */
+	public cleanup(): void {
+		// Nothing to cleanup
 	}
 
 	/**

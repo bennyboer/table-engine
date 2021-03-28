@@ -1183,7 +1183,11 @@ export class CellModel implements ICellModel {
 		// Reset cell lookup to empty cell for all cells but the most upper left one (if no borders are set to the side).
 		for (let row = cell.range.startRow; row <= cell.range.endRow; row++) {
 			for (let column = cell.range.startColumn; column <= cell.range.endColumn; column++) {
-				let toSet: ICell | null = row === cell.range.startRow && column === cell.range.startColumn ? cell : null;
+				let toSet: ICell | null = null;
+				if (row === cell.range.startRow && column === cell.range.startColumn) {
+					toSet = cell;
+					toSet.border = {};
+				}
 
 				if (!!border) {
 					if (row === cell.range.startRow && !!border.top) {
