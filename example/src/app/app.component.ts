@@ -1,11 +1,16 @@
-import {AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, OnDestroy, ViewChild} from "@angular/core";
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  NgZone,
+  OnDestroy,
+  ViewChild
+} from "@angular/core";
 import {ICellModel} from "../../../src/cell/model/cell-model.interface";
 import {CellModel} from "../../../src/cell/model/cell-model";
 import {CellRange} from "../../../src/cell/range/cell-range";
 import {TableEngine} from "../../../src/table-engine";
-import {ICanvasCellRenderer} from "../../../src/renderer/canvas/cell/canvas-cell-renderer";
-import {ICell} from "../../../src/cell/cell";
-import {IRectangle} from "../../../src/util/rect";
 import {RowColumnHeaderRenderer} from "../../../src/renderer/canvas/cell/header/row-column-header-renderer";
 import {BaseCellRenderer} from "../../../src/renderer/canvas/cell/base/base-cell-renderer";
 import {ROW_COLUMN_HEADER_TRANSFORM} from "../../../src/selection/options";
@@ -17,6 +22,7 @@ import {
   ILoadingCellRendererValue,
   LoadingCellRenderer
 } from "../../../src/renderer/canvas/cell/loading/loading-cell-renderer";
+import {environment} from "../environments/environment";
 
 @Component({
   selector: "app-root",
@@ -42,15 +48,16 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   /**
    * Currently selected border style.
    */
-  public borderStyle: string = "solid";
+  public borderStyle: string = "Solid";
 
   /**
    * Table engine reference.
    */
   private engine: TableEngine;
 
-  public repaint(): void {
-    this.engine.repaint();
+  public libraryVersion: string = environment.tableEngineVersion;
+
+  constructor(private readonly zone: NgZone) {
   }
 
   public addOneFixedRowsColumns(): void {
@@ -121,9 +128,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   private static _borderStyleNameToStyle(styleName: string): BorderStyle {
-    if (styleName === "solid") {
+    if (styleName === "Solid") {
       return BorderStyle.SOLID;
-    } else if (styleName === "dotted") {
+    } else if (styleName === "Dotted") {
       return BorderStyle.DOTTED;
     } else {
       return BorderStyle.DASHED;
@@ -202,56 +209,70 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  public zoomIn(): void {
+    this.engine.setZoom(this.engine.getZoom() + 0.25);
+  }
+
+  public zoomOut(): void {
+    this.engine.setZoom(this.engine.getZoom() - 0.25);
+  }
+
+  public getCurrentZoom(): number {
+    return !!this.engine ? this.engine.getZoom() : 1.0;
+  }
+
   /**
    * Called after the view is initialized.
    */
   public ngAfterViewInit(): void {
-    const cellModel = AppComponent.initializeCellModel();
-    this.engine = new TableEngine(this.tableContainer.nativeElement, cellModel);
+    this.zone.runOutsideAngular(() => {
+      const cellModel = AppComponent.initializeCellModel();
+      this.engine = new TableEngine(this.tableContainer.nativeElement, cellModel);
 
-    // Set row/column header selection transform
-    this.engine.getOptions().selection.selectionTransform = ROW_COLUMN_HEADER_TRANSFORM;
+      // Set row/column header selection transform
+      this.engine.getOptions().selection.selectionTransform = ROW_COLUMN_HEADER_TRANSFORM;
 
-    // Set initial state of fixed rows/columns
-    this.engine.getOptions().renderer.view.fixedRows = 1;
-    this.engine.getOptions().renderer.view.fixedColumns = 1;
+      // Set initial state of fixed rows/columns
+      this.engine.getOptions().renderer.view.fixedRows = 1;
+      this.engine.getOptions().renderer.view.fixedColumns = 1;
 
-    // Register needed cell renderers
-    this.engine.registerCellRenderer(new BaseCellRenderer());
-    this.engine.registerCellRenderer(new RowColumnHeaderRenderer());
-    this.engine.registerCellRenderer(new ImageCellRenderer());
-    this.engine.registerCellRenderer(new LoadingCellRenderer());
+      // Register needed cell renderers
+      this.engine.registerCellRenderer(new BaseCellRenderer());
+      this.engine.registerCellRenderer(new RowColumnHeaderRenderer());
+      this.engine.registerCellRenderer(new ImageCellRenderer());
+      this.engine.registerCellRenderer(new LoadingCellRenderer());
 
-    // Set an example border
-    this.engine.getBorderModel().setBorder({
-      right: {
-        style: BorderStyle.SOLID,
-        size: 1,
-        color: {red: 255, blue: 0, green: 0, alpha: 1},
-      },
-      bottom: {
-        style: BorderStyle.SOLID,
-        size: 2,
-        color: {red: 0, blue: 0, green: 255, alpha: 1},
-      },
-      left: {
-        style: BorderStyle.SOLID,
-        size: 3,
-        color: {red: 0, blue: 255, green: 0, alpha: 1},
-      },
-      top: {
-        style: BorderStyle.SOLID,
-        size: 4,
-        color: {red: 255, blue: 0, green: 100, alpha: 1},
-      }
-    }, {
-      startRow: 2,
-      endRow: 4,
-      startColumn: 2,
-      endColumn: 3
+      // Set an example border
+      this.engine.getBorderModel().setBorder({
+        right: {
+          style: BorderStyle.SOLID,
+          size: 1,
+          color: {red: 255, blue: 0, green: 0, alpha: 1},
+        },
+        bottom: {
+          style: BorderStyle.SOLID,
+          size: 2,
+          color: {red: 0, blue: 0, green: 255, alpha: 1},
+        },
+        left: {
+          style: BorderStyle.SOLID,
+          size: 3,
+          color: {red: 0, blue: 255, green: 0, alpha: 1},
+        },
+        top: {
+          style: BorderStyle.SOLID,
+          size: 4,
+          color: {red: 255, blue: 0, green: 100, alpha: 1},
+        }
+      }, {
+        startRow: 2,
+        endRow: 4,
+        startColumn: 2,
+        endColumn: 3
+      });
+
+      this.engine.initialize();
     });
-
-    this.engine.initialize();
   }
 
   /**

@@ -119,6 +119,30 @@ export class TableEngine {
 	}
 
 	/**
+	 * Scroll to the given row and column.
+	 * @param row to scroll to
+	 * @param column to scroll to
+	 */
+	public scrollTo(row: number, column: number): void {
+		this._renderer.scrollTo(row, column);
+	}
+
+	/**
+	 * Set the zoom level.
+	 * @param zoom level (1.0 = 100%)
+	 */
+	public setZoom(zoom: number): void {
+		this._renderer.setZoom(zoom);
+	}
+
+	/**
+	 * Get the current zoom level of the table (1.0 = 100%).
+	 */
+	public getZoom(): number {
+		return this._renderer.getZoom();
+	}
+
+	/**
 	 * Get the table engines options.
 	 */
 	public getOptions(): ITableEngineOptions {

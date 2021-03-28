@@ -116,6 +116,21 @@ export class CanvasKitRenderer implements ITableEngineRenderer {
 	}
 
 	/**
+	 * Set the zoom level.
+	 * @param zoom level (1.0 = 100%)
+	 */
+	public setZoom(zoom: number): void {
+		// TODO
+	}
+
+	/**
+	 * Get the current zoom level (1.0 = 100%).
+	 */
+	public getZoom(): number {
+		return 1.0;
+	}
+
+	/**
 	 * Bind listeners to the window or container.
 	 */
 	private _bindListeners(): void {

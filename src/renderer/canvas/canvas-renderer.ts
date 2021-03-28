@@ -28,6 +28,11 @@ import {BorderStyle} from "../../border/border-style";
 export class CanvasRenderer implements ITableEngineRenderer {
 
 	/**
+	 * Maximum zoom level.
+	 */
+	private static readonly MAX_ZOOM_LEVEL: number = 5.0;
+
+	/**
 	 * Lookup for cell renderers by their name.
 	 */
 	private readonly _cellRendererLookup: Map<string, ICanvasCellRenderer> = new Map<string, ICanvasCellRenderer>();
@@ -218,8 +223,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 */
 	private _lastUsedCellRenderers: Set<string> = new Set<string>();
 
-	constructor() {
-	}
+	/**
+	 * Current zoom level (1.0 = 100%).
+	 * Max zoom level is 100% as zooming out may lead
+	 * to bad table scrolling performance as we need
+	 * to render a lot of cells.
+	 */
+	private _zoom: number = 1.0;
 
 	/**
 	 * Cleanup the renderer when no more needed.
@@ -535,8 +545,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const rect = this._canvasElement.getBoundingClientRect();
 
 		return [
-			(event.clientX - rect.left),
-			(event.clientY - rect.top)
+			(event.clientX - rect.left) / this._zoom,
+			(event.clientY - rect.top) / this._zoom
 		];
 	}
 
@@ -1075,6 +1085,26 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
+	 * Set the zoom level.
+	 * Max zoom level is 100% as zooming out may lead
+	 * to bad table scrolling performance as we need
+	 * to render a lot of cells.
+	 * @param zoom level (1.0 = 100%)
+	 */
+	public setZoom(zoom: number): void {
+		this._zoom = Math.min(Math.max(zoom, 1.0), CanvasRenderer.MAX_ZOOM_LEVEL);
+
+		this._repaintScheduler.next();
+	}
+
+	/**
+	 * Get the current zoom level (1.0 = 100%).
+	 */
+	public getZoom(): number {
+		return this._zoom;
+	}
+
+	/**
 	 * Scroll to the cell at the given row and column (if not already in the current view).
 	 * @param row to scroll to
 	 * @param column to scroll to
@@ -1139,12 +1169,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onWheel(event: WheelEvent): void {
+		event.preventDefault();
+
 		if (event.ctrlKey) {
 			// The user wants to zoom the page -> Don't scroll!
+			this.setZoom(this._zoom + (event.deltaY > 0 ? -0.25 : 0.25));
 			return;
 		}
-
-		event.preventDefault();
 
 		const scrollDeltaY: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, true, event);
 		const scrollDeltaX: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, false, event);
@@ -1274,8 +1305,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		return {
 			top: this._scrollOffset.y,
 			left: this._scrollOffset.x,
-			width: this._canvasElement.width / this._devicePixelRatio,
-			height: this._canvasElement.height / this._devicePixelRatio
+			width: this._canvasElement.width / this._devicePixelRatio / this._zoom,
+			height: this._canvasElement.height / this._devicePixelRatio / this._zoom
 		};
 	}
 
@@ -1841,7 +1872,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 			ctx.restore();
 			ctx.save();
-			ctx.scale(this._devicePixelRatio, this._devicePixelRatio);
+
+			const zoom: number = this._devicePixelRatio * this._zoom;
+			ctx.scale(zoom, zoom);
 
 			/*
 			HTML5 Canvas calculates from half of a pixel which looks smoothed

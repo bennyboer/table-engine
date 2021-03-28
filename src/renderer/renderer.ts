@@ -39,6 +39,17 @@ export interface ITableEngineRenderer {
 	isFocused(): boolean;
 
 	/**
+	 * Set the zoom level.
+	 * @param zoom level (1.0 = 100%)
+	 */
+	setZoom(zoom: number): void;
+
+	/**
+	 * Get the current zoom level (1.0 = 100%).
+	 */
+	getZoom(): number;
+
+	/**
 	 * Cleanup the renderer when no more needed.
 	 */
 	cleanup(): void;
