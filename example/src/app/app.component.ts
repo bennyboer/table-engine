@@ -51,6 +51,11 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   public borderStyle: string = "Solid";
 
   /**
+   * Amount of rows/columns to add.
+   */
+  public addCount: number = 1;
+
+  /**
    * Table engine reference.
    */
   private engine: TableEngine;
@@ -219,6 +224,60 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   public getCurrentZoom(): number {
     return !!this.engine ? this.engine.getZoom() : 1.0;
+  }
+
+  public insertRows(count: number): void {
+    let beforeIndex: number;
+    const primary: ISelection | null = this.engine.getSelectionModel().getPrimary();
+    if (!!primary) {
+      beforeIndex = primary.initial.row + 1;
+    } else {
+      beforeIndex = this.engine.getCellModel().getRowCount();
+    }
+
+    this.engine.getCellModel().insertRows(beforeIndex, count);
+    this.engine.repaint();
+  }
+
+  public insertColumns(count: number): void {
+    let beforeIndex: number;
+    const primary: ISelection | null = this.engine.getSelectionModel().getPrimary();
+    if (!!primary) {
+      beforeIndex = primary.initial.column + 1;
+    } else {
+      beforeIndex = this.engine.getCellModel().getColumnCount();
+    }
+
+    this.engine.getCellModel().insertColumns(beforeIndex, count);
+    this.engine.repaint();
+  }
+
+  public deleteRows(): void {
+    const primary: ISelection | null = this.engine.getSelectionModel().getPrimary();
+    if (!!primary) {
+      let count: number = 0;
+      for (let row = primary.range.startRow; row <= primary.range.endRow; row++) {
+        if (!this.engine.getCellModel().isRowHidden(row)) {
+          count++;
+        }
+      }
+      this.engine.getCellModel().deleteRows(primary.range.startRow, count);
+      this.engine.repaint();
+    }
+  }
+
+  public deleteColumns(): void {
+    const primary: ISelection | null = this.engine.getSelectionModel().getPrimary();
+    if (!!primary) {
+      let count: number = 0;
+      for (let column = primary.range.startColumn; column <= primary.range.endColumn; column++) {
+        if (!this.engine.getCellModel().isColumnHidden(column)) {
+          count++;
+        }
+      }
+      this.engine.getCellModel().deleteColumns(primary.range.startColumn, count);
+      this.engine.repaint();
+    }
   }
 
   /**

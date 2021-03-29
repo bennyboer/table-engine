@@ -114,6 +114,40 @@
 
       <div class="controls-group">
         <label class="controls-label">
+          Insert/delete rows/columns
+        </label>
+
+        <div style="text-align: center">
+          <mat-form-field style="width: 90px" appearance="outline">
+            <mat-label>Add count</mat-label>
+            <input matInput style="width: 100%" type="number" name="addCount" [(ngModel)]="addCount">
+          </mat-form-field>
+          &nbsp;
+          <button mat-stroked-button
+                  (click)="insertRows(addCount)">
+            Insert rows
+          </button>
+          &nbsp;
+          <button mat-stroked-button
+                  (click)="insertColumns(addCount)">
+            Insert columns
+          </button>
+        </div>
+        <div style="text-align: center">
+          <button mat-stroked-button
+                  (click)="deleteRows()">
+            Delete selected rows
+          </button>
+          &nbsp;
+          <button mat-stroked-button
+                  (click)="deleteColumns()">
+            Delete selected columns
+          </button>
+        </div>
+      </div>
+
+      <div class="controls-group">
+        <label class="controls-label">
           Fixing rows/columns
         </label>
 
