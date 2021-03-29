@@ -1374,7 +1374,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			vertical = {
 				size: scrollBarSize,
 				length,
-				x: viewPortWidth - scrollBarSize - scrollBarOffset + fixedColumnsWidth,
+				x: Math.min(viewPortWidth, tableWidth) - scrollBarSize - scrollBarOffset + fixedColumnsWidth,
 				y: (viewPortHeight - length) * progress + fixedRowsHeight
 			};
 		}
@@ -1389,7 +1389,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				size: scrollBarSize,
 				length,
 				x: (viewPortWidth - length) * progress + fixedColumnsWidth,
-				y: viewPortHeight - scrollBarSize - scrollBarOffset + fixedRowsHeight
+				y: Math.min(viewPortHeight, tableHeight) - scrollBarSize - scrollBarOffset + fixedRowsHeight
 			};
 		}
 
