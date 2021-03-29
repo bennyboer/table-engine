@@ -1201,25 +1201,27 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onWheel(event: WheelEvent): void {
-		event.preventDefault();
-
 		if (event.ctrlKey) {
 			// The user wants to zoom the page -> Don't scroll!
+			event.preventDefault();
 			this.setZoom(this._zoom + (event.deltaY > 0 ? -0.25 : 0.25));
-			return;
-		}
+		} else {
+			const scrollDeltaY: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, true, event);
+			const scrollDeltaX: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, false, event);
 
-		const scrollDeltaY: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, true, event);
-		const scrollDeltaX: number = ScrollUtil.determineScrollOffsetFromEvent(this._canvasElement, false, event);
+			// When shift-key is pressed, deltaY means scrolling horizontally (same for deltaX).
+			const switchScrollDirection: boolean = event.shiftKey;
 
-		// When shift-key is pressed, deltaY means scrolling horizontally (same for deltaX).
-		const switchScrollDirection: boolean = event.shiftKey;
+			const newScrollOffsetX: number = this._scrollOffset.x + (switchScrollDirection ? scrollDeltaY : scrollDeltaX);
+			const newScrollOffsetY: number = this._scrollOffset.y + (switchScrollDirection ? scrollDeltaX : scrollDeltaY);
 
-		const newScrollOffsetX: number = this._scrollOffset.x + (switchScrollDirection ? scrollDeltaY : scrollDeltaX);
-		const newScrollOffsetY: number = this._scrollOffset.y + (switchScrollDirection ? scrollDeltaX : scrollDeltaY);
+			if (this._scrollTo(newScrollOffsetX, newScrollOffsetY)) {
+				// Prevent the default action (for example scrolling in parent component)
+				event.preventDefault();
 
-		if (this._scrollTo(newScrollOffsetX, newScrollOffsetY)) {
-			this._repaintScheduler.next();
+				// Schedule a table repaint
+				this._repaintScheduler.next();
+			}
 		}
 	}
 
@@ -1263,8 +1265,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			this._scrollOffset.x = Math.round(maxOffset);
 			return changed;
 		} else {
-			this._scrollOffset.x = Math.round(offset);
-			return true;
+			const newOffset: number = Math.round(offset);
+			if (newOffset !== this._scrollOffset.x) {
+				this._scrollOffset.x = newOffset;
+				return true;
+			}
+
+			return false;
 		}
 	}
 
@@ -1296,8 +1303,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			;
 			return changed;
 		} else {
-			this._scrollOffset.y = Math.round(offset);
-			return true;
+			const newOffset: number = Math.round(offset);
+			if (newOffset !== this._scrollOffset.y) {
+				this._scrollOffset.y = newOffset;
+				return true;
+			}
+
+			return false;
 		}
 	}
 

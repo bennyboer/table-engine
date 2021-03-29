@@ -8,7 +8,7 @@ const DEFAULT_SCROLLBAR_SIZE: number = 10;
 /**
  * Default offset of the scrollbar from the edges of the table.
  */
-const DEFAULT_SCROLLBAR_OFFSET: number = 1;
+const DEFAULT_SCROLLBAR_OFFSET: number = 2;
 
 /**
  * Default minimum scrollbar length.
@@ -23,7 +23,7 @@ const DEFAULT_SCROLLBAR_RADIUS: number = 5;
 /**
  * Default scrollbar color.
  */
-const DEFAULT_SCROLLBAR_COLOR: IColor = {red: 30, green: 30, blue: 30, alpha: 0.5};
+const DEFAULT_SCROLLBAR_COLOR: IColor = {red: 0, green: 0, blue: 0, alpha: 0.6};
 
 /**
  * Options regarding the scrollbar to display.

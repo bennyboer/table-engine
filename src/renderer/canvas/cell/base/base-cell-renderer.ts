@@ -67,7 +67,23 @@ export class BaseCellRenderer implements ICanvasCellRenderer {
 	 */
 	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
 		if (cell.value !== null) {
-			ctx.fillText(`${cell.value}`, Math.round(bounds.left + bounds.width / 2), Math.round(bounds.top + bounds.height / 2));
+			const value = `${cell.value}`;
+			const metrics = ctx.measureText(value);
+
+			let clip: boolean = metrics.width > bounds.width;
+			if (clip) {
+				const clippingRegion = new Path2D();
+				clippingRegion.rect(bounds.left, bounds.top, bounds.width, bounds.height);
+
+				ctx.save();
+				ctx.clip(clippingRegion);
+			}
+
+			ctx.fillText(value, Math.round(bounds.left + bounds.width / 2), Math.round(bounds.top + bounds.height / 2));
+
+			if (clip) {
+				ctx.restore();
+			}
 		}
 	}
 
