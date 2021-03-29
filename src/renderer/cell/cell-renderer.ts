@@ -1,6 +1,7 @@
 import {IRectangle} from "../../util/rect";
 import {ICell} from "../../cell/cell";
 import {TableEngine} from "../../table-engine";
+import {ICellRendererEventListener} from "./event/cell-renderer-event-listener";
 
 /**
  * Renderer responsible for a single cell.
@@ -28,6 +29,11 @@ export interface ICellRenderer<C> {
 	 * @param cell to render
 	 * @param bounds to render cell in
 	 */
-	render(ctx: C, cell: ICell, bounds: IRectangle): void;
+	render(ctx: C, cell: ICell, bounds: IRectangle): void
+
+	/**
+	 * Get the event listeners on cells for this cell renderer.
+	 */
+	getEventListener(): ICellRendererEventListener | null;
 
 }

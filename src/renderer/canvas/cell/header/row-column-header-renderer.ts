@@ -4,6 +4,7 @@ import {IRectangle} from "../../../../util/rect";
 import {ISelectionModel} from "../../../../selection/model/selection-model.interface";
 import {TableEngine} from "../../../../table-engine";
 import {IRenderContext} from "../../canvas-renderer";
+import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-event-listener";
 
 /**
  * Spreadsheet like row/column headers.
@@ -28,9 +29,45 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	private static readonly HIGHLIGHT_RECT_COLOR: string = "#FF3366";
 
 	/**
+	 * Background color of a row/column header cell.
+	 */
+	private static readonly BACKGROUND_COLOR: string = "#F9F9F9";
+
+	/**
+	 * Background color of a hovered row/column header cell.
+	 */
+	private static readonly HOVER_BACKGROUND_COLOR: string = "#EAEAEA";
+
+	/**
 	 * The table-engines selection model.
 	 */
 	private _selectionModel: ISelectionModel;
+
+	/**
+	 * Reference to the table engine.
+	 */
+	private _engine: TableEngine;
+
+	/**
+	 * Currently hovered cell.
+	 */
+	private _hoveredCell: ICell | null = null;
+
+	/**
+	 * Event listeners on the cells with this cell renderer.
+	 */
+	private readonly _eventListener: ICellRendererEventListener = {
+		onMouseMove: (event) => {
+			if (event.cell !== this._hoveredCell) {
+				this._hoveredCell = event.cell;
+				this._engine.repaint();
+			}
+		},
+		onMouseOut: (event) => {
+			this._hoveredCell = null;
+			this._engine.repaint();
+		}
+	};
 
 	/**
 	 * Initialize the cell renderer.
@@ -38,6 +75,7 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	 * @param engine reference to the table-engine
 	 */
 	public initialize(engine: TableEngine): void {
+		this._engine = engine;
 		this._selectionModel = engine.getSelectionModel();
 	}
 
@@ -68,6 +106,13 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	 */
 	public after(ctx: CanvasRenderingContext2D): void {
 		// Nothing to do
+	}
+
+	/**
+	 * Get the event listeners on cells for this cell renderer.
+	 */
+	public getEventListener(): ICellRendererEventListener | null {
+		return this._eventListener;
 	}
 
 	/**
@@ -121,7 +166,7 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	 * @param bounds to render cell in
 	 */
 	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
-		ctx.fillStyle = "#F9F9F9"; // Background color
+		ctx.fillStyle = cell === this._hoveredCell ? RowColumnHeaderRenderer.HOVER_BACKGROUND_COLOR : RowColumnHeaderRenderer.BACKGROUND_COLOR;
 		ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
 
 		const value: string | null = RowColumnHeaderRenderer._getCellValue(cell.range.startRow, cell.range.startColumn);

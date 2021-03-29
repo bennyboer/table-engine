@@ -21,6 +21,12 @@ import {IBorderModel} from "../../border/model/border-model.interface";
 import {IBorder} from "../../border/border";
 import {IBorderSide} from "../../border/border-side";
 import {BorderStyle} from "../../border/border-style";
+import {ICellRendererEventListener} from "../cell/event/cell-renderer-event-listener";
+import {ICellRendererEvent} from "../cell/event/cell-renderer-event";
+import {IPoint} from "../../util/point";
+
+type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
+type CellRendererEventListenerFunctionSupplier = (listener: ICellRendererEventListener) => CellRendererEventListenerFunction | null | undefined;
 
 /**
  * Table-engine renderer using the HTML5 canvas.
@@ -240,6 +246,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * to render a lot of cells.
 	 */
 	private _zoom: number = 1.0;
+
+	/**
+	 * Cell range of the last hovered cell (if any).
+	 */
+	private _lastHoveredCellRange: ICellRange | null = null;
 
 	/**
 	 * Cleanup the renderer when no more needed.
@@ -469,24 +480,79 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					}
 				};
 			} else {
-				// Update selection
-				this._initialSelectionRange = this._getCellRangeAtPoint(x, y);
-				this._updateCurrentSelection(this._initialSelectionRange, {
-					row: this._initialSelectionRange.startRow,
-					column: this._initialSelectionRange.startColumn,
-				}, !event.ctrlKey, true, false);
+				const range: ICellRange = this._getCellRangeAtPoint(x, y);
+
+				// Send event to cell renderer for the cell on the current position
+				const preventDefault: boolean = this._sendEventForPosition(
+					range.startRow,
+					range.startColumn,
+					(listener) => listener.onMouseDown,
+					{x, y}
+				);
+				if (!preventDefault) {
+					// Update selection
+					this._initialSelectionRange = range;
+					this._updateCurrentSelection(this._initialSelectionRange, {
+						row: this._initialSelectionRange.startRow,
+						column: this._initialSelectionRange.startColumn,
+					}, !event.ctrlKey, true, false);
+				}
 			}
 		}
+	}
+
+	/**
+	 * Send a event to the event listener given by the passed supplier for the cell
+	 * with the given row and column.
+	 * @param row of the cell to send event for
+	 * @param column of the cell to send event for
+	 * @param eventListenerSupplier to get event listener with
+	 * @param offset if a mouse event
+	 * @returns whether the default action should be prevented
+	 */
+	private _sendEventForPosition(
+		row: number,
+		column: number,
+		eventListenerSupplier: CellRendererEventListenerFunctionSupplier,
+		offset?: IPoint
+	): boolean {
+		const cell: ICell = this._cellModel.getCell(row, column, true);
+		const listener: ICellRendererEventListener = this._cellRendererLookup.get(cell.rendererName).getEventListener();
+		if (!!listener) {
+			const listenerFunction: CellRendererEventListenerFunction | null | undefined = eventListenerSupplier(listener);
+			if (!!listenerFunction) {
+				// Create the event
+				const event: ICellRendererEvent = {
+					cell,
+					offset,
+					preventDefault: false
+				};
+
+				listenerFunction(event);
+
+				return event.preventDefault;
+			}
+		}
+
+		return false;
 	}
 
 	/**
 	 * Get the cell range at the given point on the viewport.
 	 * @param x offset
 	 * @param y offset
+	 * @param allowOverflow whether to allow the given x any y coordinate to overflow the current viewport (method will never return null)
 	 */
-	private _getCellRangeAtPoint(x: number, y: number): ICellRange {
+	private _getCellRangeAtPoint(x: number, y: number, allowOverflow: boolean = true): ICellRange | null {
 		const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
 		const fixedColumnWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
+
+		if (!allowOverflow) {
+			// Check if we are in viewport bounds -> if not return null
+			if (x < 0 || y < 0 || x > this._lastRenderingContext.viewPort.width || y > this._lastRenderingContext.viewPort.height) {
+				return null;
+			}
+		}
 
 		if (x > fixedColumnWidth) {
 			x += this._scrollOffset.x;
@@ -584,18 +650,21 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onMouseMove(event: MouseEvent): void {
+		const [x, y] = this._getMouseOffset(event);
 		const isMainButtonDown: boolean = event.buttons === 1;
+
+		let isHandled: boolean = false;
 		if (isMainButtonDown) {
 			const isScrollBarDragging: boolean = !!this._scrollBarDragStart;
 			const isMouseDragging: boolean = !!this._mouseDragStart;
 			const isSelectionDragging: boolean = !!this._initialSelectionRange;
 
-			const [x, y] = this._getMouseOffset(event);
-
 			if (isScrollBarDragging) {
 				this._onScrollBarMove(x, y, this._scrollBarDragStart);
+				isHandled = true;
 			} else if (isMouseDragging) {
 				this._onViewPortMove(x, y, this._mouseDragStart);
+				isHandled = true;
 			} else if (isSelectionDragging) {
 				// Extend selection
 				const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
@@ -622,6 +691,40 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					);
 				} else {
 					this._stopAutoScrolling();
+				}
+
+				isHandled = true;
+			}
+		}
+
+		if (!isHandled) {
+			// Send event to cell renderer for the cell on the current position
+			const range: ICellRange | null = this._getCellRangeAtPoint(x, y, false);
+			if (!!range) {
+				if (!!this._lastHoveredCellRange && !CellRangeUtil.equals(range, this._lastHoveredCellRange)) {
+					// Send mouse out event
+					this._sendEventForPosition(
+						this._lastHoveredCellRange.startRow,
+						this._lastHoveredCellRange.startColumn,
+						(listener) => listener.onMouseOut
+					);
+				}
+
+				this._lastHoveredCellRange = range;
+				this._sendEventForPosition(
+					range.startRow,
+					range.startColumn,
+					(listener) => listener.onMouseMove,
+					{x, y}
+				);
+			} else {
+				if (!!this._lastHoveredCellRange) {
+					// Send mouse out event
+					this._sendEventForPosition(
+						this._lastHoveredCellRange.startRow,
+						this._lastHoveredCellRange.startColumn,
+						(listener) => listener.onMouseOut
+					);
 				}
 			}
 		}
@@ -766,20 +869,33 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		this._scrollBarDragStart = null; // Reset scroll bar dragging
 		this._mouseDragStart = null; // Reset workspace dragging via mouse/touch
 
+		const [x, y] = this._getMouseOffset(event);
+
 		if (!!this._initialSelectionRange) {
 			// End selection extending
-			const [x, y] = this._getMouseOffset(event);
 			const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
-
-			this._updateCurrentSelection({
-				startRow: Math.min(this._initialSelectionRange.startRow, targetRange.startRow),
-				endRow: Math.max(this._initialSelectionRange.endRow, targetRange.endRow),
-				startColumn: Math.min(this._initialSelectionRange.startColumn, targetRange.startColumn),
-				endColumn: Math.max(this._initialSelectionRange.endColumn, targetRange.endColumn),
-			}, {
-				row: this._initialSelectionRange.startRow,
-				column: this._initialSelectionRange.startColumn,
-			}, false, false, true);
+			if (!CellRangeUtil.equals(this._initialSelectionRange, targetRange)) {
+				this._updateCurrentSelection({
+					startRow: Math.min(this._initialSelectionRange.startRow, targetRange.startRow),
+					endRow: Math.max(this._initialSelectionRange.endRow, targetRange.endRow),
+					startColumn: Math.min(this._initialSelectionRange.startColumn, targetRange.startColumn),
+					endColumn: Math.max(this._initialSelectionRange.endColumn, targetRange.endColumn),
+				}, {
+					row: this._initialSelectionRange.startRow,
+					column: this._initialSelectionRange.startColumn,
+				}, false, false, true);
+			} else {
+				// Send event to cell renderer for the cell on the current position
+				const range: ICellRange | null = this._getCellRangeAtPoint(x, y, false);
+				if (!!range) {
+					this._sendEventForPosition(
+						range.startRow,
+						range.startColumn,
+						(listener) => listener.onMouseUp,
+						{x, y}
+					);
+				}
+			}
 
 			this._initialSelectionRange = null;
 			this._stopAutoScrolling(); // Stop automatic scrolling (when in progress)

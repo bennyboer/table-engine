@@ -5,6 +5,7 @@ import {ICellModel} from "../../../../cell/model/cell-model.interface";
 import {ISelectionModel} from "../../../../selection/model/selection-model.interface";
 import {TableEngine} from "../../../../table-engine";
 import {IRenderContext} from "../../canvas-renderer";
+import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-event-listener";
 
 /**
  * Cell renderer for rendering images.
@@ -66,6 +67,13 @@ export class ImageCellRenderer implements ICanvasCellRenderer {
 	 */
 	public cleanup(): void {
 		// Nothing to cleanup
+	}
+
+	/**
+	 * Get the event listeners on cells for this cell renderer.
+	 */
+	public getEventListener(): ICellRendererEventListener | null {
+		return null;
 	}
 
 	/**

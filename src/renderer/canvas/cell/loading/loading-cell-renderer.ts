@@ -3,6 +3,7 @@ import {ICell} from "../../../../cell/cell";
 import {IRectangle} from "../../../../util/rect";
 import {TableEngine} from "../../../../table-engine";
 import {IRenderContext} from "../../canvas-renderer";
+import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-event-listener";
 
 /**
  * Cell renderer for displaying a loading animation.
@@ -116,6 +117,13 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	public after(ctx: CanvasRenderingContext2D): void {
 		// Request another repaint for the animation
 		this._engine.repaint();
+	}
+
+	/**
+	 * Get the event listeners on cells for this cell renderer.
+	 */
+	public getEventListener(): ICellRendererEventListener | null {
+		return null;
 	}
 
 	/**

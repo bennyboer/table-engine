@@ -5,11 +5,57 @@ import {ICellModel} from "../../../../cell/model/cell-model.interface";
 import {ISelectionModel} from "../../../../selection/model/selection-model.interface";
 import {TableEngine} from "../../../../table-engine";
 import {IRenderContext} from "../../canvas-renderer";
+import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-event-listener";
+import {ICellRendererEvent} from "../../../cell/event/cell-renderer-event";
 
 /**
  * Basic cell renderer rendering every value as string.
  */
 export class BaseCellRenderer implements ICanvasCellRenderer {
+
+	/**
+	 * Max duration of two mouse up events to be detected as double click (in milliseconds).
+	 */
+	private static readonly MAX_DOUBLE_CLICK_DURATION: number = 300;
+
+	/**
+	 * Cell of the last mouse up.
+	 */
+	private _lastCellMouseUp: ICell | null = null;
+
+	/**
+	 * Timestamp of the last mouse up event.
+	 */
+	private _lastMouseUpTimestamp: number;
+
+	/**
+	 * Event listeners on cells rendered with this cell renderer.
+	 */
+	private _eventListener: ICellRendererEventListener = {
+		onMouseUp: (event) => {
+			const currentTimestamp: number = window.performance.now();
+			if (!!this._lastCellMouseUp && this._lastCellMouseUp === event.cell) {
+				// Check if is double click
+				const diff: number = currentTimestamp - this._lastMouseUpTimestamp;
+				if (diff <= BaseCellRenderer.MAX_DOUBLE_CLICK_DURATION) {
+					this._onDoubleClick(event);
+				}
+			}
+
+			this._lastCellMouseUp = event.cell;
+			this._lastMouseUpTimestamp = currentTimestamp;
+		}
+	};
+
+	/**
+	 * Called on a double click on the cell.
+	 * @param event that occurred
+	 */
+	private _onDoubleClick(event: ICellRendererEvent): void {
+		console.log("Double click!");
+
+		// TODO Try to edit cell
+	}
 
 	/**
 	 * Initialize the cell renderer.
@@ -57,6 +103,13 @@ export class BaseCellRenderer implements ICanvasCellRenderer {
 	 */
 	public cleanup(): void {
 		// Nothing to cleanup
+	}
+
+	/**
+	 * Get the event listeners on cells for this cell renderer.
+	 */
+	public getEventListener(): ICellRendererEventListener | null {
+		return this._eventListener;
 	}
 
 	/**
