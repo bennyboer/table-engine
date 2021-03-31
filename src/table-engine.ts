@@ -10,6 +10,7 @@ import {ISelectionModel} from "./selection/model/selection-model.interface";
 import {SelectionModel} from "./selection/model/selection-model";
 import {IBorderModel} from "./border/model/border-model.interface";
 import {BorderModel} from "./border/model/border-model";
+import {IOverlayManager} from "./overlay/overlay-manager";
 
 /**
  * Entry point of the table engine library.
@@ -168,6 +169,13 @@ export class TableEngine {
 	 */
 	public getBorderModel(): IBorderModel {
 		return this._borderModel;
+	}
+
+	/**
+	 * Get the overlay manager of the table-engine.
+	 */
+	public getOverlayManager(): IOverlayManager {
+		return this._renderer;
 	}
 
 	/**

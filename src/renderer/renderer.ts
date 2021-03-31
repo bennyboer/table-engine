@@ -1,12 +1,13 @@
 import {IRendererOptions} from "./options";
 import {ICellRenderer} from "./cell/cell-renderer";
 import {TableEngine} from "../table-engine";
+import {IOverlayManager} from "../overlay/overlay-manager";
 
 /**
  * Representation of a renderer of the table engine.
  * It is responsible for rendering the table.
  */
-export interface ITableEngineRenderer {
+export interface ITableEngineRenderer extends IOverlayManager {
 
 	/**
 	 * Initialize the renderer with the given options on the passed HTML container.

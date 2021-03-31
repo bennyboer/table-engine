@@ -24,6 +24,7 @@ import {BorderStyle} from "../../border/border-style";
 import {ICellRendererEventListener} from "../cell/event/cell-renderer-event-listener";
 import {ICellRendererEvent} from "../cell/event/cell-renderer-event";
 import {IPoint} from "../../util/point";
+import {IOverlay} from "../../overlay/overlay";
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
 type CellRendererEventListenerFunctionSupplier = (listener: ICellRendererEventListener) => CellRendererEventListenerFunction | null | undefined;
@@ -253,6 +254,21 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _lastHoveredCellRange: ICellRange | null = null;
 
 	/**
+	 * Overlays to display over the table.
+	 */
+	private _overlays: IOverlay[] = [];
+
+	/**
+	 * Container for overlay HTML elements.
+	 */
+	private _overlayContainer: HTMLElement;
+
+	/**
+	 * Whether to update all overlays after the next rendering cycle.
+	 */
+	private _updateOverlaysAfterRenderCycle: boolean = false;
+
+	/**
 	 * Cleanup the renderer when no more needed.
 	 */
 	public cleanup(): void {
@@ -263,6 +279,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		this._onCleanup.next();
 		this._onCleanup.complete();
+
+		// Cleanup DOM
+		CanvasRenderer._clearContainerChildren(this._container);
 	}
 
 	/**
@@ -279,7 +298,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		this._borderModel = engine.getBorderModel();
 		this._options = options;
 
-		this._initializeRenderingCanvasElement();
+		this._initializeRenderingElements();
 		this._bindListeners();
 
 		this._initializeCellRenderers();
@@ -298,7 +317,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Request focus on the table.
 	 */
 	public requestFocus(): void {
-		this._canvasElement.focus();
+		this._overlayContainer.focus();
 	}
 
 	/**
@@ -314,19 +333,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _bindListeners(): void {
 		// Listen for keyboard events
 		this._keyDownListener = (event) => this._onKeyDown(event);
-		this._canvasElement.addEventListener("keydown", this._keyDownListener);
+		this._overlayContainer.addEventListener("keydown", this._keyDownListener);
 
 		this._keyUpListener = (event) => this._onKeyUp(event);
-		this._canvasElement.addEventListener("keyup", this._keyUpListener);
+		this._overlayContainer.addEventListener("keyup", this._keyUpListener);
 
 		// Listen for mouse events
 		this._wheelListener = (event) => this._onWheel(event);
-		this._canvasElement.addEventListener("wheel", this._wheelListener, {
+		this._overlayContainer.addEventListener("wheel", this._wheelListener, {
 			passive: false
 		});
 
 		this._mouseDownListener = (event) => this._onMouseDown(event);
-		this._canvasElement.addEventListener("mousedown", this._mouseDownListener);
+		this._overlayContainer.addEventListener("mousedown", this._mouseDownListener);
 
 		this._mouseMoveListener = (event) => this._onMouseMove(event);
 		window.addEventListener("mousemove", this._mouseMoveListener);
@@ -336,7 +355,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		// Listen for touch events
 		this._touchStartListener = (event) => this._onTouchStart(event);
-		this._canvasElement.addEventListener("touchstart", this._touchStartListener);
+		this._overlayContainer.addEventListener("touchstart", this._touchStartListener);
 
 		this._touchMoveListener = (event) => this._onTouchMove(event);
 		window.addEventListener("touchmove", this._touchMoveListener);
@@ -350,10 +369,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		// Listen for focus and blur events
 		this._focusListener = (event) => this._onFocus(event);
-		this._canvasElement.addEventListener("focus", this._focusListener);
+		this._overlayContainer.addEventListener("focus", this._focusListener);
 
 		this._blurListener = (event) => this._onBlur(event);
-		this._canvasElement.addEventListener("blur", this._blurListener);
+		this._overlayContainer.addEventListener("blur", this._blurListener);
 
 		// Throttle resize events
 		this._resizeThrottleSubject.asObservable().pipe(
@@ -362,7 +381,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				leading: false,
 				trailing: true
 			})
-		).subscribe(() => this._resizeCanvasToCurrentContainerSize());
+		).subscribe(() => this._onContainerResized());
 
 		// Repaint when necessary (for example on scrolling)
 		this._repaintScheduler.asObservable().pipe(
@@ -379,17 +398,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 */
 	private _unbindListeners(): void {
 		if (!!this._keyDownListener) {
-			this._canvasElement.removeEventListener("keydown", this._keyDownListener);
+			this._overlayContainer.removeEventListener("keydown", this._keyDownListener);
 		}
 		if (!!this._keyUpListener) {
-			this._canvasElement.removeEventListener("keyup", this._keyUpListener);
+			this._overlayContainer.removeEventListener("keyup", this._keyUpListener);
 		}
 
 		if (!!this._wheelListener) {
-			this._canvasElement.removeEventListener("wheel", this._wheelListener);
+			this._overlayContainer.removeEventListener("wheel", this._wheelListener);
 		}
 		if (!!this._mouseDownListener) {
-			this._canvasElement.removeEventListener("mousedown", this._mouseDownListener);
+			this._overlayContainer.removeEventListener("mousedown", this._mouseDownListener);
 		}
 		if (!!this._mouseMoveListener) {
 			window.removeEventListener("mousemove", this._mouseMoveListener);
@@ -399,7 +418,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 
 		if (!!this._touchStartListener) {
-			this._canvasElement.removeEventListener("touchstart", this._touchStartListener);
+			this._overlayContainer.removeEventListener("touchstart", this._touchStartListener);
 		}
 		if (!!this._touchMoveListener) {
 			window.removeEventListener("touchmove", this._touchMoveListener);
@@ -413,10 +432,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 
 		if (!!this._focusListener) {
-			this._canvasElement.removeEventListener("focus", this._focusListener);
+			this._overlayContainer.removeEventListener("focus", this._focusListener);
 		}
 		if (!!this._blurListener) {
-			this._canvasElement.removeEventListener("blur", this._blurListener);
+			this._overlayContainer.removeEventListener("blur", this._blurListener);
 		}
 	}
 
@@ -490,12 +509,16 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					{x, y}
 				);
 				if (!preventDefault) {
-					// Update selection
 					this._initialSelectionRange = range;
-					this._updateCurrentSelection(this._initialSelectionRange, {
-						row: this._initialSelectionRange.startRow,
-						column: this._initialSelectionRange.startColumn,
-					}, !event.ctrlKey, true, false);
+
+					// Update selection (if changed)
+					const updateNotNecessary: boolean = this._selectionModel.getSelections().length === 1 && CellRangeUtil.equals(this._selectionModel.getPrimary().range, range);
+					if (!updateNotNecessary) {
+						this._updateCurrentSelection(this._initialSelectionRange, {
+							row: this._initialSelectionRange.startRow,
+							column: this._initialSelectionRange.startColumn,
+						}, !event.ctrlKey, true, false);
+					}
 				}
 			}
 		}
@@ -1025,9 +1048,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
-	 * Resize the current canvas to the current container HTML element size.
+	 * Called when the container HTML element is resized.
 	 */
-	private _resizeCanvasToCurrentContainerSize(): void {
+	private _onContainerResized(): void {
 		this._devicePixelRatio = Math.max(window.devicePixelRatio, 1.0);
 
 		const newBounds: DOMRect = this._container.getBoundingClientRect();
@@ -1240,9 +1263,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param zoom level (1.0 = 100%)
 	 */
 	public setZoom(zoom: number): void {
-		this._zoom = Math.min(Math.max(zoom, 1.0), CanvasRenderer.MAX_ZOOM_LEVEL);
+		const newZoom: number = Math.min(Math.max(zoom, 1.0), CanvasRenderer.MAX_ZOOM_LEVEL);
+		if (newZoom !== this._zoom) {
+			this._zoom = newZoom;
 
-		this._repaintScheduler.next();
+			this._updateOverlaysAfterRenderCycle = true;
+			this._repaintScheduler.next();
+		}
 	}
 
 	/**
@@ -1348,10 +1375,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @returns whether the offsets have been changed
 	 */
 	private _scrollTo(offsetX: number, offsetY: number): boolean {
-		const xChanged: boolean = this._scrollToX(offsetX);
-		const yChanged: boolean = this._scrollToY(offsetY);
+		const xChanged: boolean = this._scrollToXInternal(offsetX);
+		const yChanged: boolean = this._scrollToYInternal(offsetY);
 
-		return xChanged || yChanged;
+		const changed = xChanged || yChanged;
+		if (changed) {
+			this._updateOverlays(); // Update overlays (if any)
+		}
+
+		return changed;
 	}
 
 	/**
@@ -1360,6 +1392,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @returns whether the offset is out of bounds and thus corrected to the max/min value
 	 */
 	private _scrollToX(offset: number): boolean {
+		const changed = this._scrollToXInternal(offset);
+		if (changed) {
+			this._updateOverlays(); // Update overlays (if any)
+		}
+		return changed;
+	}
+
+	/**
+	 * Scroll to the given horizontal (X) position - internal method.
+	 * @param offset to scroll to
+	 *@returns whether the offset is out of bounds and thus corrected to the max/min value
+	 */
+	private _scrollToXInternal(offset: number): boolean {
 		const fixedColumnsWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
 
 		const tableWidth: number = this._cellModel.getWidth() - fixedColumnsWidth;
@@ -1397,6 +1442,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @returns whether the offset changed
 	 */
 	private _scrollToY(offset: number): boolean {
+		const changed = this._scrollToYInternal(offset);
+		if (changed) {
+			this._updateOverlays(); // Update overlays (if any)
+		}
+		return changed;
+	}
+
+	/**
+	 * Scroll to the given vertical (Y) position - internal method.
+	 * @param offset to scroll to
+	 * @returns whether the offset changed
+	 */
+	private _scrollToYInternal(offset: number): boolean {
 		const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
 
 		const tableHeight: number = this._cellModel.getHeight() - fixedRowsHeight;
@@ -1416,7 +1474,6 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		} else if (offset > maxOffset) {
 			const changed: boolean = this._scrollOffset.y !== maxOffset;
 			this._scrollOffset.y = Math.round(maxOffset);
-			;
 			return changed;
 		} else {
 			const newOffset: number = Math.round(offset);
@@ -1430,15 +1487,23 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
-	 * Initialize the rendering canvas element to use.
+	 * Clear all child elements from the passed HTML container.
+	 * @param container to clear all children from
 	 */
-	private _initializeRenderingCanvasElement(): void {
+	private static _clearContainerChildren(container: HTMLElement): void {
+		while (container.hasChildNodes()) {
+			container.removeChild(container.lastChild);
+		}
+	}
+
+	/**
+	 * Initialize the rendering elements to use.
+	 */
+	private _initializeRenderingElements(): void {
 		const bounds: DOMRect = this._container.getBoundingClientRect();
 
 		// The container might have children -> clear them just to make sure
-		while (this._container.hasChildNodes()) {
-			this._container.removeChild(this._container.lastChild);
-		}
+		CanvasRenderer._clearContainerChildren(this._container);
 
 		// Create HTML canvas element
 		this._canvasElement = document.createElement("canvas");
@@ -1450,12 +1515,22 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		// Set proper size based on the container HTML element size
 		CanvasUtil.setCanvasSize(this._canvasElement, bounds.width, bounds.height);
 
-		// Make it focusable (needed for key listeners for example).
-		this._canvasElement.setAttribute("tabindex", "-1");
-		this._canvasElement.style.outline = "none"; // Remove focus outline when focused
-
 		// Append it to the container
 		this._container.appendChild(this._canvasElement);
+
+		// Create overlay container
+		this._overlayContainer = document.createElement("div");
+		this._overlayContainer.style.position = "absolute";
+		this._overlayContainer.style.zIndex = "999";
+		this._overlayContainer.style.width = "100%";
+		this._overlayContainer.style.height = "100%";
+		this._overlayContainer.style.overflow = "hidden";
+
+		// Make it focusable (needed for key listeners for example).
+		this._overlayContainer.setAttribute("tabindex", "-1");
+		this._overlayContainer.style.outline = "none"; // Remove focus outline when focused
+
+		this._container.appendChild(this._overlayContainer);
 	}
 
 	/**
@@ -2060,6 +2135,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			CanvasRenderer._renderScrollBars(ctx, renderingContext);
 
 			console.log(`RENDERING: ${window.performance.now() - renderingTime}ms, CREATING RENDERING CONTEXT: ${creatingRenderingContextTime}ms`);
+
+			if (this._updateOverlaysAfterRenderCycle) {
+				this._updateOverlaysAfterRenderCycle = false;
+
+				this._updateOverlays();
+			}
 		});
 	}
 
@@ -2381,6 +2462,114 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				ctx.strokeRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.height);
 			}
 		}
+	}
+
+	/**
+	 * Add an overlay.
+	 * @param overlay to add
+	 */
+	public addOverlay(overlay: IOverlay): void {
+		this._overlays.push(overlay);
+
+		// Add overlay to overlay container
+		this._overlayContainer.appendChild(overlay.element);
+
+		// Set initial styles
+		overlay.element.style.position = "absolute";
+
+		// Initially layout the overlay element
+		this._layoutOverlay(overlay);
+	}
+
+	/**
+	 * Update all overlays.
+	 */
+	private _updateOverlays(): void {
+		for (const overlay of this._overlays) {
+			this._layoutOverlay(overlay);
+		}
+	}
+
+	/**
+	 * Layout the given overlay properly.
+	 * @param overlay to layout
+	 */
+	private _layoutOverlay(overlay: IOverlay): void {
+		const viewPortHeight: number = !!this._lastRenderingContext ? this._lastRenderingContext.viewPort.height : 0;
+		const viewPortWidth: number = !!this._lastRenderingContext ? this._lastRenderingContext.viewPort.width : 0;
+
+		const fixedRowsHeight: number = !!this._lastRenderingContext && !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
+		const fixedColumnsWidth: number = !!this._lastRenderingContext && !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
+
+		let top: number = overlay.bounds.top;
+		let height: number = overlay.bounds.height;
+		if (overlay.bounds.top < fixedRowsHeight) {
+			// Overlaps with fixed rows
+			const remaining: number = fixedRowsHeight - overlay.bounds.top;
+			if (overlay.bounds.height > remaining) {
+				// Not completely in fixed rows -> change height based on scroll state
+				height = Math.max(height - this._scrollOffset.y, remaining);
+			}
+		} else {
+			// Is only in scrollable area
+			if (top - this._scrollOffset.y < fixedRowsHeight) {
+				height -= fixedRowsHeight - (top - this._scrollOffset.y);
+				top = fixedRowsHeight;
+			} else {
+				top = top - this._scrollOffset.y;
+			}
+		}
+
+		let left: number = overlay.bounds.left;
+		let width: number = overlay.bounds.width;
+		if (overlay.bounds.left < fixedColumnsWidth) {
+			// Overlaps with fixed columns
+			const remaining: number = fixedColumnsWidth - overlay.bounds.left;
+			if (overlay.bounds.width > remaining) {
+				// Not completely in fixed columns -> change width based on scroll state
+				width = Math.max(width - this._scrollOffset.x, remaining);
+			}
+		} else {
+			// Is only in scrollable area
+			if (left - this._scrollOffset.x < fixedColumnsWidth) {
+				width -= fixedColumnsWidth - (left - this._scrollOffset.x);
+				left = fixedColumnsWidth;
+			} else {
+				left = left - this._scrollOffset.x;
+			}
+		}
+
+		const isVisible: boolean = height > 0 && top < viewPortHeight
+			&& width > 0 && left < viewPortWidth;
+		if (isVisible) {
+			overlay.element.style.display = "block";
+
+			overlay.element.style.left = `${left * this._zoom}px`;
+			overlay.element.style.top = `${top * this._zoom}px`;
+			overlay.element.style.width = `${width * this._zoom}px`;
+			overlay.element.style.height = `${height * this._zoom}px`;
+		} else {
+			overlay.element.style.display = "none";
+		}
+	}
+
+	/**
+	 * Remove the passed overlay.
+	 * @param overlay to remove
+	 */
+	public removeOverlay(overlay: IOverlay): void {
+		const index = this._overlays.indexOf(overlay);
+		if (index > -1) {
+			this._overlays.splice(index, 1);
+			this._overlayContainer.removeChild(overlay.element);
+		}
+	}
+
+	/**
+	 * Get all available overlays.
+	 */
+	public getOverlays(): IOverlay[] {
+		return this._overlays;
 	}
 
 }
