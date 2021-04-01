@@ -1,7 +1,6 @@
 import {CellModel} from "./cell-model";
 import {CellRange} from "../range/cell-range";
 import {ICell} from "../cell";
-import {IRect} from "canvaskit-wasm";
 import {IRectangle} from "../../util/rect";
 
 test("[CellModel.generate] Validate row/column sizes - I", () => {
