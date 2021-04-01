@@ -1,8 +1,6 @@
 import {ICanvasCellRenderer} from "../canvas-cell-renderer";
 import {ICell} from "../../../../cell/cell";
 import {IRectangle} from "../../../../util/rect";
-import {ICellModel} from "../../../../cell/model/cell-model.interface";
-import {ISelectionModel} from "../../../../selection/model/selection-model.interface";
 import {TableEngine} from "../../../../table-engine";
 import {IRenderContext} from "../../canvas-renderer";
 import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-event-listener";
@@ -184,6 +182,34 @@ export class ImageCellRenderer implements ICanvasCellRenderer {
 		await promise;
 
 		return image;
+	}
+
+	/**
+	 * Get the copy value of the passed cell rendered with this renderer.
+	 * This may be a HTML representation of the value (for example for copying formatting, lists, ...).
+	 */
+	public getCopyValue(cell: ICell): string {
+		const image: CanvasImageSource | null = this._getImageIfLoaded(cell.value.src);
+		if (!!image) {
+			const bounds: IRectangle = this._engine.getCellModel().getBounds(cell.range);
+
+			const copyCanvas: HTMLCanvasElement = document.createElement("canvas");
+			copyCanvas.width = bounds.width;
+			copyCanvas.height = bounds.height;
+
+			const ctx: CanvasRenderingContext2D = copyCanvas.getContext("2d");
+
+			this.render(ctx, cell, {
+				left: 0,
+				top: 0,
+				width: bounds.width,
+				height: bounds.height
+			});
+
+			return `<img src="${copyCanvas.toDataURL()}">`;
+		} else {
+			return "";
+		}
 	}
 
 }

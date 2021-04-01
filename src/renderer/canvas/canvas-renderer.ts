@@ -25,6 +25,7 @@ import {ICellRendererEventListener} from "../cell/event/cell-renderer-event-list
 import {ICellRendererEvent} from "../cell/event/cell-renderer-event";
 import {IPoint} from "../../util/point";
 import {IOverlay} from "../../overlay/overlay";
+import {ClipboardUtil} from "../../util/clipboard/clipboard-util";
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
 type CellRendererEventListenerFunctionSupplier = (listener: ICellRendererEventListener) => CellRendererEventListenerFunction | null | undefined;
@@ -1136,6 +1137,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					this._selectAll();
 				}
 				break;
+			case "KeyC":
+			case "KeyX":
+				if (event.ctrlKey) {
+					// Copy or cut requested
+					// Note that the table-engine will only handle copying and not cutting
+					// The user has to define a cutting listener themself.
+					event.preventDefault();
+
+					this._copySelection();
+				}
+				break;
 			case "ArrowDown":
 			case "ArrowLeft":
 			case "ArrowRight":
@@ -1159,6 +1171,23 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					this._moveSelection(xDiff, yDiff, jump);
 				}
 				break;
+		}
+	}
+
+	/**
+	 * Copy the currently selected cell values on the clipboard.
+	 * Hidden rows/columns are left out.
+	 */
+	private _copySelection(): void {
+		const primary: ISelection | null = this._selectionModel.getPrimary();
+		if (!!primary) {
+			// Build HTML table to copy
+			const htmlTable: string = ClipboardUtil.buildHTMLTableForCopy(primary.range, this._cellModel, (cell) => {
+				return this._cellRendererLookup.get(cell.rendererName).getCopyValue(cell);
+			});
+
+			// Actually copy the HTML table
+			ClipboardUtil.setClipboardContent(htmlTable);
 		}
 	}
 

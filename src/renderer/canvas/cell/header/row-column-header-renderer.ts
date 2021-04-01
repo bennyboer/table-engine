@@ -228,4 +228,12 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 		return false;
 	}
 
+	/**
+	 * Get the copy value of the passed cell rendered with this renderer.
+	 * This may be a HTML representation of the value (for example for copying formatting, lists, ...).
+	 */
+	public getCopyValue(cell: ICell): string {
+		return "";
+	}
+
 }

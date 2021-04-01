@@ -36,4 +36,10 @@ export interface ICellRenderer<C> {
 	 */
 	getEventListener(): ICellRendererEventListener | null;
 
+	/**
+	 * Get the copy value of the passed cell rendered with this renderer.
+	 * This may be a HTML representation of the value (for example for copying formatting, lists, ...).
+	 */
+	getCopyValue(cell: ICell): string;
+
 }
