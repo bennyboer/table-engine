@@ -2376,9 +2376,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		if (side.style === BorderStyle.SOLID) {
 			ctx.setLineDash([]);
 		} else if (side.style === BorderStyle.DOTTED) {
-			ctx.setLineDash([1, 1]);
+			ctx.setLineDash([side.size, side.size]);
 		} else if (side.style === BorderStyle.DASHED) {
-			ctx.setLineDash([5, 5]);
+			ctx.setLineDash([5 * side.size, 5 * side.size]);
 		}
 	}
 
