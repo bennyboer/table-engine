@@ -401,7 +401,7 @@ export class SelectionModel implements ISelectionModel {
 					// Shrink the selection
 					const newColumn = jump
 						? selection.initial.column
-						: this._findColumnOfPreviousVisibleCell(selection.range.endColumn, selection.initial.row);
+						: this._findColumnOfPreviousVisibleCell(selection.range.endColumn, selection.initial.row, false);
 					if (newColumn === -1) {
 						return false;
 					}
@@ -419,8 +419,8 @@ export class SelectionModel implements ISelectionModel {
 				} else {
 					// Extend the selection
 					const newColumn = jump
-						? this._findColumnOfNextVisibleCell(-1, selection.initial.row)
-						: this._findColumnOfPreviousVisibleCell(selection.range.startColumn, selection.initial.row);
+						? this._findColumnOfNextVisibleCell(-1, selection.initial.row, false)
+						: this._findColumnOfPreviousVisibleCell(selection.range.startColumn, selection.initial.row, false);
 					if (newColumn === -1) {
 						return false;
 					}
@@ -441,7 +441,7 @@ export class SelectionModel implements ISelectionModel {
 					// Shrink the selection
 					const newColumn = jump
 						? selection.initial.column
-						: this._findColumnOfNextVisibleCell(selection.range.startColumn, selection.initial.row);
+						: this._findColumnOfNextVisibleCell(selection.range.startColumn, selection.initial.row, false);
 					if (newColumn === -1) {
 						return false;
 					}
@@ -459,8 +459,8 @@ export class SelectionModel implements ISelectionModel {
 				} else {
 					// Extend the selection
 					const newColumn = jump
-						? this._findColumnOfPreviousVisibleCell(this._cellModel.getColumnCount(), selection.initial.row)
-						: this._findColumnOfNextVisibleCell(selection.range.endColumn, selection.initial.row);
+						? this._findColumnOfPreviousVisibleCell(this._cellModel.getColumnCount(), selection.initial.row, false)
+						: this._findColumnOfNextVisibleCell(selection.range.endColumn, selection.initial.row, false);
 					if (newColumn === -1) {
 						return false;
 					}
@@ -485,7 +485,7 @@ export class SelectionModel implements ISelectionModel {
 					// Shrink the selection
 					const newRow = jump
 						? selection.initial.row
-						: this._findRowOfPreviousVisibleCell(selection.range.endRow, selection.initial.column);
+						: this._findRowOfPreviousVisibleCell(selection.range.endRow, selection.initial.column, false);
 					if (newRow === -1) {
 						return false;
 					}
@@ -503,8 +503,8 @@ export class SelectionModel implements ISelectionModel {
 				} else {
 					// Extend the selection
 					const newRow = jump
-						? this._findRowOfNextVisibleCell(-1, selection.initial.column)
-						: this._findRowOfPreviousVisibleCell(selection.range.startRow, selection.initial.column);
+						? this._findRowOfNextVisibleCell(-1, selection.initial.column, false)
+						: this._findRowOfPreviousVisibleCell(selection.range.startRow, selection.initial.column, false);
 					if (newRow === -1) {
 						return false;
 					}
@@ -525,7 +525,7 @@ export class SelectionModel implements ISelectionModel {
 					// Shrink the selection
 					const newRow = jump
 						? selection.initial.row
-						: this._findRowOfNextVisibleCell(selection.range.startRow, selection.initial.column);
+						: this._findRowOfNextVisibleCell(selection.range.startRow, selection.initial.column, false);
 					if (newRow === -1) {
 						return false;
 					}
@@ -543,8 +543,8 @@ export class SelectionModel implements ISelectionModel {
 				} else {
 					// Extend the selection
 					const newRow = jump
-						? this._findRowOfPreviousVisibleCell(this._cellModel.getRowCount(), selection.initial.column)
-						: this._findRowOfNextVisibleCell(selection.range.endRow, selection.initial.column);
+						? this._findRowOfPreviousVisibleCell(this._cellModel.getRowCount(), selection.initial.column, false)
+						: this._findRowOfNextVisibleCell(selection.range.endRow, selection.initial.column, false);
 					if (newRow === -1) {
 						return false;
 					}
@@ -580,8 +580,8 @@ export class SelectionModel implements ISelectionModel {
 			if (xDiff < 0) {
 				// Find previous cell to select (if any)
 				const previousColumn = jump
-					? this._findColumnOfNextVisibleCell(-1, selection.initial.row)
-					: this._findColumnOfPreviousVisibleCell(selection.initial.column, selection.initial.row);
+					? this._findColumnOfNextVisibleCell(-1, selection.initial.row, false)
+					: this._findColumnOfPreviousVisibleCell(selection.initial.column, selection.initial.row, false);
 				if (previousColumn === -1) {
 					return false;
 				}
@@ -602,8 +602,8 @@ export class SelectionModel implements ISelectionModel {
 			} else {
 				// Find next cell to select (if any)
 				const nextColumn = jump
-					? this._findColumnOfPreviousVisibleCell(this._cellModel.getColumnCount(), selection.initial.row)
-					: this._findColumnOfNextVisibleCell(selection.initial.column, selection.initial.row);
+					? this._findColumnOfPreviousVisibleCell(this._cellModel.getColumnCount(), selection.initial.row, false)
+					: this._findColumnOfNextVisibleCell(selection.initial.column, selection.initial.row, false);
 				if (nextColumn === -1) {
 					return false;
 				}
@@ -628,8 +628,8 @@ export class SelectionModel implements ISelectionModel {
 			if (yDiff < 0) {
 				// Find previous cell to select (if any)
 				const previousRow = jump
-					? this._findRowOfNextVisibleCell(-1, selection.initial.column)
-					: this._findRowOfPreviousVisibleCell(selection.initial.row, selection.initial.column);
+					? this._findRowOfNextVisibleCell(-1, selection.initial.column, false)
+					: this._findRowOfPreviousVisibleCell(selection.initial.row, selection.initial.column, false);
 				if (previousRow === -1) {
 					return false;
 				}
@@ -650,8 +650,8 @@ export class SelectionModel implements ISelectionModel {
 			} else {
 				// Find next cell to select (if any)
 				const nextRow = jump
-					? this._findRowOfPreviousVisibleCell(this._cellModel.getRowCount(), selection.initial.row)
-					: this._findRowOfNextVisibleCell(selection.initial.row, selection.initial.column);
+					? this._findRowOfPreviousVisibleCell(this._cellModel.getRowCount(), selection.initial.row, false)
+					: this._findRowOfNextVisibleCell(selection.initial.row, selection.initial.column, false);
 				if (nextRow === -1) {
 					return false;
 				}
@@ -714,16 +714,30 @@ export class SelectionModel implements ISelectionModel {
 		const lastVisibleRow: number = this._cellModel.findPreviousVisibleRow(primary.range.endRow);
 		const lastVisibleColumn: number = this._cellModel.findPreviousVisibleColumn(primary.range.endColumn);
 
+		const cellRange: ICellRange = this._cellModel.getCell(primary.initial.row, primary.initial.column)?.range ?? {
+			startRow: primary.initial.row,
+			endRow: primary.initial.row,
+			startColumn: primary.initial.column,
+			endColumn: primary.initial.column
+		};
+
 		// Check if move is possible
 		let isNextMovePossible: boolean = true;
 		let moveToNextSelection: boolean = false;
-		if (primary.initial.column === firstVisibleColumn && primary.initial.row === firstVisibleRow && (xDiff < 0 || yDiff < 0)) {
+		if (xDiff < 0 && cellRange.startColumn === firstVisibleColumn && primary.initial.row === firstVisibleRow) {
 			isNextMovePossible = false;
 			moveToNextSelection = false;
-		} else if (primary.initial.column === lastVisibleColumn && primary.initial.row === lastVisibleRow && (xDiff > 0 || yDiff > 0)) {
+		} else if (xDiff > 0 && cellRange.endColumn === lastVisibleColumn && primary.initial.row === lastVisibleRow) {
+			isNextMovePossible = false;
+			moveToNextSelection = true;
+		} else if (yDiff < 0 && cellRange.startRow === firstVisibleRow && primary.initial.column === firstVisibleColumn) {
+			isNextMovePossible = false;
+			moveToNextSelection = false;
+		} else if (yDiff > 0 && cellRange.endRow === lastVisibleRow && primary.initial.column === lastVisibleColumn) {
 			isNextMovePossible = false;
 			moveToNextSelection = true;
 		}
+		
 		if (isNextMovePossible) {
 			// Check if primary selection is only a single cell -> move impossible
 			const cell: ICell | null = this._cellModel.getCell(primary.range.startRow, primary.range.startColumn);
@@ -778,15 +792,16 @@ export class SelectionModel implements ISelectionModel {
 			return;
 		}
 
-		let wrapOccurred: boolean = true;
-		while (wrapOccurred) {
-			wrapOccurred = false;
+		let wrapOccurred: boolean = false;
+		do {
+			let isDueToWrap: boolean = wrapOccurred;
+			wrapOccurred = false; // Reset flag
 
 			if (yDiff !== 0) {
 				let newRow: number;
 
 				if (yDiff < 0) {
-					newRow = this._findRowOfPreviousVisibleCell(primary.initial.row, primary.initial.column);
+					newRow = this._findRowOfPreviousVisibleCell(primary.initial.row, primary.initial.column, isDueToWrap);
 
 					if (newRow === -1 || newRow < firstVisibleRow) {
 						// Move to end row of selection
@@ -800,7 +815,7 @@ export class SelectionModel implements ISelectionModel {
 
 					yDiff = 0;
 				} else {
-					newRow = this._findRowOfNextVisibleCell(primary.initial.row, primary.initial.column);
+					newRow = this._findRowOfNextVisibleCell(primary.initial.row, primary.initial.column, isDueToWrap);
 
 					if (newRow === -1 || newRow > lastVisibleRow) {
 						// Move to start row of selection
@@ -821,7 +836,7 @@ export class SelectionModel implements ISelectionModel {
 			if (!wrapOccurred && xDiff !== 0) {
 				let newColumn: number;
 				if (xDiff < 0) {
-					newColumn = this._findColumnOfPreviousVisibleCell(primary.initial.column, primary.initial.row);
+					newColumn = this._findColumnOfPreviousVisibleCell(primary.initial.column, primary.initial.row, isDueToWrap);
 
 					if (newColumn === -1 || newColumn < firstVisibleColumn) {
 						// Move to end column of selection
@@ -835,7 +850,7 @@ export class SelectionModel implements ISelectionModel {
 
 					xDiff = 0;
 				} else {
-					newColumn = this._findColumnOfNextVisibleCell(primary.initial.column, primary.initial.row);
+					newColumn = this._findColumnOfNextVisibleCell(primary.initial.column, primary.initial.row, isDueToWrap);
 
 					if (newColumn === -1 || newColumn > lastVisibleColumn) {
 						// Move to start column of selection
@@ -852,16 +867,17 @@ export class SelectionModel implements ISelectionModel {
 
 				primary.initial.column = newColumn;
 			}
-		}
+		} while (wrapOccurred);
 	}
 
 	/**
 	 * Find row of the next visible cell.
 	 * @param afterRow row index to start from (exclusive)
 	 * @param column index to use
+	 * @param allowSameCell whether to allow resulting in a row in the same cell (when having a merged cell)
 	 * @return the next visible index or -1
 	 */
-	private _findRowOfNextVisibleCell(afterRow: number, column: number): number {
+	private _findRowOfNextVisibleCell(afterRow: number, column: number, allowSameCell: boolean): number {
 		const cell: ICell | null = afterRow >= 0
 			? this._cellModel.getCell(afterRow, column)
 			: null;
@@ -875,7 +891,7 @@ export class SelectionModel implements ISelectionModel {
 			}
 
 			nextVisibleRowCell = this._cellModel.getCell(nextVisibleRow, column);
-		} while (nextVisibleRowCell !== null && cell !== null && nextVisibleRowCell === cell);
+		} while (nextVisibleRowCell !== null && cell !== null && (nextVisibleRowCell === cell && !allowSameCell));
 
 		return nextVisibleRow;
 	}
@@ -884,9 +900,10 @@ export class SelectionModel implements ISelectionModel {
 	 * Find row of the previous visible cell.
 	 * @param beforeRow row index to start from (exclusive)
 	 * @param column index to use
+	 * @param allowSameCell whether to allow resulting in a row in the same cell (when having a merged cell)
 	 * @return the previous visible index or -1
 	 */
-	private _findRowOfPreviousVisibleCell(beforeRow: number, column: number): number {
+	private _findRowOfPreviousVisibleCell(beforeRow: number, column: number, allowSameCell: boolean): number {
 		const cell: ICell | null = beforeRow <= this._cellModel.getRowCount() - 1
 			? this._cellModel.getCell(beforeRow, column)
 			: null;
@@ -900,7 +917,7 @@ export class SelectionModel implements ISelectionModel {
 			}
 
 			previousVisibleRowCell = this._cellModel.getCell(previousVisibleRow, column);
-		} while (previousVisibleRowCell !== null && cell !== null && previousVisibleRowCell === cell);
+		} while (previousVisibleRowCell !== null && cell !== null && (previousVisibleRowCell === cell && !allowSameCell));
 
 		return previousVisibleRow;
 	}
@@ -909,9 +926,10 @@ export class SelectionModel implements ISelectionModel {
 	 * Find column of the next visible cell.
 	 * @param afterColumn column index to start from (exclusive)
 	 * @param row index to use
+	 * @param allowSameCell whether to allow resulting in a column in the same cell (when having a merged cell)
 	 * @return the next visible index or -1
 	 */
-	private _findColumnOfNextVisibleCell(afterColumn: number, row: number): number {
+	private _findColumnOfNextVisibleCell(afterColumn: number, row: number, allowSameCell: boolean): number {
 		const cell: ICell | null = afterColumn >= 0
 			? this._cellModel.getCell(row, afterColumn)
 			: null;
@@ -925,7 +943,7 @@ export class SelectionModel implements ISelectionModel {
 			}
 
 			nextVisibleColumnCell = this._cellModel.getCell(row, nextVisibleColumn);
-		} while (nextVisibleColumnCell !== null && cell !== null && nextVisibleColumnCell === cell);
+		} while (nextVisibleColumnCell !== null && cell !== null && (nextVisibleColumnCell === cell && !allowSameCell));
 
 		return nextVisibleColumn;
 	}
@@ -934,9 +952,10 @@ export class SelectionModel implements ISelectionModel {
 	 * Find column of the previous visible cell.
 	 * @param beforeColumn column index to start from (exclusive)
 	 * @param row index to use
+	 * @param allowSameCell whether to allow resulting in a column in the same cell (when having a merged cell)
 	 * @return the previous visible index or -1
 	 */
-	private _findColumnOfPreviousVisibleCell(beforeColumn: number, row: number): number {
+	private _findColumnOfPreviousVisibleCell(beforeColumn: number, row: number, allowSameCell: boolean): number {
 		const cell: ICell | null = beforeColumn <= this._cellModel.getColumnCount() - 1
 			? this._cellModel.getCell(row, beforeColumn)
 			: null;
@@ -950,7 +969,7 @@ export class SelectionModel implements ISelectionModel {
 			}
 
 			previousVisibleColumnCell = this._cellModel.getCell(row, previousVisibleColumn);
-		} while (previousVisibleColumnCell !== null && cell !== null && previousVisibleColumnCell === cell);
+		} while (previousVisibleColumnCell !== null && cell !== null && (previousVisibleColumnCell === cell && !allowSameCell));
 
 		return previousVisibleColumn;
 	}
