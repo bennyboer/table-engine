@@ -36,3 +36,14 @@ development: https://bennyboer.github.io/table-engine/.
 We aim to provide a high-performance table library that may display nearly infinite amounts of data without the user
 really noticing. Normal HTML table elements get pretty laggy when getting large and are thus not always an option. This
 library builds around HTML5 canvas to draw the table from scratch, thus achieving a smooth user experience.
+
+## Getting started
+
+First and foremost install NodeJS (Check one of the workflow files under `.github/workflows` for the current version we use).
+Afterwards install yarn if you haven't already using `npm install -g yarn`.
+
+Install dependencies using `yarn install --frozen-lockfile` in the root of the repository and also under `example` if you intend to run the example.
+
+Build the library using `npm run build` or run tests with `npm run test`.
+
+The example is an Angular application that you may start using `npm run start` in the `example` folder.
