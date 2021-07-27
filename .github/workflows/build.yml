@@ -3,22 +3,24 @@ name: Build and test library
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup NodeJS
-      uses: actions/setup-node@v2.1.5
-      with:
-        node-version: 15.12.0
-    - name: Install dependencies
-      run: |
-          npm ci
-    - name: Build library
-      run: |
+      - uses: actions/checkout@v2
+      - name: Setup NodeJS
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16.5.0
+      - name: Install dependencies
+        run: |
+          yarn install --frozen-lockfile
+      - name: Build library
+        run: |
           npm run build
-    - name: Test library
-      run: |
+      - name: Test library
+        run: |
           npm run test

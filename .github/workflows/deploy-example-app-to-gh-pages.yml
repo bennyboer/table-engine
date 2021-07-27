@@ -8,21 +8,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup NodeJS
-      uses: actions/setup-node@v2.1.5
-      with:
-        node-version: 15.12.0
-    - name: Build table-engine
-      run: |
-          npm ci
+      - uses: actions/checkout@v2
+      - name: Setup NodeJS
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16.5.0
+      - name: Build table-engine
+        run: |
+          yarn install --frozen-lockfile
           npm run build
-    - name: Build example app and deploy to GitHub pages
-      uses: AhsanAyaz/angular-deploy-gh-pages-actions@v1.3.1
-      with:
-        github_access_token: ${{ secrets.GITHUBPAGESDEPLOYTOKEN }}
-        build_configuration: production
-        base_href: https://bennyboer.github.io/table-engine/
-        deploy_branch: gh-pages
-        angular_dist_build_folder: example/dist/example
-        angular_project_dir: example
+      - name: Build example app and deploy to GitHub pages
+        uses: AhsanAyaz/angular-deploy-gh-pages-actions@v1.3.1
+        with:
+          github_access_token: ${{ secrets.GITHUBPAGESDEPLOYTOKEN }}
+          build_configuration: production
+          base_href: https://bennyboer.github.io/table-engine/
+          deploy_branch: gh-pages
+          angular_dist_build_folder: example/dist/example
+          angular_project_dir: example
