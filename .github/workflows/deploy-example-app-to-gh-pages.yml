@@ -21,7 +21,7 @@ jobs:
         run: |
           cd example
           yarn install --frozen-lockfile
-          npm run build -- --base-href=/table-engine
+          npm run build -- --base-href=https://bennyboer.github.io/table-engine/
       - name: Deploy demo app to GitHub pages
         uses: JamesIves/github-pages-deploy-action@4.1.4
         with:
