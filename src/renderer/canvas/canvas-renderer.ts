@@ -1717,8 +1717,6 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		if (selection.initial.column >= maxColumn) {
 			selection.initial.column = maxColumn - 1;
 		}
-
-		console.log(selection);
 	}
 
 	/**
