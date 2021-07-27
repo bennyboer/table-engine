@@ -15,7 +15,7 @@ jobs:
           node-version: 16.5.0
       - name: Build table-engine
         run: |
-          npm ci
+          yarn install --frozen-lockfile
           npm run build
       - name: Build example app and deploy to GitHub pages
         uses: AhsanAyaz/angular-deploy-gh-pages-actions@v1.3.1
