@@ -64,8 +64,10 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 			}
 		},
 		onMouseOut: (event) => {
-			this._hoveredCell = null;
-			this._engine.repaint();
+			if (this._hoveredCell !== null) {
+				this._hoveredCell = null;
+				this._engine.repaint();
+			}
 		}
 	};
 
