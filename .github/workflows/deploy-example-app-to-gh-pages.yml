@@ -17,12 +17,14 @@ jobs:
         run: |
           yarn install --frozen-lockfile
           npm run build
-      - name: Build example app and deploy to GitHub pages
-        uses: AhsanAyaz/angular-deploy-gh-pages-actions@v1.3.1
+      - name: Build demo app
+        run: |
+          cd example
+          yarn install --frozen-lockfile
+          npm run build -- --base-href=https://bennyboer.github.io/table-engine/
+      - name: Deploy demo app to GitHub pages
+        uses: JamesIves/github-pages-deploy-action@4.1.4
         with:
-          github_access_token: ${{ secrets.GITHUBPAGESDEPLOYTOKEN }}
-          build_configuration: production
-          base_href: https://bennyboer.github.io/table-engine/
-          deploy_branch: gh-pages
-          angular_dist_build_folder: example/dist/example
-          angular_project_dir: example
+          branch: gh-pages
+          folder: example/dist/example
+          token: ${{ secrets.GITHUBPAGESDEPLOYTOKEN }}
