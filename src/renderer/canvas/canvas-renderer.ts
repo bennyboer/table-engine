@@ -26,6 +26,7 @@ import {ICellRendererEvent} from "../cell/event/cell-renderer-event";
 import {IPoint} from "../../util/point";
 import {IOverlay} from "../../overlay/overlay";
 import {ClipboardUtil} from "../../util/clipboard/clipboard-util";
+import {ISize} from "../../util/size";
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
 type CellRendererEventListenerFunctionSupplier = (listener: ICellRendererEventListener) => CellRendererEventListenerFunction | null | undefined;
@@ -540,6 +541,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		eventListenerSupplier: CellRendererEventListenerFunctionSupplier,
 		offset?: IPoint
 	): boolean {
+		if (row >= this._cellModel.getRowCount() || column >= this._cellModel.getColumnCount()) {
+			return false;
+		}
+
 		const cell: ICell = this._cellModel.getCell(row, column, true);
 		const listener: ICellRendererEventListener = this._cellRendererLookup.get(cell.rendererName).getEventListener();
 		if (!!listener) {
@@ -1664,6 +1669,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		};
 
 		for (const s of selections) {
+			this._validateSelection(s);
 			this._addInfosForSelection(
 				result,
 				s,
@@ -1677,6 +1683,40 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Validate the given selection.
+	 * Validation means checking whether the selection is being able to be rendered.
+	 * For example when deleting the last row or column, the selection will no more
+	 * be inside table bounds.
+	 * @param selection to validate
+	 */
+	private _validateSelection(selection: ISelection): void {
+		const maxRow: number = this._cellModel.getRowCount();
+		const maxColumn: number = this._cellModel.getColumnCount();
+
+		if (selection.range.endRow >= maxRow) {
+			selection.range.endRow = maxRow - 1;
+
+			if (selection.range.startRow > selection.range.endRow) {
+				selection.range.startRow = selection.range.endRow;
+			}
+		}
+		if (selection.initial.row >= maxRow) {
+			selection.initial.row = maxRow - 1;
+		}
+
+		if (selection.range.endColumn >= maxColumn) {
+			selection.range.endColumn = maxColumn - 1;
+
+			if (selection.range.startColumn > selection.range.endColumn) {
+				selection.range.startColumn = selection.range.endColumn;
+			}
+		}
+		if (selection.initial.column >= maxColumn) {
+			selection.initial.column = maxColumn - 1;
+		}
 	}
 
 	/**
@@ -1872,6 +1912,26 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Create the rendering context for the current state.
 	 */
 	private _createRenderingContext(): IRenderContext {
+		// Check if size of the table changed compared to the last rendering cycle
+		if (!!this._lastRenderingContext) {
+			const lastSize: ISize = this._lastRenderingContext.tableSize;
+
+			const widthChanged: boolean = lastSize.width !== this._cellModel.getWidth();
+			const heightChanged: boolean = lastSize.height !== this._cellModel.getHeight();
+
+			let scrollChanged: boolean = false;
+			if (widthChanged) {
+				scrollChanged ||= this._scrollToXInternal(this._scrollOffset.x);
+			}
+			if (heightChanged) {
+				scrollChanged ||= this._scrollToYInternal(this._scrollOffset.y);
+			}
+
+			if (scrollChanged) {
+				this._updateOverlaysAfterRenderCycle = true;
+			}
+		}
+
 		const viewPort: IRectangle = this._getViewPort();
 
 		const fixedRows: number = Math.min(this._options.view.fixedRows, this._cellModel.getRowCount());
@@ -1893,6 +1953,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		return {
 			focused: this._isFocused,
 			viewPort,
+			tableSize: {
+				width: this._cellModel.getWidth(),
+				height: this._cellModel.getHeight()
+			},
 			cells: cellsInfo,
 			scrollBar: scrollBarContext,
 			selection: selectionContext,
@@ -2617,6 +2681,11 @@ export interface IRenderContext {
 	 * Viewport to render.
 	 */
 	viewPort: IRectangle;
+
+	/**
+	 * Full size of the table.
+	 */
+	tableSize: ISize;
 
 	/**
 	 * Infos about all cells to render.
