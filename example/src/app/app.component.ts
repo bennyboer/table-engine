@@ -304,7 +304,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			this.engine.getOptions().renderer.view.fixedColumns = 1;
 
 			// Set notification service
-			this.engine.getOptions().renderer.view.maxCellCountToCopy = 10;
+			this.engine.getOptions().renderer.view.maxCellCountToCopy = 10000;
 			this.engine.getOptions().renderer.notificationService = {
 				notify: (notification: INotification) => {
 					this.zone.run(() => {
