@@ -1323,6 +1323,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const range: ICellRange = !!cell ? cell.range : CellRange.fromSingleRowColumn(row, column);
 		const bounds: IRectangle = this._cellModel.getBounds(range);
 
+		const fixedRows: number = Math.min(this._options.view.fixedRows, this._cellModel.getRowCount());
+		const fixedColumns: number = Math.min(this._options.view.fixedColumns, this._cellModel.getColumnCount());
+
 		const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
 		const fixedColumnsWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
 
@@ -1332,33 +1335,37 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const viewPortWidth: number = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.width;
 		const viewPortHeight: number = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.height;
 
-		const startX: number = this._scrollOffset.x;
-		const endX: number = this._scrollOffset.x + viewPortWidth;
+		if (column >= fixedColumns) {
+			const startX: number = this._scrollOffset.x;
+			const endX: number = this._scrollOffset.x + viewPortWidth;
 
-		if (bounds.left < startX) {
-			// Scroll to the left
-			if (this._scrollToX(bounds.left)) {
-				this._repaintScheduler.next();
-			}
-		} else if (bounds.left + bounds.width > endX) {
-			// Scroll to the right
-			if (this._scrollToX(bounds.left + bounds.width - viewPortWidth)) {
-				this._repaintScheduler.next();
+			if (bounds.left < startX) {
+				// Scroll to the left
+				if (this._scrollToX(bounds.left)) {
+					this._repaintScheduler.next();
+				}
+			} else if (bounds.left + bounds.width > endX) {
+				// Scroll to the right
+				if (this._scrollToX(bounds.left + bounds.width - viewPortWidth)) {
+					this._repaintScheduler.next();
+				}
 			}
 		}
 
-		const startY: number = this._scrollOffset.y;
-		const endY: number = this._scrollOffset.y + viewPortHeight;
+		if (row >= fixedRows) {
+			const startY: number = this._scrollOffset.y;
+			const endY: number = this._scrollOffset.y + viewPortHeight;
 
-		if (bounds.top < startY) {
-			// Scroll to the top
-			if (this._scrollToY(bounds.top)) {
-				this._repaintScheduler.next();
-			}
-		} else if (bounds.top + bounds.height > endY) {
-			// Scroll to the bottom
-			if (this._scrollToY(bounds.top + bounds.height - viewPortHeight)) {
-				this._repaintScheduler.next();
+			if (bounds.top < startY) {
+				// Scroll to the top
+				if (this._scrollToY(bounds.top)) {
+					this._repaintScheduler.next();
+				}
+			} else if (bounds.top + bounds.height > endY) {
+				// Scroll to the bottom
+				if (this._scrollToY(bounds.top + bounds.height - viewPortHeight)) {
+					this._repaintScheduler.next();
+				}
 			}
 		}
 	}
