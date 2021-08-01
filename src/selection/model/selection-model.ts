@@ -709,11 +709,6 @@ export class SelectionModel implements ISelectionModel {
 			return;
 		}
 
-		const firstVisibleRow: number = this._cellModel.findNextVisibleRow(primary.range.startRow);
-		const firstVisibleColumn: number = this._cellModel.findNextVisibleColumn(primary.range.startColumn);
-		const lastVisibleRow: number = this._cellModel.findPreviousVisibleRow(primary.range.endRow);
-		const lastVisibleColumn: number = this._cellModel.findPreviousVisibleColumn(primary.range.endColumn);
-
 		const cellRange: ICellRange = this._cellModel.getCell(primary.initial.row, primary.initial.column)?.range ?? {
 			startRow: primary.initial.row,
 			endRow: primary.initial.row,
@@ -721,153 +716,206 @@ export class SelectionModel implements ISelectionModel {
 			endColumn: primary.initial.column
 		};
 
-		// Check if move is possible
-		let isNextMovePossible: boolean = true;
-		let moveToNextSelection: boolean = false;
-		if (xDiff < 0 && cellRange.startColumn === firstVisibleColumn && primary.initial.row === firstVisibleRow) {
-			isNextMovePossible = false;
-			moveToNextSelection = false;
-		} else if (xDiff > 0 && cellRange.endColumn === lastVisibleColumn && primary.initial.row === lastVisibleRow) {
-			isNextMovePossible = false;
-			moveToNextSelection = true;
-		} else if (yDiff < 0 && cellRange.startRow === firstVisibleRow && primary.initial.column === firstVisibleColumn) {
-			isNextMovePossible = false;
-			moveToNextSelection = false;
-		} else if (yDiff > 0 && cellRange.endRow === lastVisibleRow && primary.initial.column === lastVisibleColumn) {
-			isNextMovePossible = false;
-			moveToNextSelection = true;
-		}
-		
-		if (isNextMovePossible) {
-			// Check if primary selection is only a single cell -> move impossible
-			const cell: ICell | null = this._cellModel.getCell(primary.range.startRow, primary.range.startColumn);
-			if (CellRangeUtil.equals(cell.range, primary.range)) {
-				isNextMovePossible = false;
-				moveToNextSelection = xDiff > 0 || yDiff > 0;
-			}
-		}
-
-		if (!isNextMovePossible) {
-			// Move to next or previous selection as new primary (if possible)
-			let newPrimary: ISelection = primary;
-			if (this._selections.length > 1) {
-				let nextPrimaryIndex = moveToNextSelection ? this._primaryIndex + 1 : this._primaryIndex - 1;
-				if (nextPrimaryIndex < 0) {
-					nextPrimaryIndex = this._selections.length - 1;
-				} else if (nextPrimaryIndex > this._selections.length - 1) {
-					nextPrimaryIndex = 0;
-				}
-				this._primaryIndex = nextPrimaryIndex;
-
-				newPrimary = this._selections[this._primaryIndex];
-			}
-
-			if (newPrimary === primary) {
-				// Primary did not change
-				if (moveToNextSelection) {
-					newPrimary.initial = {
-						row: firstVisibleRow,
-						column: firstVisibleColumn
-					};
+		// Make sure initial is at the correct position for the movement in case of a merged cell
+		if (!CellRangeUtil.isSingleRowColumnRange(cellRange)) {
+			if (xDiff !== 0) {
+				if (xDiff > 0) {
+					primary.initial.column = this._cellModel.findPreviousVisibleColumn(cellRange.endColumn);
 				} else {
-					newPrimary.initial = {
-						row: lastVisibleRow,
-						column: lastVisibleColumn
-					};
-				}
-			} else {
-				if (moveToNextSelection) {
-					newPrimary.initial = {
-						row: this._cellModel.findNextVisibleRow(newPrimary.range.startRow),
-						column: this._cellModel.findNextVisibleColumn(newPrimary.range.startColumn)
-					};
-				} else {
-					newPrimary.initial = {
-						row: this._cellModel.findPreviousVisibleRow(newPrimary.range.endRow),
-						column: this._cellModel.findPreviousVisibleColumn(newPrimary.range.endColumn)
-					};
+					primary.initial.column = this._cellModel.findNextVisibleColumn(cellRange.startColumn);
 				}
 			}
-
-			return;
-		}
-
-		let wrapOccurred: boolean = false;
-		do {
-			let isDueToWrap: boolean = wrapOccurred;
-			wrapOccurred = false; // Reset flag
 
 			if (yDiff !== 0) {
-				let newRow: number;
-
-				if (yDiff < 0) {
-					newRow = this._findRowOfPreviousVisibleCell(primary.initial.row, primary.initial.column, isDueToWrap);
-
-					if (newRow === -1 || newRow < firstVisibleRow) {
-						// Move to end row of selection
-						newRow = lastVisibleRow;
-
-						// Move to previous column later
-						xDiff = -1;
-
-						wrapOccurred = true;
-					}
-
-					yDiff = 0;
+				if (xDiff > 0) {
+					primary.initial.row = this._cellModel.findPreviousVisibleRow(cellRange.endRow);
 				} else {
-					newRow = this._findRowOfNextVisibleCell(primary.initial.row, primary.initial.column, isDueToWrap);
-
-					if (newRow === -1 || newRow > lastVisibleRow) {
-						// Move to start row of selection
-						newRow = firstVisibleRow;
-
-						// Move to next column later
-						xDiff = 1;
-
-						wrapOccurred = true;
-					}
-
-					yDiff = 0;
+					primary.initial.row = this._cellModel.findNextVisibleRow(cellRange.startRow);
 				}
-
-				primary.initial.row = newRow;
 			}
+		}
 
-			if (!wrapOccurred && xDiff !== 0) {
-				let newColumn: number;
-				if (xDiff < 0) {
-					newColumn = this._findColumnOfPreviousVisibleCell(primary.initial.column, primary.initial.row, isDueToWrap);
+		// Check bounds of the selection we can move the initial to
+		const firstVisibleRow: number = this._cellModel.findNextVisibleRow(primary.range.startRow);
+		const firstVisibleColumn: number = this._cellModel.findNextVisibleColumn(primary.range.startColumn);
+		const lastVisibleRow: number = this._cellModel.findPreviousVisibleRow(primary.range.endRow);
+		const lastVisibleColumn: number = this._cellModel.findPreviousVisibleColumn(primary.range.endColumn);
 
-					if (newColumn === -1 || newColumn < firstVisibleColumn) {
-						// Move to end column of selection
-						newColumn = lastVisibleColumn;
+		if (xDiff !== 0) {
+			if (xDiff > 0) {
+				// Check if we can move initial to the right
+				const nextColumn: number = this._findColumnOfNextVisibleCell(primary.initial.column, primary.initial.row, false);
 
-						// Move to previous row later
-						yDiff = -1;
+				if (nextColumn === -1 || nextColumn > lastVisibleColumn) {
+					// Wrap around
+					primary.initial.column = firstVisibleColumn;
 
-						wrapOccurred = true;
+					// Check if we're still in the same cell range
+					if (CellRangeUtil.contains(CellRange.fromSingleRowColumn(primary.initial.row, primary.initial.column), cellRange)) {
+						// Make sure initial is set to last row to properly wrap initial selection
+						primary.initial.row = this._cellModel.findPreviousVisibleRow(cellRange.endRow);
 					}
 
-					xDiff = 0;
+					const nextRow: number = this._findRowOfNextVisibleCell(primary.initial.row, primary.initial.column, true);
+					if (nextRow === -1 || nextRow > lastVisibleRow) {
+						// Go to next selection (if any) or start with first initial position in the primary selection again
+						if (this.getSelections().length > 1) {
+							// Go to next selection
+							this._primaryIndex += 1;
+							if (this._primaryIndex >= this.getSelections().length) {
+								this._primaryIndex = 0;
+							}
+
+							const newPrimary: ISelection = this.getPrimary();
+
+							// Set initial position properly
+							newPrimary.initial = {
+								row: this._cellModel.findNextVisibleRow(newPrimary.range.startRow),
+								column: this._cellModel.findNextVisibleColumn(newPrimary.range.startColumn)
+							};
+						} else {
+							// Start with first initial position again
+							primary.initial.row = firstVisibleRow;
+							primary.initial.column = firstVisibleColumn;
+						}
+					} else {
+						primary.initial.row = nextRow;
+					}
 				} else {
-					newColumn = this._findColumnOfNextVisibleCell(primary.initial.column, primary.initial.row, isDueToWrap);
+					primary.initial.column = nextColumn;
+				}
+			} else {
+				// Check if we can move initial to the left
+				const previousColumn: number = this._findColumnOfPreviousVisibleCell(primary.initial.column, primary.initial.row, false);
 
-					if (newColumn === -1 || newColumn > lastVisibleColumn) {
-						// Move to start column of selection
-						newColumn = firstVisibleColumn;
+				if (previousColumn === -1 || previousColumn < firstVisibleColumn) {
+					// Wrap around
+					primary.initial.column = lastVisibleColumn;
 
-						// Move to next row later
-						yDiff = 1;
-
-						wrapOccurred = true;
+					// Check if we're still in the same cell range
+					if (CellRangeUtil.contains(CellRange.fromSingleRowColumn(primary.initial.row, primary.initial.column), cellRange)) {
+						// Make sure initial is set to first row to properly wrap initial selection
+						primary.initial.row = this._cellModel.findNextVisibleRow(cellRange.startRow);
 					}
 
-					xDiff = 0;
-				}
+					const previousRow: number = this._findRowOfPreviousVisibleCell(primary.initial.row, primary.initial.column, true);
+					if (previousRow === -1 || previousRow < firstVisibleRow) {
+						// Go to previous selection (if any) or start with first initial position in the primary selection again
+						if (this.getSelections().length > 1) {
+							// Go to previous selection
+							this._primaryIndex -= 1;
+							if (this._primaryIndex < 0) {
+								this._primaryIndex = this.getSelections().length - 1;
+							}
 
-				primary.initial.column = newColumn;
+							const newPrimary: ISelection = this.getPrimary();
+
+							// Set initial position properly
+							newPrimary.initial = {
+								row: this._cellModel.findPreviousVisibleRow(newPrimary.range.endRow),
+								column: this._cellModel.findPreviousVisibleColumn(newPrimary.range.endColumn)
+							};
+						} else {
+							// Start with last initial position again
+							primary.initial.row = lastVisibleRow;
+							primary.initial.column = lastVisibleColumn;
+						}
+					} else {
+						primary.initial.row = previousRow;
+					}
+				} else {
+					primary.initial.column = previousColumn;
+				}
 			}
-		} while (wrapOccurred);
+		}
+
+		if (yDiff !== 0) {
+			if (yDiff > 0) {
+				// Check if we can move initial down
+				const nextRow: number = this._findRowOfNextVisibleCell(primary.initial.row, primary.initial.column, false);
+
+				if (nextRow === -1 || nextRow > lastVisibleRow) {
+					// Wrap around
+					primary.initial.row = firstVisibleRow;
+
+					// Check if we're still in the same cell range
+					if (CellRangeUtil.contains(CellRange.fromSingleRowColumn(primary.initial.row, primary.initial.column), cellRange)) {
+						// Make sure initial is set to last column to properly wrap initial selection
+						primary.initial.column = this._cellModel.findPreviousVisibleColumn(cellRange.endColumn);
+					}
+
+					const nextColumn: number = this._findColumnOfNextVisibleCell(primary.initial.column, primary.initial.row, true);
+					if (nextColumn === -1 || nextColumn > lastVisibleColumn) {
+						// Go to next selection (if any) or start with first initial position in the primary selection again
+						if (this.getSelections().length > 1) {
+							// Go to next selection
+							this._primaryIndex += 1;
+							if (this._primaryIndex >= this.getSelections().length) {
+								this._primaryIndex = 0;
+							}
+
+							const newPrimary: ISelection = this.getPrimary();
+
+							// Set initial position properly
+							newPrimary.initial = {
+								row: this._cellModel.findNextVisibleRow(newPrimary.range.startRow),
+								column: this._cellModel.findNextVisibleColumn(newPrimary.range.startColumn)
+							};
+						} else {
+							// Start with first initial position again
+							primary.initial.row = firstVisibleRow;
+							primary.initial.column = firstVisibleColumn;
+						}
+					} else {
+						primary.initial.column = nextColumn;
+					}
+				} else {
+					primary.initial.row = nextRow;
+				}
+			} else {
+				// Check if we can move initial up
+				const previousRow: number = this._findRowOfPreviousVisibleCell(primary.initial.row, primary.initial.column, false);
+
+				if (previousRow === -1 || previousRow < firstVisibleRow) {
+					// Wrap around
+					primary.initial.row = lastVisibleRow;
+
+					// Check if we're still in the same cell range
+					if (CellRangeUtil.contains(CellRange.fromSingleRowColumn(primary.initial.row, primary.initial.column), cellRange)) {
+						// Make sure initial is set to first column to properly wrap initial selection
+						primary.initial.column = this._cellModel.findNextVisibleColumn(cellRange.startColumn);
+					}
+
+					const previousColumn: number = this._findColumnOfPreviousVisibleCell(primary.initial.column, primary.initial.row, true);
+					if (previousColumn === -1 || previousColumn < firstVisibleColumn) {
+						// Go to previous selection (if any) or start with first initial position in the primary selection again
+						if (this.getSelections().length > 1) {
+							// Go to previous selection
+							this._primaryIndex -= 1;
+							if (this._primaryIndex < 0) {
+								this._primaryIndex = this.getSelections().length - 1;
+							}
+
+							const newPrimary: ISelection = this.getPrimary();
+
+							// Set initial position properly
+							newPrimary.initial = {
+								row: this._cellModel.findPreviousVisibleRow(newPrimary.range.endRow),
+								column: this._cellModel.findPreviousVisibleColumn(newPrimary.range.endColumn)
+							};
+						} else {
+							// Start with last initial position again
+							primary.initial.row = lastVisibleRow;
+							primary.initial.column = lastVisibleColumn;
+						}
+					} else {
+						primary.initial.column = previousColumn;
+					}
+				} else {
+					primary.initial.row = previousRow;
+				}
+			}
+		}
 	}
 
 	/**
