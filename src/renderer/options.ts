@@ -1,10 +1,16 @@
 import {RendererType} from "./renderers";
-import {ICanvasRendererOptions, fillOptions as fillCanvasRendererOptions} from "./canvas/options";
+import {fillOptions as fillCanvasRendererOptions, ICanvasRendererOptions} from "./canvas/options";
+import {INotificationService} from "../util/notification/notification-service";
 
 /**
  * The default renderer type.
  */
 const DEFAULT_RENDERER_TYPE: RendererType = RendererType.CANVAS;
+
+/**
+ * Default limit when copying cells.
+ */
+export const DEFAULT_MAX_CELL_COUNT_TO_COPY: number = 10000;
 
 /**
  * Options for the renderer to use.
@@ -31,6 +37,11 @@ export interface IRendererOptions {
 	 */
 	custom?: any;
 
+	/**
+	 * Notification service to publish infos, warnings or error over.
+	 */
+	notificationService?: INotificationService;
+
 }
 
 /**
@@ -47,6 +58,12 @@ export interface IViewOptions {
 	 * Number of fixed columns.
 	 */
 	fixedColumns?: number;
+
+	/**
+	 * Maximum cell count to allow copying
+	 * or negative if no limit.
+	 */
+	maxCellCountToCopy?: number;
 
 }
 
@@ -69,6 +86,10 @@ export const fillOptions = (options?: IRendererOptions) => {
 
 	if (options.view.fixedColumns === undefined || options.view.fixedColumns === null) {
 		options.view.fixedColumns = 0;
+	}
+
+	if (options.view.maxCellCountToCopy === undefined || options.view.maxCellCountToCopy === null) {
+		options.view.maxCellCountToCopy = DEFAULT_MAX_CELL_COUNT_TO_COPY;
 	}
 
 	if (!options.type) {

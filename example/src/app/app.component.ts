@@ -24,6 +24,10 @@ import {
 } from "../../../src/renderer/canvas/cell/loading/loading-cell-renderer";
 import {environment} from "../environments/environment";
 import {EditableTextCellRenderer} from "./renderer/editable-text-cell-renderer";
+import {INotification} from "../../../src/util/notification/notification";
+import {NotificationIDs} from "../../../src/util/notification/notification-ids";
+import {CopyPerformanceWarningNotification} from "../../../src/util/notification/impl/copy-performance-warning";
+import {MatSnackBar} from "@angular/material/snack-bar";
 
 @Component({
 	selector: "app-root",
@@ -63,7 +67,10 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
 	public libraryVersion: string = environment.tableEngineVersion;
 
-	constructor(private readonly zone: NgZone) {
+	constructor(
+		private readonly zone: NgZone,
+		private readonly snackbar: MatSnackBar
+	) {
 	}
 
 	public addOneFixedRowsColumns(): void {
@@ -295,6 +302,31 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			// Set initial state of fixed rows/columns
 			this.engine.getOptions().renderer.view.fixedRows = 1;
 			this.engine.getOptions().renderer.view.fixedColumns = 1;
+
+			// Set notification service
+			this.engine.getOptions().renderer.view.maxCellCountToCopy = 10;
+			this.engine.getOptions().renderer.notificationService = {
+				notify: (notification: INotification) => {
+					this.zone.run(() => {
+						if (notification.id === NotificationIDs.COPY_PERFORMANCE_WARNING) {
+							this.snackbar.open(notification.message, "Copy anyway", {
+								duration: 6000,
+								verticalPosition: "bottom",
+								horizontalPosition: "center"
+							}).afterDismissed().subscribe((dismiss) => {
+								console.log(dismiss.dismissedByAction);
+								(notification as CopyPerformanceWarningNotification).callback(dismiss.dismissedByAction);
+							});
+						} else if (notification.id === NotificationIDs.COPY) {
+							this.snackbar.open(notification.message, "OK", {
+								duration: 3000,
+								verticalPosition: "bottom",
+								horizontalPosition: "center"
+							});
+						}
+					});
+				}
+			};
 
 			// Register needed cell renderers
 			this.engine.registerCellRenderer(new BaseCellRenderer());

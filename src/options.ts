@@ -1,6 +1,6 @@
-import {IRendererOptions, fillOptions as fillRendererOptions} from "./renderer/options";
-import {ISelectionOptions, fillOptions as fillSelectionOptions} from "./selection/options";
-import {IBorderOptions, fillOptions as fillBorderOptions} from "./border/options";
+import {fillOptions as fillRendererOptions, IRendererOptions} from "./renderer/options";
+import {fillOptions as fillSelectionOptions, ISelectionOptions} from "./selection/options";
+import {fillOptions as fillBorderOptions, IBorderOptions} from "./border/options";
 
 /**
  * Options used to modify the table engine behavior.

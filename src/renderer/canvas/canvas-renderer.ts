@@ -27,6 +27,8 @@ import {IPoint} from "../../util/point";
 import {IOverlay} from "../../overlay/overlay";
 import {ClipboardUtil} from "../../util/clipboard/clipboard-util";
 import {ISize} from "../../util/size";
+import {CopyPerformanceWarningNotification} from "../../util/notification/impl/copy-performance-warning";
+import {CopyNotification} from "../../util/notification/impl/copy";
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
 type CellRendererEventListenerFunctionSupplier = (listener: ICellRendererEventListener) => CellRendererEventListenerFunction | null | undefined;
@@ -1183,9 +1185,40 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Copy the currently selected cell values on the clipboard.
 	 * Hidden rows/columns are left out.
 	 */
-	private _copySelection(): void {
+	private async _copySelection(): Promise<void> {
 		const primary: ISelection | null = this._selectionModel.getPrimary();
 		if (!!primary) {
+			// Check whether there is a limit to the copyable cell count for performance reasons
+			const copyableCellCountLimit: number = this._options.view.maxCellCountToCopy;
+			if (copyableCellCountLimit >= 0) {
+				const cellCountInRange: number = CellRangeUtil.size(primary.range);
+
+				if (cellCountInRange > copyableCellCountLimit) {
+					// Notify user that the amount of cells is high and may take a while to copy (performance warning)
+					const notification: CopyPerformanceWarningNotification = new CopyPerformanceWarningNotification(copyableCellCountLimit, cellCountInRange);
+
+					let copyAnyway: boolean = false;
+					if (!!this._options.notificationService) {
+						copyAnyway = await Promise.race([
+							new Promise<boolean>(resolve => {
+								notification.callback = (copyAnyway) => resolve(copyAnyway);
+
+								this._options.notificationService.notify(notification);
+							}),
+							new Promise<boolean>(resolve => {
+								setTimeout(() => resolve(false), 60000);
+							})
+						]);
+					} else {
+						console.warn(`[table-engine] ${notification.message}`);
+					}
+
+					if (!copyAnyway) {
+						return;
+					}
+				}
+			}
+
 			// Build HTML table to copy
 			const htmlTable: string = ClipboardUtil.buildHTMLTableForCopy(primary.range, this._cellModel, (cell) => {
 				return this._cellRendererLookup.get(cell.rendererName).getCopyValue(cell);
@@ -1193,6 +1226,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 			// Actually copy the HTML table
 			ClipboardUtil.setClipboardContent(htmlTable);
+
+			if (!!this._options.notificationService) {
+				this._options.notificationService.notify(new CopyNotification());
+			}
 		}
 	}
 
