@@ -206,6 +206,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _mouseDragStart: IMouseDragContext | null = null;
 
 	/**
+	 * Context of the copy-handle drag start.
+	 */
+	private _copyHandleDragStart: IMouseDragContext | null = null;
+
+	/**
 	 * ID of the touch starting panning.
 	 */
 	private _startTouchID: number | null = null;
@@ -229,6 +234,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * The initially selected cell range of the current selection process (if in progress).
 	 */
 	private _initialSelectionRange: ICellRange | null;
+
+	/**
+	 * Initial cell position of the copy handle drag.
+	 */
+	private _copyHandleInitial: IInitialPosition | null;
 
 	/**
 	 * Current auto-scrolling state.
@@ -502,6 +512,21 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						y: this._scrollOffset.y
 					}
 				};
+			} else if (CanvasRenderer._isMouseOverCopyHandle(x, y, this._lastRenderingContext)) {
+				this._copyHandleDragStart = {
+					startX: x,
+					startY: y,
+					startScrollOffset: {
+						x: this._scrollOffset.x,
+						y: this._scrollOffset.y
+					}
+				};
+
+				this._initialSelectionRange = this._selectionModel.getPrimary().range;
+				this._copyHandleInitial = {
+					row: this._selectionModel.getPrimary().initial.row,
+					column: this._selectionModel.getPrimary().initial.column,
+				};
 			} else if (this._isInMouseDragMode) {
 				this._mouseDragStart = {
 					startX: x,
@@ -748,9 +773,85 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			const isScrollBarDragging: boolean = !!this._scrollBarDragStart;
 			const isMouseDragging: boolean = !!this._mouseDragStart;
 			const isSelectionDragging: boolean = !!this._initialSelectionRange;
+			const isCopyHandleDragging: boolean = !!this._copyHandleDragStart;
 
 			if (isScrollBarDragging) {
 				this._onScrollBarMove(x, y, this._scrollBarDragStart);
+				isHandled = true;
+			} else if (isCopyHandleDragging) {
+				// Determine direction to extend in (based on the current x and y coordinates and their difference to the initial selection bounds)
+				const initialSelectionBounds: IRectangle = this._cellModel.getBounds(this._initialSelectionRange);
+
+				let xDiff: number = 0;
+				if (x < initialSelectionBounds.left) {
+					xDiff = x - initialSelectionBounds.left;
+				} else if (x > initialSelectionBounds.left + initialSelectionBounds.width) {
+					xDiff = x - (initialSelectionBounds.left + initialSelectionBounds.width);
+				}
+
+				let yDiff: number = 0;
+				if (y < initialSelectionBounds.top) {
+					yDiff = y - initialSelectionBounds.top;
+				} else if (y > initialSelectionBounds.top + initialSelectionBounds.height) {
+					yDiff = y - (initialSelectionBounds.top + initialSelectionBounds.height);
+				}
+
+				// Check whether to extend horizontally or vertically
+				const extendHorizontally: boolean = Math.abs(xDiff) > Math.abs(yDiff)
+
+				// Extend selection, but only to the left, right, top and bottom and not diagonally!
+				const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
+
+				// Modify target range
+				if (extendHorizontally) {
+					targetRange.startRow = this._initialSelectionRange.startRow;
+					targetRange.endRow = this._initialSelectionRange.endRow;
+
+					if (xDiff > 0) {
+						// Extend to right
+						targetRange.startColumn = this._initialSelectionRange.startColumn;
+					} else {
+						// Extend to left
+						targetRange.endColumn = this._initialSelectionRange.endColumn;
+					}
+				} else {
+					targetRange.startColumn = this._initialSelectionRange.startColumn;
+					targetRange.endColumn = this._initialSelectionRange.endColumn;
+
+					if (yDiff > 0) {
+						// Extend to bottom
+						targetRange.startRow = this._initialSelectionRange.startRow;
+					} else {
+						// Extend to top
+						targetRange.endRow = this._initialSelectionRange.endRow;
+					}
+				}
+
+				this._updateCurrentSelection({
+					startRow: Math.min(this._initialSelectionRange.startRow, targetRange.startRow),
+					endRow: Math.max(this._initialSelectionRange.endRow, targetRange.endRow),
+					startColumn: Math.min(this._initialSelectionRange.startColumn, targetRange.startColumn),
+					endColumn: Math.max(this._initialSelectionRange.endColumn, targetRange.endColumn),
+				}, {
+					row: this._copyHandleInitial.row,
+					column: this._copyHandleInitial.column
+				}, false, false, false);
+
+				// Initialize automatic scrolling when out of viewport bounds with the mouse
+				const viewPortBounds: IRectangle = this._lastRenderingContext.viewPort;
+				const outOfViewPortBoundsX: boolean = x < 0 || x > viewPortBounds.width;
+				const outOfViewPortBoundsY: boolean = y < 0 || y > viewPortBounds.height;
+				if (outOfViewPortBoundsX || outOfViewPortBoundsY) {
+					this._updateAutoScrolling(
+						outOfViewPortBoundsX ? (x < 0 ? x : x - viewPortBounds.width) : 0,
+						outOfViewPortBoundsY ? (y < 0 ? y : y - viewPortBounds.height) : 0,
+						0
+					);
+				} else {
+					this._stopAutoScrolling();
+				}
+
+				resetCursor = false; // Do not change the copy-handle cursor
 				isHandled = true;
 			} else if (isMouseDragging) {
 				this._onViewPortMove(x, y, this._mouseDragStart);
@@ -972,27 +1073,47 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		if (!!this._initialSelectionRange) {
 			// End selection extending
-			const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
-			if (!CellRangeUtil.equals(this._initialSelectionRange, targetRange)) {
-				this._updateCurrentSelection({
-					startRow: Math.min(this._initialSelectionRange.startRow, targetRange.startRow),
-					endRow: Math.max(this._initialSelectionRange.endRow, targetRange.endRow),
-					startColumn: Math.min(this._initialSelectionRange.startColumn, targetRange.startColumn),
-					endColumn: Math.max(this._initialSelectionRange.endColumn, targetRange.endColumn),
-				}, {
-					row: this._initialSelectionRange.startRow,
-					column: this._initialSelectionRange.startColumn,
-				}, false, false, true);
+			if (!this._copyHandleDragStart) {
+				const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
+				if (!CellRangeUtil.equals(this._initialSelectionRange, targetRange)) {
+					this._updateCurrentSelection({
+						startRow: Math.min(this._initialSelectionRange.startRow, targetRange.startRow),
+						endRow: Math.max(this._initialSelectionRange.endRow, targetRange.endRow),
+						startColumn: Math.min(this._initialSelectionRange.startColumn, targetRange.startColumn),
+						endColumn: Math.max(this._initialSelectionRange.endColumn, targetRange.endColumn),
+					}, {
+						row: this._initialSelectionRange.startRow,
+						column: this._initialSelectionRange.startColumn,
+					}, false, false, true);
+				} else {
+					// Send event to cell renderer for the cell on the current position
+					const range: ICellRange | null = this._getCellRangeAtPoint(x, y, false);
+					if (!!range) {
+						this._sendEventForPosition(
+							range.startRow,
+							range.startColumn,
+							(listener) => listener.onMouseUp,
+							{x, y}
+						);
+					}
+				}
 			} else {
-				// Send event to cell renderer for the cell on the current position
-				const range: ICellRange | null = this._getCellRangeAtPoint(x, y, false);
-				if (!!range) {
-					this._sendEventForPosition(
-						range.startRow,
-						range.startColumn,
-						(listener) => listener.onMouseUp,
-						{x, y}
-					);
+				this._copyHandleDragStart = null;
+				this._copyHandleInitial = null;
+
+				// Send copy event
+				if (!!this._options.selection.copyHandle.copyHandler) {
+					this._options.selection.copyHandle.copyHandler({
+						startRow: this._initialSelectionRange.startRow,
+						endRow: this._initialSelectionRange.endRow,
+						startColumn: this._initialSelectionRange.startColumn,
+						endColumn: this._initialSelectionRange.endColumn
+					}, {
+						startRow: this._selectionModel.getPrimary().range.startRow,
+						endRow: this._selectionModel.getPrimary().range.endRow,
+						startColumn: this._selectionModel.getPrimary().range.startColumn,
+						endColumn: this._selectionModel.getPrimary().range.endColumn
+					});
 				}
 			}
 
