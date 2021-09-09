@@ -30,6 +30,7 @@ import {CopyPerformanceWarningNotification} from "../../util/notification/impl/c
 import {CopyNotification} from "../../util/notification/impl/copy";
 import {ITableEngineOptions} from "../../options";
 import {IRendererOptions} from "../options";
+import {Colors} from "../../util/colors";
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
 type CellRendererEventListenerFunctionSupplier = (listener: ICellRendererEventListener) => CellRendererEventListenerFunction | null | undefined;
@@ -1727,6 +1728,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			inFixedRows: []
 		};
 
+		const isMultiSelection: boolean = selections.length > 1;
+
 		for (const s of selections) {
 			this._validateSelection(s);
 			this._addInfosForSelection(
@@ -1737,7 +1740,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				fixedColumns,
 				fixedRowsHeight,
 				fixedColumnsWidth,
-				s === primary
+				s === primary,
+				isMultiSelection
 			);
 		}
 
@@ -1788,6 +1792,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param fixedRowsHeight height of the fixed rows
 	 * @param fixedColumnsWidth width of the fixed columns
 	 * @param isPrimary whether the selection is the primary selection
+	 * @param isMultiSelection whether the selection is one of many to be rendered (true) or just one (false)
 	 */
 	private _addInfosForSelection(
 		toAdd: ISelectionRenderContext,
@@ -1797,7 +1802,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		fixedColumns: number,
 		fixedRowsHeight: number,
 		fixedColumnsWidth: number,
-		isPrimary: boolean
+		isPrimary: boolean,
+		isMultiSelection: boolean
 	): void {
 		const bounds: IRectangle = this._calculateSelectionBoundsFromCellRangeBounds(
 			this._cellModel.getBounds(selection.range),
@@ -1902,7 +1908,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		collectionToPushTo.push({
 			bounds,
 			initial: initialBounds,
-			isPrimary
+			isPrimary,
+			renderCopyHandle: isPrimary && !isMultiSelection && this._options.selection.copyHandle.showCopyHandle
 		});
 	}
 
@@ -2608,6 +2615,23 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				// Stroke
 				ctx.strokeRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.height);
 
+				// Render copy handle (if enabled)
+				if (info.renderCopyHandle) {
+					const copyHandleSize: number = context.selection.options.copyHandle.size;
+					const copyHandlePadding: number = context.selection.options.copyHandle.padding;
+
+					const copyHandleX: number = info.bounds.left + info.bounds.width - copyHandleSize / 2;
+					const copyHandleY: number = info.bounds.top + info.bounds.height - copyHandleSize / 2;
+
+					// Fill padding rectangle first
+					ctx.fillStyle = CanvasUtil.colorToStyle(Colors.WHITE);
+					ctx.fillRect(copyHandleX - copyHandlePadding, copyHandleY - copyHandlePadding, copyHandleSize + copyHandlePadding, copyHandleSize + copyHandlePadding)
+
+					// Fill copy-handle rectangle next
+					ctx.fillStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.primary.borderColor : context.selection.options.primary.borderColorUnfocused);
+					ctx.fillRect(copyHandleX, copyHandleY, copyHandleSize, copyHandleSize);
+				}
+
 				// Reset colors
 				ctx.fillStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.secondary.backgroundColor : context.selection.options.secondary.backgroundColorUnfocused);
 				ctx.strokeStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.secondary.borderColor : context.selection.options.secondary.borderColorUnfocused);
@@ -2871,6 +2895,11 @@ interface ISelectionRenderInfo {
 	 * Bounds of the rectangle on the viewport.
 	 */
 	bounds: IRectangle;
+
+	/**
+	 * Whether the copy-handle should be rendered.
+	 */
+	renderCopyHandle: boolean;
 
 }
 

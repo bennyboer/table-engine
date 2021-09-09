@@ -3,11 +3,6 @@ import {ICellModel} from "../cell/model/cell-model.interface";
 import {ICellRange} from "../cell/range/cell-range";
 
 /**
- * Default copy-handle size (width and height).
- */
-const DEFAULT_COPY_HANDLE_SIZE: number = 5;
-
-/**
  * Selection transform that will transform selections that start in the first row
  * or column to fill the entire selected row or column.
  */
@@ -121,11 +116,6 @@ export interface ICopyHandleOptions {
 	showCopyHandle?: boolean;
 
 	/**
-	 * Size of the copy-handle (height and width).
-	 */
-	size?: number;
-
-	/**
 	 * Handler to apply an operation based on the copy-handle movement.
 	 * @param origin the origin cell range (range before dragging the handle)
 	 * @param target the target cell range (range after dropping the handle)
@@ -153,10 +143,6 @@ export const fillOptions = (options?: ISelectionOptions) => {
 
 	if (options.copyHandle.showCopyHandle === null || options.copyHandle.showCopyHandle === undefined) {
 		options.copyHandle.showCopyHandle = false;
-	}
-
-	if (options.copyHandle.size === null || options.copyHandle.size === undefined) {
-		options.copyHandle.size = DEFAULT_COPY_HANDLE_SIZE;
 	}
 
 	return options;

@@ -298,6 +298,12 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
 			// this.engine.getOptions().misc.debug = true; // Enable debug mode
 
+			// Setup copy-handle
+			this.engine.getOptions().selection.copyHandle.showCopyHandle = true;
+			this.engine.getOptions().selection.copyHandle.copyHandler = (origin, target) => {
+				console.log("COPY HANDLE INVOKED", origin, target); // TODO
+			};
+
 			// Set row/column header selection transform
 			this.engine.getOptions().selection.selectionTransform = ROW_COLUMN_HEADER_TRANSFORM;
 
