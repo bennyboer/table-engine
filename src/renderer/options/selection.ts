@@ -1,5 +1,4 @@
 import {IColor} from "../../util/color";
-import {ICellRange} from "../../cell/range/cell-range";
 
 /**
  * Default primary selection border color.
@@ -57,11 +56,6 @@ const DEFAULT_AUTO_SCROLL_SPEED: number = 3;
 const DEFAULT_SELECTION_OFFSET: number = 1;
 
 /**
- * Default copy-handle size (width and height).
- */
-const DEFAULT_COPY_HANDLE_SIZE: number = 5;
-
-/**
  * Options regarding the selection to display.
  */
 export interface ISelectionRenderingOptions {
@@ -94,15 +88,6 @@ export interface ISelectionRenderingOptions {
 	 */
 	autoScrollingSpeed?: number;
 
-	/**
-	 * Options for a copy-handle.
-	 *
-	 * A copy handle is the small grasp (mostly a rectangle)
-	 * on the right-lower edge of the primary selection rectangle,
-	 * that you might drag to invoke a copy-like operation.
-	 */
-	copyHandle?: ICopyHandleOptions;
-
 }
 
 /**
@@ -129,34 +114,6 @@ export interface ISelectionColors {
 	 * Color of the border when the table is not focused.
 	 */
 	borderColorUnfocused?: IColor;
-
-}
-
-/**
- * Options for the copy-handle.
- * A copy handle is the small grasp (mostly a rectangle)
- * on the right-lower edge of the primary selection rectangle,
- * that you might drag to invoke a copy-like operation.
- */
-export interface ICopyHandleOptions {
-
-	/**
-	 * Whether to show the copy handle on the primary selection.
-	 * Note that the copy-handle will only be shown when there is a single selection rectangle.
-	 */
-	showCopyHandle?: boolean;
-
-	/**
-	 * Size of the copy-handle (height and width).
-	 */
-	size?: number;
-
-	/**
-	 * Handler to apply an operation based on the copy-handle movement.
-	 * @param origin the origin cell range (range before dragging the handle)
-	 * @param target the target cell range (range after dropping the handle)
-	 */
-	copyHandler?: (origin: ICellRange, target: ICellRange) => void;
 
 }
 
@@ -219,18 +176,6 @@ export const fillOptions = (options?: ISelectionRenderingOptions) => {
 
 	if (options.autoScrollingSpeed === undefined || options.autoScrollingSpeed === null) {
 		options.autoScrollingSpeed = DEFAULT_AUTO_SCROLL_SPEED;
-	}
-
-	if (!options.copyHandle) {
-		options.copyHandle = {};
-	}
-
-	if (options.copyHandle.showCopyHandle === null || options.copyHandle.showCopyHandle === undefined) {
-		options.copyHandle.showCopyHandle = false;
-	}
-
-	if (options.copyHandle.size === null || options.copyHandle.size === undefined) {
-		options.copyHandle.size = DEFAULT_COPY_HANDLE_SIZE;
 	}
 
 	return options;

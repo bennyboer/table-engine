@@ -296,6 +296,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			const cellModel = AppComponent.initializeCellModel();
 			this.engine = new TableEngine(this.tableContainer.nativeElement, cellModel);
 
+			// this.engine.getOptions().misc.debug = true; // Enable debug mode
+
 			// Set row/column header selection transform
 			this.engine.getOptions().selection.selectionTransform = ROW_COLUMN_HEADER_TRANSFORM;
 

@@ -1,7 +1,7 @@
-import {IRendererOptions} from "./options";
 import {ICellRenderer} from "./cell/cell-renderer";
 import {TableEngine} from "../table-engine";
 import {IOverlayManager} from "../overlay/overlay-manager";
+import {ITableEngineOptions} from "../options";
 
 /**
  * Representation of a renderer of the table engine.
@@ -13,9 +13,9 @@ export interface ITableEngineRenderer extends IOverlayManager {
 	 * Initialize the renderer with the given options on the passed HTML container.
 	 * @param container to initialize renderer in
 	 * @param engine reference to the table-engine
-	 * @param options of the renderer
+	 * @param options of the table engine (including renderer options)
 	 */
-	initialize(container: HTMLElement, engine: TableEngine, options: IRendererOptions): Promise<void>;
+	initialize(container: HTMLElement, engine: TableEngine, options: ITableEngineOptions): Promise<void>;
 
 	/**
 	 * (Re)-Render the table.

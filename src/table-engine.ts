@@ -72,10 +72,10 @@ export class TableEngine {
 		this._options = fillOptions(options);
 
 		// Initialize selection model
-		this._selectionModel = new SelectionModel(this._cellModel, this._options.selection);
+		this._selectionModel = new SelectionModel(this._cellModel, this._options);
 
 		// Initialize border model
-		this._borderModel = new BorderModel(this._cellModel, this._options.border);
+		this._borderModel = new BorderModel(this._cellModel, this._options);
 
 		// Initialize renderer
 		this._renderer = RendererFactory.getRendererInstance(this._options.renderer.type);
@@ -87,7 +87,7 @@ export class TableEngine {
 	 */
 	public async initialize(): Promise<void> {
 		// Initialize renderer
-		await this._renderer.initialize(this._container, this, this._options.renderer);
+		await this._renderer.initialize(this._container, this, this._options);
 		this._isInitialized = true;
 
 		this._events.next({

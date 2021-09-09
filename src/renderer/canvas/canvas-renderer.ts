@@ -1,6 +1,5 @@
 import {ITableEngineRenderer} from "../renderer";
 import {ICellModel} from "../../cell/model/cell-model.interface";
-import {IRendererOptions} from "../options";
 import {asyncScheduler, Subject} from "rxjs";
 import {takeUntil, throttleTime} from "rxjs/operators";
 import {ScrollUtil} from "../util/scroll";
@@ -29,6 +28,8 @@ import {ClipboardUtil} from "../../util/clipboard/clipboard-util";
 import {ISize} from "../../util/size";
 import {CopyPerformanceWarningNotification} from "../../util/notification/impl/copy-performance-warning";
 import {CopyNotification} from "../../util/notification/impl/copy";
+import {ITableEngineOptions} from "../../options";
+import {IRendererOptions} from "../options";
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
 type CellRendererEventListenerFunctionSupplier = (listener: ICellRendererEventListener) => CellRendererEventListenerFunction | null | undefined;
@@ -74,9 +75,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _engine: TableEngine;
 
 	/**
-	 * Options of the renderer.
+	 * Options of the table engine.
 	 */
-	private _options: IRendererOptions;
+	private _options: ITableEngineOptions;
 
 	/**
 	 * HTML canvas element to render on.
@@ -273,6 +274,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _updateOverlaysAfterRenderCycle: boolean = false;
 
 	/**
+	 * Get the renderer-specific options.
+	 */
+	private get rendererOptions(): IRendererOptions {
+		return this._options.renderer;
+	}
+
+	/**
 	 * Cleanup the renderer when no more needed.
 	 */
 	public cleanup(): void {
@@ -294,7 +302,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param engine reference to the table-engine
 	 * @param options of the renderer
 	 */
-	public async initialize(container: HTMLElement, engine: TableEngine, options: IRendererOptions): Promise<void> {
+	public async initialize(container: HTMLElement, engine: TableEngine, options: ITableEngineOptions): Promise<void> {
 		this._container = container;
 		this._engine = engine;
 		this._cellModel = engine.getCellModel();
@@ -381,7 +389,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		// Throttle resize events
 		this._resizeThrottleSubject.asObservable().pipe(
 			takeUntil(this._onCleanup),
-			throttleTime(this._options.canvas.lazyRenderingThrottleDuration, asyncScheduler, {
+			throttleTime(this.rendererOptions.canvas.lazyRenderingThrottleDuration, asyncScheduler, {
 				leading: false,
 				trailing: true
 			})
@@ -390,7 +398,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		// Repaint when necessary (for example on scrolling)
 		this._repaintScheduler.asObservable().pipe(
 			takeUntil(this._onCleanup),
-			throttleTime(this._options.canvas.lazyRenderingThrottleDuration, asyncScheduler, {
+			throttleTime(this.rendererOptions.canvas.lazyRenderingThrottleDuration, asyncScheduler, {
 				leading: false,
 				trailing: true
 			})
@@ -575,12 +583,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param allowOverflow whether to allow the given x any y coordinate to overflow the current viewport (method will never return null)
 	 */
 	private _getCellRangeAtPoint(x: number, y: number, allowOverflow: boolean = true): ICellRange | null {
-		const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
-		const fixedColumnWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
+		const fixedRowsHeight: number = !!this._lastRenderingContext && !!this._lastRenderingContext.cells.fixedRowCells
+			? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height
+			: 0;
+		const fixedColumnWidth: number = !!this._lastRenderingContext && !!this._lastRenderingContext.cells.fixedColumnCells
+			? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width
+			: 0;
 
 		if (!allowOverflow) {
+			const viewPortWidth: number = !!this._lastRenderingContext ? this._lastRenderingContext.viewPort.width : 0;
+			const viewPortHeight: number = !!this._lastRenderingContext ? this._lastRenderingContext.viewPort.height : 0;
+
 			// Check if we are in viewport bounds -> if not return null
-			if (x < 0 || y < 0 || x > this._lastRenderingContext.viewPort.width || y > this._lastRenderingContext.viewPort.height) {
+			if (x < 0 || y < 0 || x > viewPortWidth || y > viewPortHeight) {
 				return null;
 			}
 		}
@@ -792,7 +807,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const diff: number = timestamp - oldTimestamp;
 		this._autoScrollContext.lastTimestamp = timestamp;
 
-		const baseOffsetToScroll = this._options.canvas.selection.autoScrollingSpeed * (diff / 1000);
+		const baseOffsetToScroll = this.rendererOptions.canvas.selection.autoScrollingSpeed * (diff / 1000);
 
 		const xScrollDiff: number = this._autoScrollContext.xDiff * baseOffsetToScroll;
 		const yScrollDiff: number = this._autoScrollContext.yDiff * baseOffsetToScroll;
@@ -1024,9 +1039,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				const [x, y] = this._getMouseOffset(touch);
 
 				this._updateAutoScrolling(
-					-this._panningStart.speedX * this._options.canvas.scrolling.touchScrollingSpeedFactor,
-					-this._panningStart.speedY * this._options.canvas.scrolling.touchScrollingSpeedFactor,
-					this._options.canvas.scrolling.touchScrollingAcceleration
+					-this._panningStart.speedX * this.rendererOptions.canvas.scrolling.touchScrollingSpeedFactor,
+					-this._panningStart.speedY * this.rendererOptions.canvas.scrolling.touchScrollingSpeedFactor,
+					this.rendererOptions.canvas.scrolling.touchScrollingAcceleration
 				);
 
 				if (event.changedTouches.length === 1 && this._panningStart.isTap) {
@@ -1189,7 +1204,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const primary: ISelection | null = this._selectionModel.getPrimary();
 		if (!!primary) {
 			// Check whether there is a limit to the copyable cell count for performance reasons
-			const copyableCellCountLimit: number = this._options.view.maxCellCountToCopy;
+			const copyableCellCountLimit: number = this.rendererOptions.view.maxCellCountToCopy;
 			if (copyableCellCountLimit >= 0) {
 				const cellCountInRange: number = CellRangeUtil.size(primary.range);
 
@@ -1198,12 +1213,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					const notification: CopyPerformanceWarningNotification = new CopyPerformanceWarningNotification(copyableCellCountLimit, cellCountInRange);
 
 					let copyAnyway: boolean = false;
-					if (!!this._options.notificationService) {
+					if (!!this.rendererOptions.notificationService) {
 						copyAnyway = await Promise.race([
 							new Promise<boolean>(resolve => {
 								notification.callback = (copyAnyway) => resolve(copyAnyway);
 
-								this._options.notificationService.notify(notification);
+								this.rendererOptions.notificationService.notify(notification);
 							}),
 							new Promise<boolean>(resolve => {
 								setTimeout(() => resolve(false), 60000);
@@ -1227,8 +1242,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			// Actually copy the HTML table
 			ClipboardUtil.setClipboardContent(htmlTable);
 
-			if (!!this._options.notificationService) {
-				this._options.notificationService.notify(new CopyNotification());
+			if (!!this.rendererOptions.notificationService) {
+				this.rendererOptions.notificationService.notify(new CopyNotification());
 			}
 		}
 	}
@@ -1360,8 +1375,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const range: ICellRange = !!cell ? cell.range : CellRange.fromSingleRowColumn(row, column);
 		const bounds: IRectangle = this._cellModel.getBounds(range);
 
-		const fixedRows: number = Math.min(this._options.view.fixedRows, this._cellModel.getRowCount());
-		const fixedColumns: number = Math.min(this._options.view.fixedColumns, this._cellModel.getColumnCount());
+		const fixedRows: number = Math.min(this.rendererOptions.view.fixedRows, this._cellModel.getRowCount());
+		const fixedColumns: number = Math.min(this.rendererOptions.view.fixedColumns, this._cellModel.getColumnCount());
 
 		const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
 		const fixedColumnsWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
@@ -1631,7 +1646,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 */
 	private _calculateScrollBarContext(viewPort: IRectangle, fixedRowsHeight: number, fixedColumnsWidth: number): IScrollBarRenderContext {
 		// Derive scroll bar options
-		const scrollBarOptions: IScrollBarOptions = this._options.canvas.scrollBar;
+		const scrollBarOptions: IScrollBarOptions = this.rendererOptions.canvas.scrollBar;
 		const scrollBarSize: number = scrollBarOptions.size;
 		const minScrollBarLength: number = scrollBarOptions.minLength;
 		const scrollBarOffset: number = scrollBarOptions.offset;
@@ -1675,7 +1690,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 
 		return {
-			color: this._options.canvas.scrollBar.color,
+			color: this.rendererOptions.canvas.scrollBar.color,
 			cornerRadius,
 			vertical,
 			horizontal,
@@ -1705,7 +1720,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 
 		const result: ISelectionRenderContext = {
-			options: this._options.canvas.selection,
+			options: this.rendererOptions.canvas.selection,
 			inFixedCorner: [],
 			inNonFixedArea: [],
 			inFixedColumns: [],
@@ -1857,7 +1872,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 
 		// Offset selection properly based on selection rendering options
-		const offset: number = this._options.canvas.selection.offset;
+		const offset: number = this.rendererOptions.canvas.selection.offset;
 		if (offset !== 0) {
 			// Correct initial
 			if (!!initialBounds) {
@@ -1978,8 +1993,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		const viewPort: IRectangle = this._getViewPort();
 
-		const fixedRows: number = Math.min(this._options.view.fixedRows, this._cellModel.getRowCount());
-		const fixedColumns: number = Math.min(this._options.view.fixedColumns, this._cellModel.getColumnCount());
+		const fixedRows: number = Math.min(this.rendererOptions.view.fixedRows, this._cellModel.getRowCount());
+		const fixedColumns: number = Math.min(this.rendererOptions.view.fixedColumns, this._cellModel.getColumnCount());
 
 		// Calculate width and height of the fixed rows and columns
 		const fixedRowsHeight: number = fixedRows > 0
@@ -2271,7 +2286,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			// Render scrollbars
 			CanvasRenderer._renderScrollBars(ctx, renderingContext);
 
-			console.log(`RENDERING: ${window.performance.now() - renderingTime}ms, CREATING RENDERING CONTEXT: ${creatingRenderingContextTime}ms`);
+			if (this._options.misc.debug) {
+				console.log(`RENDERING: ${window.performance.now() - renderingTime}ms, CREATING RENDERING CONTEXT: ${creatingRenderingContextTime}ms`);
+			}
 
 			if (this._updateOverlaysAfterRenderCycle) {
 				this._updateOverlaysAfterRenderCycle = false;
