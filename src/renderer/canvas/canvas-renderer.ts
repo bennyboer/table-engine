@@ -782,6 +782,16 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				// Determine direction to extend in (based on the current x and y coordinates and their difference to the initial selection bounds)
 				const initialSelectionBounds: IRectangle = this._cellModel.getBounds(this._initialSelectionRange);
 
+				const fixedRows: number = Math.min(this.rendererOptions.view.fixedRows, this._cellModel.getRowCount());
+				const fixedColumns: number = Math.min(this.rendererOptions.view.fixedColumns, this._cellModel.getColumnCount());
+
+				if (this._initialSelectionRange.startRow > fixedRows) {
+					initialSelectionBounds.top -= this._scrollOffset.y;
+				}
+				if (this._initialSelectionRange.startColumn > fixedColumns) {
+					initialSelectionBounds.left -= this._scrollOffset.x;
+				}
+
 				let xDiff: number = 0;
 				if (x < initialSelectionBounds.left) {
 					xDiff = x - initialSelectionBounds.left;
