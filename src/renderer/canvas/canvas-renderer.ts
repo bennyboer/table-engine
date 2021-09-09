@@ -1,6 +1,5 @@
 import {ITableEngineRenderer} from "../renderer";
 import {ICellModel} from "../../cell/model/cell-model.interface";
-import {IRendererOptions} from "../options";
 import {asyncScheduler, Subject} from "rxjs";
 import {takeUntil, throttleTime} from "rxjs/operators";
 import {ScrollUtil} from "../util/scroll";
@@ -29,6 +28,9 @@ import {ClipboardUtil} from "../../util/clipboard/clipboard-util";
 import {ISize} from "../../util/size";
 import {CopyPerformanceWarningNotification} from "../../util/notification/impl/copy-performance-warning";
 import {CopyNotification} from "../../util/notification/impl/copy";
+import {ITableEngineOptions} from "../../options";
+import {IRendererOptions} from "../options";
+import {Colors} from "../../util/colors";
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
 type CellRendererEventListenerFunctionSupplier = (listener: ICellRendererEventListener) => CellRendererEventListenerFunction | null | undefined;
@@ -74,9 +76,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _engine: TableEngine;
 
 	/**
-	 * Options of the renderer.
+	 * Options of the table engine.
 	 */
-	private _options: IRendererOptions;
+	private _options: ITableEngineOptions;
 
 	/**
 	 * HTML canvas element to render on.
@@ -204,6 +206,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _mouseDragStart: IMouseDragContext | null = null;
 
 	/**
+	 * Context of the copy-handle drag start.
+	 */
+	private _copyHandleDragStart: IMouseDragContext | null = null;
+
+	/**
 	 * ID of the touch starting panning.
 	 */
 	private _startTouchID: number | null = null;
@@ -227,6 +234,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * The initially selected cell range of the current selection process (if in progress).
 	 */
 	private _initialSelectionRange: ICellRange | null;
+
+	/**
+	 * Initial cell position of the copy handle drag.
+	 */
+	private _copyHandleInitial: IInitialPosition | null;
 
 	/**
 	 * Current auto-scrolling state.
@@ -273,6 +285,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _updateOverlaysAfterRenderCycle: boolean = false;
 
 	/**
+	 * Get the renderer-specific options.
+	 */
+	private get rendererOptions(): IRendererOptions {
+		return this._options.renderer;
+	}
+
+	/**
 	 * Cleanup the renderer when no more needed.
 	 */
 	public cleanup(): void {
@@ -294,7 +313,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param engine reference to the table-engine
 	 * @param options of the renderer
 	 */
-	public async initialize(container: HTMLElement, engine: TableEngine, options: IRendererOptions): Promise<void> {
+	public async initialize(container: HTMLElement, engine: TableEngine, options: ITableEngineOptions): Promise<void> {
 		this._container = container;
 		this._engine = engine;
 		this._cellModel = engine.getCellModel();
@@ -381,7 +400,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		// Throttle resize events
 		this._resizeThrottleSubject.asObservable().pipe(
 			takeUntil(this._onCleanup),
-			throttleTime(this._options.canvas.lazyRenderingThrottleDuration, asyncScheduler, {
+			throttleTime(this.rendererOptions.canvas.lazyRenderingThrottleDuration, asyncScheduler, {
 				leading: false,
 				trailing: true
 			})
@@ -390,7 +409,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		// Repaint when necessary (for example on scrolling)
 		this._repaintScheduler.asObservable().pipe(
 			takeUntil(this._onCleanup),
-			throttleTime(this._options.canvas.lazyRenderingThrottleDuration, asyncScheduler, {
+			throttleTime(this.rendererOptions.canvas.lazyRenderingThrottleDuration, asyncScheduler, {
 				leading: false,
 				trailing: true
 			})
@@ -493,6 +512,21 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						y: this._scrollOffset.y
 					}
 				};
+			} else if (CanvasRenderer._isMouseOverCopyHandle(x, y, this._lastRenderingContext)) {
+				this._copyHandleDragStart = {
+					startX: x,
+					startY: y,
+					startScrollOffset: {
+						x: this._scrollOffset.x,
+						y: this._scrollOffset.y
+					}
+				};
+
+				this._initialSelectionRange = this._selectionModel.getPrimary().range;
+				this._copyHandleInitial = {
+					row: this._selectionModel.getPrimary().initial.row,
+					column: this._selectionModel.getPrimary().initial.column,
+				};
 			} else if (this._isInMouseDragMode) {
 				this._mouseDragStart = {
 					startX: x,
@@ -575,12 +609,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param allowOverflow whether to allow the given x any y coordinate to overflow the current viewport (method will never return null)
 	 */
 	private _getCellRangeAtPoint(x: number, y: number, allowOverflow: boolean = true): ICellRange | null {
-		const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
-		const fixedColumnWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
+		const fixedRowsHeight: number = !!this._lastRenderingContext && !!this._lastRenderingContext.cells.fixedRowCells
+			? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height
+			: 0;
+		const fixedColumnWidth: number = !!this._lastRenderingContext && !!this._lastRenderingContext.cells.fixedColumnCells
+			? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width
+			: 0;
 
 		if (!allowOverflow) {
+			const viewPortWidth: number = !!this._lastRenderingContext ? this._lastRenderingContext.viewPort.width : 0;
+			const viewPortHeight: number = !!this._lastRenderingContext ? this._lastRenderingContext.viewPort.height : 0;
+
 			// Check if we are in viewport bounds -> if not return null
-			if (x < 0 || y < 0 || x > this._lastRenderingContext.viewPort.width || y > this._lastRenderingContext.viewPort.height) {
+			if (x < 0 || y < 0 || x > viewPortWidth || y > viewPortHeight) {
 				return null;
 			}
 		}
@@ -677,21 +718,140 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
+	 * Check if the mouse is over the copy handle.
+	 * @param x position of the mouse
+	 * @param y position of the mouse
+	 * @param ctx the current rendering context
+	 */
+	private static _isMouseOverCopyHandle(x: number, y: number, ctx: IRenderContext) {
+		if (!ctx || !ctx.selection) {
+			return false;
+		}
+
+		// First and foremost make sure that the copy handle exists before checking
+		if (!ctx.selection.copyHandle.isRendered) {
+			return false;
+		}
+
+		// Check if mouse is over copy handle
+		return x >= ctx.selection.copyHandle.bounds.left && x <= ctx.selection.copyHandle.bounds.left + ctx.selection.copyHandle.bounds.width
+			&& y >= ctx.selection.copyHandle.bounds.top && y <= ctx.selection.copyHandle.bounds.top + ctx.selection.copyHandle.bounds.height;
+	}
+
+	/**
+	 * Set the cursor to show.
+	 * @param cursor name to show
+	 */
+	private _setCursor(cursor: string): void {
+		this._container.style.cursor = cursor;
+	}
+
+	/**
+	 * Reset the cursor to show.
+	 */
+	private _resetCursor(): void {
+		if (this._container.style.cursor !== "auto") {
+			this._container.style.cursor = "auto";
+		}
+	}
+
+	/**
 	 * Called when a mouse move event on the canvas has been registered.
 	 * @param event that occurred
 	 */
 	private _onMouseMove(event: MouseEvent): void {
+		if (!this._lastRenderingContext) {
+			return;
+		}
+
 		const [x, y] = this._getMouseOffset(event);
 		const isMainButtonDown: boolean = event.buttons === 1;
 
 		let isHandled: boolean = false;
+		let resetCursor: boolean = true;
 		if (isMainButtonDown) {
 			const isScrollBarDragging: boolean = !!this._scrollBarDragStart;
 			const isMouseDragging: boolean = !!this._mouseDragStart;
 			const isSelectionDragging: boolean = !!this._initialSelectionRange;
+			const isCopyHandleDragging: boolean = !!this._copyHandleDragStart;
 
 			if (isScrollBarDragging) {
 				this._onScrollBarMove(x, y, this._scrollBarDragStart);
+				isHandled = true;
+			} else if (isCopyHandleDragging) {
+				// Determine direction to extend in (based on the current x and y coordinates and their difference to the initial selection bounds)
+				const initialSelectionBounds: IRectangle = this._cellModel.getBounds(this._initialSelectionRange);
+
+				let xDiff: number = 0;
+				if (x < initialSelectionBounds.left) {
+					xDiff = x - initialSelectionBounds.left;
+				} else if (x > initialSelectionBounds.left + initialSelectionBounds.width) {
+					xDiff = x - (initialSelectionBounds.left + initialSelectionBounds.width);
+				}
+
+				let yDiff: number = 0;
+				if (y < initialSelectionBounds.top) {
+					yDiff = y - initialSelectionBounds.top;
+				} else if (y > initialSelectionBounds.top + initialSelectionBounds.height) {
+					yDiff = y - (initialSelectionBounds.top + initialSelectionBounds.height);
+				}
+
+				// Check whether to extend horizontally or vertically
+				const extendHorizontally: boolean = Math.abs(xDiff) > Math.abs(yDiff)
+
+				// Extend selection, but only to the left, right, top and bottom and not diagonally!
+				const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
+
+				// Modify target range
+				if (extendHorizontally) {
+					targetRange.startRow = this._initialSelectionRange.startRow;
+					targetRange.endRow = this._initialSelectionRange.endRow;
+
+					if (xDiff > 0) {
+						// Extend to right
+						targetRange.startColumn = this._initialSelectionRange.startColumn;
+					} else {
+						// Extend to left
+						targetRange.endColumn = this._initialSelectionRange.endColumn;
+					}
+				} else {
+					targetRange.startColumn = this._initialSelectionRange.startColumn;
+					targetRange.endColumn = this._initialSelectionRange.endColumn;
+
+					if (yDiff > 0) {
+						// Extend to bottom
+						targetRange.startRow = this._initialSelectionRange.startRow;
+					} else {
+						// Extend to top
+						targetRange.endRow = this._initialSelectionRange.endRow;
+					}
+				}
+
+				this._updateCurrentSelection({
+					startRow: Math.min(this._initialSelectionRange.startRow, targetRange.startRow),
+					endRow: Math.max(this._initialSelectionRange.endRow, targetRange.endRow),
+					startColumn: Math.min(this._initialSelectionRange.startColumn, targetRange.startColumn),
+					endColumn: Math.max(this._initialSelectionRange.endColumn, targetRange.endColumn),
+				}, {
+					row: this._copyHandleInitial.row,
+					column: this._copyHandleInitial.column
+				}, false, false, false);
+
+				// Initialize automatic scrolling when out of viewport bounds with the mouse
+				const viewPortBounds: IRectangle = this._lastRenderingContext.viewPort;
+				const outOfViewPortBoundsX: boolean = x < 0 || x > viewPortBounds.width;
+				const outOfViewPortBoundsY: boolean = y < 0 || y > viewPortBounds.height;
+				if (outOfViewPortBoundsX || outOfViewPortBoundsY) {
+					this._updateAutoScrolling(
+						outOfViewPortBoundsX ? (x < 0 ? x : x - viewPortBounds.width) : 0,
+						outOfViewPortBoundsY ? (y < 0 ? y : y - viewPortBounds.height) : 0,
+						0
+					);
+				} else {
+					this._stopAutoScrolling();
+				}
+
+				resetCursor = false; // Do not change the copy-handle cursor
 				isHandled = true;
 			} else if (isMouseDragging) {
 				this._onViewPortMove(x, y, this._mouseDragStart);
@@ -726,6 +886,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 				isHandled = true;
 			}
+		} else {
+			if (CanvasRenderer._isMouseOverCopyHandle(x, y, this._lastRenderingContext)) {
+				this._setCursor("crosshair");
+				resetCursor = false;
+			}
+		}
+
+		if (resetCursor) {
+			this._resetCursor();
 		}
 
 		if (!isHandled) {
@@ -792,7 +961,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const diff: number = timestamp - oldTimestamp;
 		this._autoScrollContext.lastTimestamp = timestamp;
 
-		const baseOffsetToScroll = this._options.canvas.selection.autoScrollingSpeed * (diff / 1000);
+		const baseOffsetToScroll = this.rendererOptions.canvas.selection.autoScrollingSpeed * (diff / 1000);
 
 		const xScrollDiff: number = this._autoScrollContext.xDiff * baseOffsetToScroll;
 		const yScrollDiff: number = this._autoScrollContext.yDiff * baseOffsetToScroll;
@@ -904,27 +1073,47 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		if (!!this._initialSelectionRange) {
 			// End selection extending
-			const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
-			if (!CellRangeUtil.equals(this._initialSelectionRange, targetRange)) {
-				this._updateCurrentSelection({
-					startRow: Math.min(this._initialSelectionRange.startRow, targetRange.startRow),
-					endRow: Math.max(this._initialSelectionRange.endRow, targetRange.endRow),
-					startColumn: Math.min(this._initialSelectionRange.startColumn, targetRange.startColumn),
-					endColumn: Math.max(this._initialSelectionRange.endColumn, targetRange.endColumn),
-				}, {
-					row: this._initialSelectionRange.startRow,
-					column: this._initialSelectionRange.startColumn,
-				}, false, false, true);
+			if (!this._copyHandleDragStart) {
+				const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
+				if (!CellRangeUtil.equals(this._initialSelectionRange, targetRange)) {
+					this._updateCurrentSelection({
+						startRow: Math.min(this._initialSelectionRange.startRow, targetRange.startRow),
+						endRow: Math.max(this._initialSelectionRange.endRow, targetRange.endRow),
+						startColumn: Math.min(this._initialSelectionRange.startColumn, targetRange.startColumn),
+						endColumn: Math.max(this._initialSelectionRange.endColumn, targetRange.endColumn),
+					}, {
+						row: this._initialSelectionRange.startRow,
+						column: this._initialSelectionRange.startColumn,
+					}, false, false, true);
+				} else {
+					// Send event to cell renderer for the cell on the current position
+					const range: ICellRange | null = this._getCellRangeAtPoint(x, y, false);
+					if (!!range) {
+						this._sendEventForPosition(
+							range.startRow,
+							range.startColumn,
+							(listener) => listener.onMouseUp,
+							{x, y}
+						);
+					}
+				}
 			} else {
-				// Send event to cell renderer for the cell on the current position
-				const range: ICellRange | null = this._getCellRangeAtPoint(x, y, false);
-				if (!!range) {
-					this._sendEventForPosition(
-						range.startRow,
-						range.startColumn,
-						(listener) => listener.onMouseUp,
-						{x, y}
-					);
+				this._copyHandleDragStart = null;
+				this._copyHandleInitial = null;
+
+				// Send copy event
+				if (!!this._options.selection.copyHandle.copyHandler) {
+					this._options.selection.copyHandle.copyHandler({
+						startRow: this._initialSelectionRange.startRow,
+						endRow: this._initialSelectionRange.endRow,
+						startColumn: this._initialSelectionRange.startColumn,
+						endColumn: this._initialSelectionRange.endColumn
+					}, {
+						startRow: this._selectionModel.getPrimary().range.startRow,
+						endRow: this._selectionModel.getPrimary().range.endRow,
+						startColumn: this._selectionModel.getPrimary().range.startColumn,
+						endColumn: this._selectionModel.getPrimary().range.endColumn
+					});
 				}
 			}
 
@@ -1024,9 +1213,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				const [x, y] = this._getMouseOffset(touch);
 
 				this._updateAutoScrolling(
-					-this._panningStart.speedX * this._options.canvas.scrolling.touchScrollingSpeedFactor,
-					-this._panningStart.speedY * this._options.canvas.scrolling.touchScrollingSpeedFactor,
-					this._options.canvas.scrolling.touchScrollingAcceleration
+					-this._panningStart.speedX * this.rendererOptions.canvas.scrolling.touchScrollingSpeedFactor,
+					-this._panningStart.speedY * this.rendererOptions.canvas.scrolling.touchScrollingSpeedFactor,
+					this.rendererOptions.canvas.scrolling.touchScrollingAcceleration
 				);
 
 				if (event.changedTouches.length === 1 && this._panningStart.isTap) {
@@ -1189,7 +1378,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const primary: ISelection | null = this._selectionModel.getPrimary();
 		if (!!primary) {
 			// Check whether there is a limit to the copyable cell count for performance reasons
-			const copyableCellCountLimit: number = this._options.view.maxCellCountToCopy;
+			const copyableCellCountLimit: number = this.rendererOptions.view.maxCellCountToCopy;
 			if (copyableCellCountLimit >= 0) {
 				const cellCountInRange: number = CellRangeUtil.size(primary.range);
 
@@ -1198,12 +1387,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					const notification: CopyPerformanceWarningNotification = new CopyPerformanceWarningNotification(copyableCellCountLimit, cellCountInRange);
 
 					let copyAnyway: boolean = false;
-					if (!!this._options.notificationService) {
+					if (!!this.rendererOptions.notificationService) {
 						copyAnyway = await Promise.race([
 							new Promise<boolean>(resolve => {
 								notification.callback = (copyAnyway) => resolve(copyAnyway);
 
-								this._options.notificationService.notify(notification);
+								this.rendererOptions.notificationService.notify(notification);
 							}),
 							new Promise<boolean>(resolve => {
 								setTimeout(() => resolve(false), 60000);
@@ -1227,8 +1416,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			// Actually copy the HTML table
 			ClipboardUtil.setClipboardContent(htmlTable);
 
-			if (!!this._options.notificationService) {
-				this._options.notificationService.notify(new CopyNotification());
+			if (!!this.rendererOptions.notificationService) {
+				this.rendererOptions.notificationService.notify(new CopyNotification());
 			}
 		}
 	}
@@ -1360,8 +1549,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const range: ICellRange = !!cell ? cell.range : CellRange.fromSingleRowColumn(row, column);
 		const bounds: IRectangle = this._cellModel.getBounds(range);
 
-		const fixedRows: number = Math.min(this._options.view.fixedRows, this._cellModel.getRowCount());
-		const fixedColumns: number = Math.min(this._options.view.fixedColumns, this._cellModel.getColumnCount());
+		const fixedRows: number = Math.min(this.rendererOptions.view.fixedRows, this._cellModel.getRowCount());
+		const fixedColumns: number = Math.min(this.rendererOptions.view.fixedColumns, this._cellModel.getColumnCount());
 
 		const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
 		const fixedColumnsWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
@@ -1631,7 +1820,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 */
 	private _calculateScrollBarContext(viewPort: IRectangle, fixedRowsHeight: number, fixedColumnsWidth: number): IScrollBarRenderContext {
 		// Derive scroll bar options
-		const scrollBarOptions: IScrollBarOptions = this._options.canvas.scrollBar;
+		const scrollBarOptions: IScrollBarOptions = this.rendererOptions.canvas.scrollBar;
 		const scrollBarSize: number = scrollBarOptions.size;
 		const minScrollBarLength: number = scrollBarOptions.minLength;
 		const scrollBarOffset: number = scrollBarOptions.offset;
@@ -1675,7 +1864,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 
 		return {
-			color: this._options.canvas.scrollBar.color,
+			color: this.rendererOptions.canvas.scrollBar.color,
 			cornerRadius,
 			vertical,
 			horizontal,
@@ -1705,12 +1894,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 
 		const result: ISelectionRenderContext = {
-			options: this._options.canvas.selection,
+			options: this.rendererOptions.canvas.selection,
+			copyHandle: {
+				isRendered: false
+			},
 			inFixedCorner: [],
 			inNonFixedArea: [],
 			inFixedColumns: [],
 			inFixedRows: []
 		};
+
+		const isMultiSelection: boolean = selections.length > 1;
 
 		for (const s of selections) {
 			this._validateSelection(s);
@@ -1722,7 +1916,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				fixedColumns,
 				fixedRowsHeight,
 				fixedColumnsWidth,
-				s === primary
+				s === primary,
+				isMultiSelection
 			);
 		}
 
@@ -1773,6 +1968,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param fixedRowsHeight height of the fixed rows
 	 * @param fixedColumnsWidth width of the fixed columns
 	 * @param isPrimary whether the selection is the primary selection
+	 * @param isMultiSelection whether the selection is one of many to be rendered (true) or just one (false)
 	 */
 	private _addInfosForSelection(
 		toAdd: ISelectionRenderContext,
@@ -1782,7 +1978,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		fixedColumns: number,
 		fixedRowsHeight: number,
 		fixedColumnsWidth: number,
-		isPrimary: boolean
+		isPrimary: boolean,
+		isMultiSelection: boolean
 	): void {
 		const bounds: IRectangle = this._calculateSelectionBoundsFromCellRangeBounds(
 			this._cellModel.getBounds(selection.range),
@@ -1857,7 +2054,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 
 		// Offset selection properly based on selection rendering options
-		const offset: number = this._options.canvas.selection.offset;
+		const offset: number = this.rendererOptions.canvas.selection.offset;
 		if (offset !== 0) {
 			// Correct initial
 			if (!!initialBounds) {
@@ -1887,7 +2084,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		collectionToPushTo.push({
 			bounds,
 			initial: initialBounds,
-			isPrimary
+			isPrimary,
+			renderCopyHandle: isPrimary && !isMultiSelection && this._options.selection.copyHandle.showCopyHandle
 		});
 	}
 
@@ -1978,8 +2176,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		const viewPort: IRectangle = this._getViewPort();
 
-		const fixedRows: number = Math.min(this._options.view.fixedRows, this._cellModel.getRowCount());
-		const fixedColumns: number = Math.min(this._options.view.fixedColumns, this._cellModel.getColumnCount());
+		const fixedRows: number = Math.min(this.rendererOptions.view.fixedRows, this._cellModel.getRowCount());
+		const fixedColumns: number = Math.min(this.rendererOptions.view.fixedColumns, this._cellModel.getColumnCount());
 
 		// Calculate width and height of the fixed rows and columns
 		const fixedRowsHeight: number = fixedRows > 0
@@ -2271,7 +2469,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			// Render scrollbars
 			CanvasRenderer._renderScrollBars(ctx, renderingContext);
 
-			console.log(`RENDERING: ${window.performance.now() - renderingTime}ms, CREATING RENDERING CONTEXT: ${creatingRenderingContextTime}ms`);
+			if (this._options.misc.debug) {
+				console.log(`RENDERING: ${window.performance.now() - renderingTime}ms, CREATING RENDERING CONTEXT: ${creatingRenderingContextTime}ms`);
+			}
 
 			if (this._updateOverlaysAfterRenderCycle) {
 				this._updateOverlaysAfterRenderCycle = false;
@@ -2591,6 +2791,31 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				// Stroke
 				ctx.strokeRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.height);
 
+				// Render copy handle (if enabled)
+				if (info.renderCopyHandle) {
+					const copyHandleSize: number = context.selection.options.copyHandle.size;
+					const copyHandlePadding: number = context.selection.options.copyHandle.padding;
+
+					const copyHandleX: number = info.bounds.left + info.bounds.width - copyHandleSize / 2;
+					const copyHandleY: number = info.bounds.top + info.bounds.height - copyHandleSize / 2;
+
+					// Fill padding rectangle first
+					ctx.fillStyle = CanvasUtil.colorToStyle(Colors.WHITE);
+					ctx.fillRect(copyHandleX - copyHandlePadding, copyHandleY - copyHandlePadding, copyHandleSize + copyHandlePadding, copyHandleSize + copyHandlePadding)
+
+					// Fill copy-handle rectangle next
+					ctx.fillStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.primary.borderColor : context.selection.options.primary.borderColorUnfocused);
+					ctx.fillRect(copyHandleX, copyHandleY, copyHandleSize, copyHandleSize);
+
+					context.selection.copyHandle.isRendered = true;
+					context.selection.copyHandle.bounds = {
+						top: copyHandleY,
+						left: copyHandleX,
+						width: copyHandleSize,
+						height: copyHandleSize
+					};
+				}
+
 				// Reset colors
 				ctx.fillStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.secondary.backgroundColor : context.selection.options.secondary.backgroundColorUnfocused);
 				ctx.strokeStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.secondary.borderColor : context.selection.options.secondary.borderColorUnfocused);
@@ -2813,6 +3038,11 @@ interface ISelectionRenderContext {
 	options: ISelectionRenderingOptions;
 
 	/**
+	 * Rendering info for the copy handle.
+	 */
+	copyHandle: ICopyHandleRenderingInfo;
+
+	/**
 	 * Selections rectangles completely contained in the non-fixed area.
 	 */
 	inNonFixedArea: ISelectionRenderInfo[];
@@ -2831,6 +3061,23 @@ interface ISelectionRenderContext {
 	 * Selection rectangles to be displayed above all areas.
 	 */
 	inFixedCorner: ISelectionRenderInfo[];
+
+}
+
+/**
+ * Rendering information about the copy handle.
+ */
+interface ICopyHandleRenderingInfo {
+
+	/**
+	 * Whether the copy-handle is rendered (visible).
+	 */
+	isRendered: boolean;
+
+	/**
+	 * Bounds of the copy-handle in the viewport.
+	 */
+	bounds?: IRectangle;
 
 }
 
@@ -2854,6 +3101,11 @@ interface ISelectionRenderInfo {
 	 * Bounds of the rectangle on the viewport.
 	 */
 	bounds: IRectangle;
+
+	/**
+	 * Whether the copy-handle should be rendered.
+	 */
+	renderCopyHandle: boolean;
 
 }
 

@@ -2,8 +2,8 @@ import {IBorder} from "../border";
 import {IBorderModel} from "./border-model.interface";
 import {ICellRange} from "../../cell/range/cell-range";
 import {ICellModel} from "../../cell/model/cell-model.interface";
-import {IBorderOptions} from "../options";
 import {ICell} from "../../cell/cell";
+import {ITableEngineOptions} from "../../options";
 
 /**
  * Border model of the table-engine.
@@ -16,16 +16,16 @@ export class BorderModel implements IBorderModel {
 	private readonly _cellModel: ICellModel;
 
 	/**
-	 * Options of the border model.
+	 * Options of the table-engine.
 	 */
-	private readonly _options: IBorderOptions;
+	private readonly _options: ITableEngineOptions;
 
 	/**
 	 * Counter for the border priorities.
 	 */
 	private _priorityCounter: number = 0;
 
-	constructor(cellModel: ICellModel, options: IBorderOptions) {
+	constructor(cellModel: ICellModel, options: ITableEngineOptions) {
 		this._cellModel = cellModel;
 		this._options = options;
 	}
@@ -115,9 +115,9 @@ export class BorderModel implements IBorderModel {
 	 * @param column to get default border at
 	 */
 	private _getDefaultBorder(row: number, column: number): IBorder {
-		return !!this._options.defaultBorderSupplier
-			? this._options.defaultBorderSupplier(row, column)
-			: (!!this._options.defaultBorder ? this._options.defaultBorder : {});
+		return !!this._options.border.defaultBorderSupplier
+			? this._options.border.defaultBorderSupplier(row, column)
+			: (!!this._options.border.defaultBorder ? this._options.border.defaultBorder : {});
 	}
 
 	/**
@@ -170,7 +170,7 @@ export class BorderModel implements IBorderModel {
 						if (row > 0) {
 							const upper: IBorder = this._getCellBorder(row - 1, column, false);
 							if (!!upper && !!upper.bottom) {
-								b.top = this._options.borderCollisionResolver(border.top, upper.bottom); // Resolve border collision
+								b.top = this._options.border.borderCollisionResolver(border.top, upper.bottom); // Resolve border collision
 							}
 						}
 					}
@@ -182,7 +182,7 @@ export class BorderModel implements IBorderModel {
 						if (row < this._cellModel.getRowCount() - 1) {
 							const lower: IBorder = this._getCellBorder(row + 1, column, false);
 							if (!!lower && !!lower.top) {
-								b.bottom = this._options.borderCollisionResolver(border.bottom, lower.top); // Resolve border collision
+								b.bottom = this._options.border.borderCollisionResolver(border.bottom, lower.top); // Resolve border collision
 							}
 						}
 					}
@@ -194,7 +194,7 @@ export class BorderModel implements IBorderModel {
 						if (row > 0) {
 							const leftCell: IBorder = this._getCellBorder(row, column - 1, false);
 							if (!!leftCell && !!leftCell.right) {
-								b.left = this._options.borderCollisionResolver(border.left, leftCell.right); // Resolve border collision
+								b.left = this._options.border.borderCollisionResolver(border.left, leftCell.right); // Resolve border collision
 							}
 						}
 					}
@@ -206,7 +206,7 @@ export class BorderModel implements IBorderModel {
 						if (row < this._cellModel.getColumnCount() - 1) {
 							const rightCell: IBorder = this._getCellBorder(row, column + 1, false);
 							if (!!rightCell && !!rightCell.left) {
-								b.right = this._options.borderCollisionResolver(border.right, rightCell.left); // Resolve border collision
+								b.right = this._options.border.borderCollisionResolver(border.right, rightCell.left); // Resolve border collision
 							}
 						}
 					}

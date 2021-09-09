@@ -28,6 +28,7 @@ import {INotification} from "../../../src/util/notification/notification";
 import {NotificationIDs} from "../../../src/util/notification/notification-ids";
 import {CopyPerformanceWarningNotification} from "../../../src/util/notification/impl/copy-performance-warning";
 import {MatSnackBar} from "@angular/material/snack-bar";
+import {ICell} from "table-engine/cell/cell";
 
 @Component({
 	selector: "app-root",
@@ -295,6 +296,51 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 		this.zone.runOutsideAngular(() => {
 			const cellModel = AppComponent.initializeCellModel();
 			this.engine = new TableEngine(this.tableContainer.nativeElement, cellModel);
+
+			// this.engine.getOptions().misc.debug = true; // Enable debug mode
+
+			// Setup copy-handle
+			this.engine.getOptions().selection.copyHandle.showCopyHandle = true;
+			this.engine.getOptions().selection.copyHandle.copyHandler = (origin, target) => {
+				/*
+				NOTE: The copy-handler is very simple and will just copy the value of the initial cell of
+				the origin cell range to all the cells of the target cell range.
+				You however may wish to have a more elaborate algorithm, which you are free to implement.
+				 */
+
+				// Only allow copying when all involved cells have the same size
+				const originCells: ICell[] = this.engine.getCellModel().getCells(origin);
+				const width: number = originCells[0].range.endColumn - originCells[0].range.startColumn;
+				const height: number = originCells[0].range.endRow - originCells[0].range.startRow;
+				for (const cell of originCells) {
+					const cellWidth: number = cell.range.endColumn - cell.range.startColumn;
+					const cellHeight: number = cell.range.endRow - cell.range.startRow;
+
+					if (cellWidth !== width || cellHeight !== height) {
+						return; // Abort!
+					}
+				}
+
+				const targetCells: ICell[] = this.engine.getCellModel().getCells(target);
+				for (const cell of targetCells) {
+					const cellWidth: number = cell.range.endColumn - cell.range.startColumn;
+					const cellHeight: number = cell.range.endRow - cell.range.startRow;
+
+					if (cellWidth !== width || cellHeight !== height) {
+						return; // Abort!
+					}
+				}
+
+				// Copy cells in a very simple way, this can be made very elaborate, but we will simply copy the value of the initial cell to all involved cells
+				const initialCell: ICell = this.engine.getCellModel().getCell(this.engine.getSelectionModel().getPrimary().initial.row, this.engine.getSelectionModel().getPrimary().initial.column);
+				const valueToCopy: any = !!initialCell ? initialCell.value : "";
+
+				for (const cell of targetCells) {
+					cell.value = valueToCopy;
+				}
+
+				this.engine.repaint();
+			};
 
 			// Set row/column header selection transform
 			this.engine.getOptions().selection.selectionTransform = ROW_COLUMN_HEADER_TRANSFORM;

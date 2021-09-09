@@ -56,6 +56,16 @@ const DEFAULT_AUTO_SCROLL_SPEED: number = 3;
 const DEFAULT_SELECTION_OFFSET: number = 1;
 
 /**
+ * Default copy-handle size (width and height).
+ */
+const DEFAULT_COPY_HANDLE_SIZE: number = 5;
+
+/**
+ * Default padding of the copy-handle from the selection border.
+ */
+const DEFAULT_COPY_HANDLE_PADDING: number = 2;
+
+/**
  * Options regarding the selection to display.
  */
 export interface ISelectionRenderingOptions {
@@ -87,6 +97,28 @@ export interface ISelectionRenderingOptions {
 	 * Speed for automatic scrolling (when selection is in progress and mouse is moving outside viewport bounds).
 	 */
 	autoScrollingSpeed?: number;
+
+	/**
+	 * Rendering options for the copy-handle (if enabled).
+	 */
+	copyHandle?: ICopyHandleRenderingOptions;
+
+}
+
+/**
+ * Rendering options for the copy-handle.
+ */
+export interface ICopyHandleRenderingOptions {
+
+	/**
+	 * Size of the copy-handle (width and height).
+	 */
+	size?: number;
+
+	/**
+	 * Padding from the selection rectangle border.
+	 */
+	padding?: number;
 
 }
 
@@ -176,6 +208,18 @@ export const fillOptions = (options?: ISelectionRenderingOptions) => {
 
 	if (options.autoScrollingSpeed === undefined || options.autoScrollingSpeed === null) {
 		options.autoScrollingSpeed = DEFAULT_AUTO_SCROLL_SPEED;
+	}
+
+	if (!options.copyHandle) {
+		options.copyHandle = {};
+	}
+
+	if (options.copyHandle.size === null || options.copyHandle.size === undefined) {
+		options.copyHandle.size = DEFAULT_COPY_HANDLE_SIZE;
+	}
+
+	if (options.copyHandle.padding === null || options.copyHandle.padding === undefined) {
+		options.copyHandle.padding = DEFAULT_COPY_HANDLE_PADDING;
 	}
 
 	return options;

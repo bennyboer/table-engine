@@ -22,6 +22,24 @@ export interface ITableEngineOptions {
 	 */
 	border?: IBorderOptions;
 
+	/**
+	 * Other options.
+	 */
+	misc?: IMiscOptions;
+
+}
+
+/**
+ * Other options regarding the table-engine.
+ */
+export interface IMiscOptions {
+
+	/**
+	 * Whether debugging mode is enabled.
+	 * This will enable for example debugging logs.
+	 */
+	debug?: boolean;
+
 }
 
 /**
@@ -47,6 +65,14 @@ export const fillOptions = (options?: ITableEngineOptions) => {
 		options.border = {};
 	}
 	options.border = fillBorderOptions(options.border);
+
+	if (!options.misc) {
+		options.misc = {};
+	}
+
+	if (options.misc.debug === null || options.misc.debug === undefined) {
+		options.misc.debug = false;
+	}
 
 	return options;
 };

@@ -1,5 +1,6 @@
 import {ISelection} from "./selection";
 import {ICellModel} from "../cell/model/cell-model.interface";
+import {ICellRange} from "../cell/range/cell-range";
 
 /**
  * Selection transform that will transform selections that start in the first row
@@ -89,6 +90,38 @@ export interface ISelectionOptions {
 	 */
 	selectionTransform?: (selection: ISelection, cellModel: ICellModel, causedByMove: boolean) => boolean;
 
+	/**
+	 * Options for a copy-handle.
+	 *
+	 * A copy handle is the small grasp (mostly a rectangle)
+	 * on the right-lower edge of the primary selection rectangle,
+	 * that you might drag to invoke a copy-like operation.
+	 */
+	copyHandle?: ICopyHandleOptions;
+
+}
+
+/**
+ * Options for the copy-handle.
+ * A copy handle is the small grasp (mostly a rectangle)
+ * on the right-lower edge of the primary selection rectangle,
+ * that you might drag to invoke a copy-like operation.
+ */
+export interface ICopyHandleOptions {
+
+	/**
+	 * Whether to show the copy handle on the primary selection.
+	 * Note that the copy-handle will only be shown when there is a single selection rectangle.
+	 */
+	showCopyHandle?: boolean;
+
+	/**
+	 * Handler to apply an operation based on the copy-handle movement.
+	 * @param origin the origin cell range (range before dragging the handle)
+	 * @param target the target cell range (range after dropping the handle)
+	 */
+	copyHandler?: (origin: ICellRange, target: ICellRange) => void;
+
 }
 
 /**
@@ -102,6 +135,14 @@ export const fillOptions = (options?: ISelectionOptions) => {
 
 	if (options.allowMultiSelection === undefined || options.allowMultiSelection === null) {
 		options.allowMultiSelection = true;
+	}
+
+	if (!options.copyHandle) {
+		options.copyHandle = {};
+	}
+
+	if (options.copyHandle.showCopyHandle === null || options.copyHandle.showCopyHandle === undefined) {
+		options.copyHandle.showCopyHandle = false;
 	}
 
 	return options;
