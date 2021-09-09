@@ -693,14 +693,57 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
+	 * Check if the mouse is over the copy handle.
+	 * @param x position of the mouse
+	 * @param y position of the mouse
+	 * @param ctx the current rendering context
+	 */
+	private static _isMouseOverCopyHandle(x: number, y: number, ctx: IRenderContext) {
+		if (!ctx || !ctx.selection) {
+			return false;
+		}
+
+		// First and foremost make sure that the copy handle exists before checking
+		if (!ctx.selection.copyHandle.isRendered) {
+			return false;
+		}
+
+		// Check if mouse is over copy handle
+		return x >= ctx.selection.copyHandle.bounds.left && x <= ctx.selection.copyHandle.bounds.left + ctx.selection.copyHandle.bounds.width
+			&& y >= ctx.selection.copyHandle.bounds.top && y <= ctx.selection.copyHandle.bounds.top + ctx.selection.copyHandle.bounds.height;
+	}
+
+	/**
+	 * Set the cursor to show.
+	 * @param cursor name to show
+	 */
+	private _setCursor(cursor: string): void {
+		this._container.style.cursor = cursor;
+	}
+
+	/**
+	 * Reset the cursor to show.
+	 */
+	private _resetCursor(): void {
+		if (this._container.style.cursor !== "auto") {
+			this._container.style.cursor = "auto";
+		}
+	}
+
+	/**
 	 * Called when a mouse move event on the canvas has been registered.
 	 * @param event that occurred
 	 */
 	private _onMouseMove(event: MouseEvent): void {
+		if (!this._lastRenderingContext) {
+			return;
+		}
+
 		const [x, y] = this._getMouseOffset(event);
 		const isMainButtonDown: boolean = event.buttons === 1;
 
 		let isHandled: boolean = false;
+		let resetCursor: boolean = true;
 		if (isMainButtonDown) {
 			const isScrollBarDragging: boolean = !!this._scrollBarDragStart;
 			const isMouseDragging: boolean = !!this._mouseDragStart;
@@ -742,6 +785,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 				isHandled = true;
 			}
+		} else {
+			if (CanvasRenderer._isMouseOverCopyHandle(x, y, this._lastRenderingContext)) {
+				this._setCursor("crosshair");
+				resetCursor = false;
+			}
+		}
+
+		if (resetCursor) {
+			this._resetCursor();
 		}
 
 		if (!isHandled) {
@@ -1722,6 +1774,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		const result: ISelectionRenderContext = {
 			options: this.rendererOptions.canvas.selection,
+			copyHandle: {
+				isRendered: false
+			},
 			inFixedCorner: [],
 			inNonFixedArea: [],
 			inFixedColumns: [],
@@ -2630,6 +2685,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					// Fill copy-handle rectangle next
 					ctx.fillStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.primary.borderColor : context.selection.options.primary.borderColorUnfocused);
 					ctx.fillRect(copyHandleX, copyHandleY, copyHandleSize, copyHandleSize);
+
+					context.selection.copyHandle.isRendered = true;
+					context.selection.copyHandle.bounds = {
+						top: copyHandleY,
+						left: copyHandleX,
+						width: copyHandleSize,
+						height: copyHandleSize
+					};
 				}
 
 				// Reset colors
@@ -2854,6 +2917,11 @@ interface ISelectionRenderContext {
 	options: ISelectionRenderingOptions;
 
 	/**
+	 * Rendering info for the copy handle.
+	 */
+	copyHandle: ICopyHandleRenderingInfo;
+
+	/**
 	 * Selections rectangles completely contained in the non-fixed area.
 	 */
 	inNonFixedArea: ISelectionRenderInfo[];
@@ -2872,6 +2940,23 @@ interface ISelectionRenderContext {
 	 * Selection rectangles to be displayed above all areas.
 	 */
 	inFixedCorner: ISelectionRenderInfo[];
+
+}
+
+/**
+ * Rendering information about the copy handle.
+ */
+interface ICopyHandleRenderingInfo {
+
+	/**
+	 * Whether the copy-handle is rendered (visible).
+	 */
+	isRendered: boolean;
+
+	/**
+	 * Bounds of the copy-handle in the viewport.
+	 */
+	bounds?: IRectangle;
 
 }
 
