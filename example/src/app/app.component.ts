@@ -12,7 +12,6 @@ import {CellModel} from "../../../src/cell/model/cell-model";
 import {CellRange} from "../../../src/cell/range/cell-range";
 import {TableEngine} from "../../../src/table-engine";
 import {RowColumnHeaderRenderer} from "../../../src/renderer/canvas/cell/header/row-column-header-renderer";
-import {BaseCellRenderer} from "../../../src/renderer/canvas/cell/base/base-cell-renderer";
 import {ROW_COLUMN_HEADER_TRANSFORM} from "../../../src/selection/options";
 import {ISelection} from "../../../src/selection/selection";
 import {IImageCellRendererValue, ImageCellRenderer} from "../../../src/renderer/canvas/cell/image/image-cell-renderer";
@@ -23,12 +22,15 @@ import {
 	LoadingCellRenderer
 } from "../../../src/renderer/canvas/cell/loading/loading-cell-renderer";
 import {environment} from "../environments/environment";
-import {EditableTextCellRenderer} from "./renderer/editable-text-cell-renderer";
 import {INotification} from "../../../src/util/notification/notification";
 import {NotificationIDs} from "../../../src/util/notification/notification-ids";
 import {CopyPerformanceWarningNotification} from "../../../src/util/notification/impl/copy-performance-warning";
 import {MatSnackBar} from "@angular/material/snack-bar";
-import {ICell} from "table-engine/cell/cell";
+import {TextCellRenderer} from "../../../src/renderer/canvas/cell/text/text-cell-renderer";
+import {ITextCellRendererValue} from "../../../src/renderer/canvas/cell/text/text-cell-renderer-value";
+import {HorizontalAlignment} from "../../../src/util/alignment/horizontal-alignment";
+import {VerticalAlignment} from "../../../src/util/alignment/vertical-alignment";
+import {ICell} from "../../../src/cell/cell";
 
 @Component({
 	selector: "app-root",
@@ -88,6 +90,56 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
 	public focusTable(): void {
 		this.engine.requestFocus();
+	}
+
+	public setRowHeight(size: number): void {
+		if (size < 10) {
+			size = 10;
+		} else if (size > 500) {
+			size = 500;
+		}
+
+		const selections: ISelection[] = this.engine.getSelectionModel().getSelections();
+		if (selections.length <= 0) {
+			return;
+		}
+
+		// Gather all selected rows
+		const rows: Set<number> = new Set<number>();
+		for (const selection of selections) {
+			for (let row = selection.range.startRow; row <= selection.range.endRow; row++) {
+				rows.add(row);
+			}
+		}
+
+		// Set new size for all rows
+		this.engine.getCellModel().resizeRows([...rows], size);
+		this.engine.repaint();
+	}
+
+	public setColumnWidth(size: number): void {
+		if (size < 10) {
+			size = 10;
+		} else if (size > 500) {
+			size = 500;
+		}
+
+		const selections: ISelection[] = this.engine.getSelectionModel().getSelections();
+		if (selections.length <= 0) {
+			return;
+		}
+
+		// Gather all selected columns
+		const columns: Set<number> = new Set<number>();
+		for (const selection of selections) {
+			for (let column = selection.range.startColumn; column <= selection.range.endColumn; column++) {
+				columns.add(column);
+			}
+		}
+
+		// Set new size for all columns
+		this.engine.getCellModel().resizeColumns([...columns], size);
+		this.engine.repaint();
 	}
 
 	public mergeSelection(): void {
@@ -297,7 +349,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			const cellModel = AppComponent.initializeCellModel();
 			this.engine = new TableEngine(this.tableContainer.nativeElement, cellModel);
 
-			// this.engine.getOptions().misc.debug = true; // Enable debug mode
+			this.engine.getOptions().misc.debug = true; // Enable debug mode
 
 			// Setup copy-handle
 			this.engine.getOptions().selection.copyHandle.showCopyHandle = true;
@@ -375,8 +427,13 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			};
 
 			// Register needed cell renderers
-			this.engine.registerCellRenderer(new BaseCellRenderer());
-			this.engine.registerCellRenderer(new EditableTextCellRenderer());
+			this.engine.registerCellRenderer(new TextCellRenderer({
+				editable: true,
+				horizontalAlignment: HorizontalAlignment.CENTER,
+				verticalAlignment: VerticalAlignment.MIDDLE,
+				fontFamily: "Calibri",
+				fontSize: 20
+			}));
 			this.engine.registerCellRenderer(new RowColumnHeaderRenderer());
 			this.engine.registerCellRenderer(new ImageCellRenderer());
 			this.engine.registerCellRenderer(new LoadingCellRenderer());
@@ -448,15 +505,27 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 						} as ILoadingCellRendererValue
 				},
 				{
+					range: CellRange.fromSingleRowColumn(25, 4),
+					rendererName: "text",
+					value: {
+						text: "This is a cell for which we enabled line wrapping since this text is pretty long and will not fit into the cells available space.",
+						options: {
+							useLineWrapping: true,
+							horizontalAlignment: HorizontalAlignment.LEFT,
+							verticalAlignment: VerticalAlignment.BOTTOM
+						}
+					} as ITextCellRendererValue
+				},
+				{
 					range: CellRange.fromSingleRowColumn(1000, 1000),
-					rendererName: "base",
+					rendererName: "text",
 					value: "Last cell with more text than normally"
 				},
 				{
 					range: CellRange.fromSingleRowColumn(10, 2),
 					rendererName: "loading",
 					value: {
-						cellRenderer: "base",
+						cellRenderer: "text",
 						promiseSupplier: async () => {
 							return new Promise(resolve => setTimeout(() => resolve("Done 😀"), 2000))
 						},
@@ -468,7 +537,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 				if (row === 0 || column === 0) {
 					return "row-column-header";
 				} else {
-					return "editable-text";
+					return "text";
 				}
 			},
 			(row) => 25,
@@ -483,6 +552,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			startColumn: 2,
 			endColumn: 3
 		});
+
+		// Resize row with index 25
+		model.resizeRows([25], 100);
 
 		return model;
 	}

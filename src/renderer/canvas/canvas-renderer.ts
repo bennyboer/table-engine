@@ -2430,6 +2430,36 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
+	 * Cleanup the cell viewport caches for cells that are out of the current viewport bounds.
+	 * @param oldCells the former rendered cells
+	 * @param newCells the new cells to render
+	 */
+	private _cleanupCellViewportCaches(oldCells: ICellRenderContextCollection, newCells: ICellRenderContextCollection): void {
+		this._cleanupCellViewportCachesForCellRange(oldCells.nonFixedCells.cellRange, newCells.nonFixedCells.cellRange);
+		this._cleanupCellViewportCachesForCellRange(oldCells.fixedRowCells.cellRange, newCells.fixedRowCells.cellRange);
+		this._cleanupCellViewportCachesForCellRange(oldCells.fixedColumnCells.cellRange, newCells.fixedColumnCells.cellRange);
+		this._cleanupCellViewportCachesForCellRange(oldCells.fixedCornerCells.cellRange, newCells.fixedCornerCells.cellRange);
+	}
+
+	/**
+	 * Cleanup the cell viewport caches for cells that are out of the AND operation between
+	 * the two given cell ranges.
+	 * @param oldRange the old cell range
+	 * @param newRange the new cell range
+	 */
+	private _cleanupCellViewportCachesForCellRange(oldRange: ICellRange, newRange: ICellRange): void {
+		const candidateRanges: ICellRange[] = CellRangeUtil.xor(oldRange, newRange);
+
+		for (const range of candidateRanges) {
+			const cells: ICell[] = this._cellModel.getCells(range);
+
+			for (const cell of cells) {
+				cell.viewportCache = undefined; // Clearing cache property
+			}
+		}
+	}
+
+	/**
 	 * Immediately render the table.
 	 */
 	private _render(): void {
@@ -2444,6 +2474,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		this._requestAnimationFrameID = window.requestAnimationFrame(() => {
 			this._requestAnimationFrameID = null; // Mark as executed
+
+			if (!!this._lastRenderingContext) {
+				this._cleanupCellViewportCaches(this._lastRenderingContext.cells, renderingContext.cells);
+			}
 			this._lastRenderingContext = renderingContext;
 
 			const ctx: CanvasRenderingContext2D = this._canvasContext;
@@ -2717,7 +2751,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param side to get style from
 	 */
 	private static _applyBorderStyle(ctx: CanvasRenderingContext2D, side: IBorderSide): void {
-		ctx.strokeStyle = CanvasUtil.colorToStyle(side.color);
+		ctx.strokeStyle = Colors.toStyleStr(side.color);
 		ctx.lineWidth = side.size;
 
 		if (side.style === BorderStyle.SOLID) {
@@ -2735,7 +2769,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param context the rendering context
 	 */
 	private static _renderScrollBars(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
-		ctx.fillStyle = CanvasUtil.colorToStyle(context.scrollBar.color);
+		ctx.fillStyle = Colors.toStyleStr(context.scrollBar.color);
 
 		// Draw vertical scrollbar (if needed)
 		if (!!context.scrollBar.vertical) {
@@ -2767,14 +2801,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param infos rendering infos about selection rectangles to draw
 	 */
 	private static _renderSelections(ctx: CanvasRenderingContext2D, context: IRenderContext, infos: ISelectionRenderInfo[]): void {
-		ctx.fillStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.secondary.backgroundColor : context.selection.options.secondary.backgroundColorUnfocused);
-		ctx.strokeStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.secondary.borderColor : context.selection.options.secondary.borderColorUnfocused);
+		ctx.fillStyle = Colors.toStyleStr(context.focused ? context.selection.options.secondary.backgroundColor : context.selection.options.secondary.backgroundColorUnfocused);
+		ctx.strokeStyle = Colors.toStyleStr(context.focused ? context.selection.options.secondary.borderColor : context.selection.options.secondary.borderColorUnfocused);
 		ctx.lineWidth = context.selection.options.borderSize;
 
 		for (const info of infos) {
 			if (info.isPrimary) {
-				ctx.fillStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.primary.backgroundColor : context.selection.options.primary.backgroundColorUnfocused);
-				ctx.strokeStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.primary.borderColor : context.selection.options.primary.borderColorUnfocused);
+				ctx.fillStyle = Colors.toStyleStr(context.focused ? context.selection.options.primary.backgroundColor : context.selection.options.primary.backgroundColorUnfocused);
+				ctx.strokeStyle = Colors.toStyleStr(context.focused ? context.selection.options.primary.borderColor : context.selection.options.primary.borderColorUnfocused);
 
 				// Fill area over initial (if necessary)
 				if (info.initial.top - info.bounds.top > 0) {
@@ -2810,11 +2844,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					const copyHandleY: number = info.bounds.top + info.bounds.height - copyHandleSize / 2;
 
 					// Fill padding rectangle first
-					ctx.fillStyle = CanvasUtil.colorToStyle(Colors.WHITE);
+					ctx.fillStyle = Colors.toStyleStr(Colors.WHITE);
 					ctx.fillRect(copyHandleX - copyHandlePadding, copyHandleY - copyHandlePadding, copyHandleSize + copyHandlePadding, copyHandleSize + copyHandlePadding)
 
 					// Fill copy-handle rectangle next
-					ctx.fillStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.primary.borderColor : context.selection.options.primary.borderColorUnfocused);
+					ctx.fillStyle = Colors.toStyleStr(context.focused ? context.selection.options.primary.borderColor : context.selection.options.primary.borderColorUnfocused);
 					ctx.fillRect(copyHandleX, copyHandleY, copyHandleSize, copyHandleSize);
 
 					context.selection.copyHandle.isRendered = true;
@@ -2827,8 +2861,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				}
 
 				// Reset colors
-				ctx.fillStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.secondary.backgroundColor : context.selection.options.secondary.backgroundColorUnfocused);
-				ctx.strokeStyle = CanvasUtil.colorToStyle(context.focused ? context.selection.options.secondary.borderColor : context.selection.options.secondary.borderColorUnfocused);
+				ctx.fillStyle = Colors.toStyleStr(context.focused ? context.selection.options.secondary.backgroundColor : context.selection.options.secondary.backgroundColorUnfocused);
+				ctx.strokeStyle = Colors.toStyleStr(context.focused ? context.selection.options.secondary.borderColor : context.selection.options.secondary.borderColorUnfocused);
 			} else {
 				ctx.fillRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.height);
 				ctx.strokeRect(info.bounds.left, info.bounds.top, info.bounds.width, info.bounds.height);

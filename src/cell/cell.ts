@@ -27,4 +27,10 @@ export interface ICell {
 	 * Should only be managed by using the border model.
 	 */
 	border?: IBorder;
+
+	/**
+	 * Cache that can be used by renderers and will be cleared once
+	 * the cell is out of the current viewport.
+	 */
+	viewportCache?: any;
 }

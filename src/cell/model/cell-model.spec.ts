@@ -8,7 +8,7 @@ test("[CellModel.generate] Validate row/column sizes - I", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -35,7 +35,7 @@ test("[CellModel.generate] Validate row/column sizes - II", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -63,7 +63,7 @@ test("[CellModel.generate] Validate row/column offsets", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -94,7 +94,7 @@ test("[CellModel.generate] Validate row/column offsets and hidden rows/columns",
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -118,7 +118,7 @@ test("[CellModel.generate] Validate cell values and ranges", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -153,7 +153,7 @@ test("[CellModel.resize] Resize a single row and column", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -188,7 +188,7 @@ test("[CellModel.resize] Resize multiple rows and columns", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -232,7 +232,7 @@ test("[CellModel.resize] Resize rows and columns with hidden rows/columns", () =
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -264,7 +264,7 @@ test("[CellModel.hide] Hide rows and columns", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -316,7 +316,7 @@ test("[CellModel.hide] Hide rows and columns - with already hidden rows/columns"
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -354,7 +354,7 @@ test("[CellModel.show] Show single row and column", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -386,7 +386,7 @@ test("[CellModel.hide] Hide all", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -410,7 +410,7 @@ test("[CellModel.hide] Hide all and show all again", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -440,7 +440,7 @@ test("[CellModel.show] Show multiple rows and columns", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -497,7 +497,7 @@ test("[CellModel.getCell] Get a cell", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -531,7 +531,7 @@ test("[CellModel.merge] Merge a cell range", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -564,7 +564,7 @@ test("[CellModel.merge] Merge a cell range - impossible", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -604,7 +604,7 @@ test("[CellModel.split] Split a cell range", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -646,7 +646,7 @@ test("[CellModel.split] Try to split a single row column cell", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -673,7 +673,7 @@ test("[CellModel.insert] Insert rows/columns at the beginning", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -745,7 +745,7 @@ test("[CellModel.insert] Insert rows/columns at the end", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -797,7 +797,7 @@ test("[CellModel.insert] Insert rows/columns somewhere in between", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -850,7 +850,7 @@ test("[CellModel.insert] Insert rows/columns with hidden rows/columns", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -889,7 +889,7 @@ test("[CellModel.insert] Insert rows/columns with merged cells and hidden rows/c
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -939,7 +939,7 @@ test("[CellModel.delete] Delete rows/columns from the beginning", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -988,7 +988,7 @@ test("[CellModel.delete] Delete rows/columns at the end", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -1032,7 +1032,7 @@ test("[CellModel.delete] Delete rows/columns in between", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -1091,7 +1091,7 @@ test("[CellModel.delete] Delete rows/columns with hidden rows/columns", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -1145,7 +1145,7 @@ test("[CellModel.delete] Delete rows/columns with merged cells - I", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -1211,7 +1211,7 @@ test("[CellModel.delete] Delete rows/columns with merged cells - II", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -1304,7 +1304,7 @@ test("[CellModel.delete] Delete rows/columns with merged cells - III", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -1398,7 +1398,7 @@ test("[CellModel.get] Get cell at offset", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -1437,7 +1437,7 @@ test("[CellModel.get] Get cells for rectangle", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -1477,7 +1477,7 @@ test("[CellModel.getBounds] Get bounds of a cell", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -1532,7 +1532,7 @@ test("[CellModel.getRange] Get cell range for rectangle", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -1562,7 +1562,7 @@ test("[CellModel.isRangeVisible] Check whether a range is visible", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -1615,7 +1615,7 @@ test("[CellModel.find] Find next/previous visible row/column", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],
@@ -1667,7 +1667,7 @@ test("[CellModel.generate] Test generating null cells and filling", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "base",
+				rendererName: "text",
 				value: "Last cell"
 			}
 		],

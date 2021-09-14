@@ -72,12 +72,4 @@ export class CanvasUtil {
 		ctx.closePath();
 	}
 
-	/**
-	 * Convert the passed color for a fill or stroke style for the HTML5 canvas.
-	 * @param color to convert
-	 */
-	public static colorToStyle(color: IColor): string {
-		return `rgba(${color.red}, ${color.green}, ${color.blue}, ${color.alpha})`;
-	}
-
 }
