@@ -26,6 +26,57 @@ export class CellRangeUtil {
 	}
 
 	/**
+	 * Apply the exclusive or (XOR) operation on two cell ranges.
+	 * @param a first cell range
+	 * @param b second cell range
+	 */
+	public static xor(a: ICellRange, b: ICellRange): ICellRange[] {
+		const result: ICellRange[] = [];
+
+		// Cut top rows if necessary
+		if (a.startRow !== b.startRow) {
+			result.push({
+				startRow: Math.min(a.startRow, b.startRow),
+				endRow: Math.max(a.startRow, b.startRow),
+				startColumn: Math.min(a.startColumn, b.startColumn),
+				endColumn: Math.max(a.endColumn, b.endColumn)
+			});
+		}
+
+		// Cut bottom rows in necessary
+		if (a.endRow !== b.endRow) {
+			result.push({
+				startRow: Math.min(a.endRow, b.endRow),
+				endRow: Math.max(a.endRow, b.endRow),
+				startColumn: Math.min(a.startColumn, b.startColumn),
+				endColumn: Math.max(a.endColumn, b.endColumn)
+			});
+		}
+
+		// Cut left columns in between already cut rows
+		if (a.startColumn !== b.startColumn) {
+			result.push({
+				startRow: Math.max(a.startRow, b.startRow),
+				endRow: Math.min(a.endRow, b.endRow),
+				startColumn: Math.min(a.startColumn, b.startColumn),
+				endColumn: Math.max(a.startColumn, b.startColumn)
+			});
+		}
+
+		// Cut right columns in between already cut rows
+		if (a.endColumn !== b.endColumn) {
+			result.push({
+				startRow: Math.max(a.startRow, b.startRow),
+				endRow: Math.min(a.endRow, b.endRow),
+				startColumn: Math.min(a.endColumn, b.endColumn),
+				endColumn: Math.max(a.endColumn, b.endColumn)
+			});
+		}
+
+		return result;
+	}
+
+	/**
 	 * Check whether the given range is the same as the other range.
 	 * @param a first range to check for equality
 	 * @param b second range to check for equality

@@ -181,6 +181,21 @@
 
       <div class="controls-group">
         <label class="controls-label">
+          Row/column size
+        </label>
+
+        <div style="text-align: center; margin: 20px 0 5px 0">
+          <input type="number" #sizeInput min="10" max="500" value="100">
+        </div>
+
+        <div style="text-align: center">
+          <button mat-stroked-button (click)="setRowHeight(sizeInput.valueAsNumber)">Set row height</button>
+          <button mat-stroked-button (click)="setColumnWidth(sizeInput.valueAsNumber)">Set column width</button>
+        </div>
+      </div>
+
+      <div class="controls-group">
+        <label class="controls-label">
           Miscellaneous
         </label>
 

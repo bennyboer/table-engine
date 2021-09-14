@@ -5,7 +5,7 @@ import {INotificationService} from "../util/notification/notification-service";
 /**
  * The default renderer type.
  */
-const DEFAULT_RENDERER_TYPE: RendererType = RendererType.CANVAS;
+export const DEFAULT_RENDERER_TYPE: RendererType = RendererType.CANVAS;
 
 /**
  * Default limit when copying cells.

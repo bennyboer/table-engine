@@ -13,7 +13,7 @@ export class CellModel implements ICellModel {
 	/**
 	 * The default cell renderer name to use.
 	 */
-	private static readonly DEFAULT_CELL_RENDERER_NAME: string = "base";
+	private static readonly DEFAULT_CELL_RENDERER_NAME: string = "text";
 
 	/**
 	 * The default row size.
