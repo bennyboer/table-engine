@@ -430,9 +430,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			this.engine.registerCellRenderer(new TextCellRenderer({
 				editable: true,
 				horizontalAlignment: HorizontalAlignment.CENTER,
-				verticalAlignment: VerticalAlignment.MIDDLE,
-				fontFamily: "Calibri",
-				fontSize: 20
+				verticalAlignment: VerticalAlignment.MIDDLE
 			}));
 			this.engine.registerCellRenderer(new RowColumnHeaderRenderer());
 			this.engine.registerCellRenderer(new ImageCellRenderer());
