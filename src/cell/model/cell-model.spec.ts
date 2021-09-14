@@ -13,7 +13,7 @@ test("[CellModel.generate] Validate row/column sizes - I", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => row * 2 + 10,
 		(column) => column * 4 + 20,
 		new Set<number>(),
@@ -40,7 +40,7 @@ test("[CellModel.generate] Validate row/column sizes - II", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -68,7 +68,7 @@ test("[CellModel.generate] Validate row/column offsets", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -99,7 +99,7 @@ test("[CellModel.generate] Validate row/column offsets and hidden rows/columns",
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		hiddenRows,
@@ -123,7 +123,7 @@ test("[CellModel.generate] Validate cell values and ranges", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -158,7 +158,7 @@ test("[CellModel.resize] Resize a single row and column", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -193,7 +193,7 @@ test("[CellModel.resize] Resize multiple rows and columns", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -237,7 +237,7 @@ test("[CellModel.resize] Resize rows and columns with hidden rows/columns", () =
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		hiddenRows,
@@ -269,7 +269,7 @@ test("[CellModel.hide] Hide rows and columns", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -321,7 +321,7 @@ test("[CellModel.hide] Hide rows and columns - with already hidden rows/columns"
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		hiddenRows,
@@ -359,7 +359,7 @@ test("[CellModel.show] Show single row and column", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		hiddenRows,
@@ -391,7 +391,7 @@ test("[CellModel.hide] Hide all", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -415,7 +415,7 @@ test("[CellModel.hide] Hide all and show all again", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -445,7 +445,7 @@ test("[CellModel.show] Show multiple rows and columns", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -502,7 +502,7 @@ test("[CellModel.getCell] Get a cell", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -536,7 +536,7 @@ test("[CellModel.merge] Merge a cell range", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -569,7 +569,7 @@ test("[CellModel.merge] Merge a cell range - impossible", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -609,7 +609,7 @@ test("[CellModel.split] Split a cell range", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -651,7 +651,7 @@ test("[CellModel.split] Try to split a single row column cell", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -678,7 +678,7 @@ test("[CellModel.insert] Insert rows/columns at the beginning", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -750,7 +750,7 @@ test("[CellModel.insert] Insert rows/columns at the end", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -802,7 +802,7 @@ test("[CellModel.insert] Insert rows/columns somewhere in between", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -855,7 +855,7 @@ test("[CellModel.insert] Insert rows/columns with hidden rows/columns", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		hiddenRows,
@@ -894,7 +894,7 @@ test("[CellModel.insert] Insert rows/columns with merged cells and hidden rows/c
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		hiddenRows,
@@ -944,7 +944,7 @@ test("[CellModel.delete] Delete rows/columns from the beginning", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -993,7 +993,7 @@ test("[CellModel.delete] Delete rows/columns at the end", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1037,7 +1037,7 @@ test("[CellModel.delete] Delete rows/columns in between", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1096,7 +1096,7 @@ test("[CellModel.delete] Delete rows/columns with hidden rows/columns", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		hiddenRows,
@@ -1150,7 +1150,7 @@ test("[CellModel.delete] Delete rows/columns with merged cells - I", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1216,7 +1216,7 @@ test("[CellModel.delete] Delete rows/columns with merged cells - II", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1309,7 +1309,7 @@ test("[CellModel.delete] Delete rows/columns with merged cells - III", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1403,7 +1403,7 @@ test("[CellModel.get] Get cell at offset", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1442,7 +1442,7 @@ test("[CellModel.get] Get cells for rectangle", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1482,7 +1482,7 @@ test("[CellModel.getBounds] Get bounds of a cell", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1537,7 +1537,7 @@ test("[CellModel.getRange] Get cell range for rectangle", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1567,7 +1567,7 @@ test("[CellModel.isRangeVisible] Check whether a range is visible", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1620,7 +1620,7 @@ test("[CellModel.find] Find next/previous visible row/column", () => {
 			}
 		],
 		(row, column) => row * column,
-		(row, column) => "base",
+		(row, column) => "text",
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1687,10 +1687,10 @@ test("[CellModel.generate] Test generating null cells and filling", () => {
 		endColumn: 2
 	});
 
-	expect(model.getCell(1, 1).rendererName).toBe("base");
-	expect(model.getCell(1, 2).rendererName).toBe("base");
-	expect(model.getCell(2, 1).rendererName).toBe("base");
-	expect(model.getCell(2, 2).rendererName).toBe("base");
+	expect(model.getCell(1, 1).rendererName).toBe("text");
+	expect(model.getCell(1, 2).rendererName).toBe("text");
+	expect(model.getCell(2, 1).rendererName).toBe("text");
+	expect(model.getCell(2, 2).rendererName).toBe("text");
 
 	expect(model.getCell(0, 0)).toBe(null);
 	expect(model.getCell(3, 3)).toBe(null);
@@ -1702,5 +1702,5 @@ test("[CellModel.generate] Test generating null cells and filling", () => {
 
 	model.setValue(3, 3, "Hello world!");
 	expect(model.getCell(3, 3).value).toBe("Hello world!");
-	expect(model.getCell(3, 3).rendererName).toBe("base");
+	expect(model.getCell(3, 3).rendererName).toBe("text");
 });
