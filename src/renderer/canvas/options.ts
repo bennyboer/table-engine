@@ -1,6 +1,7 @@
 import {fillOptions as fillScrollBarOptions, IScrollBarOptions} from "../options/scrollbar";
 import {fillOptions as fillSelectionOptions, ISelectionRenderingOptions} from "../options/selection";
 import {fillOptions as fillScrollingOptions, IScrollingOptions} from "../options/scrolling";
+import {fillOptions as fillRowColumnResizingOptions, IRowColumnResizingOptions} from "../options/row-column-resizing";
 
 /**
  * Duration in milliseconds used to throttle high-rate events
@@ -37,6 +38,11 @@ export interface ICanvasRendererOptions {
 	 */
 	scrolling?: IScrollingOptions;
 
+	/**
+	 * Options for resizing rows and columns.
+	 */
+	rowColumnResizing?: IRowColumnResizingOptions;
+
 }
 
 /**
@@ -66,6 +72,11 @@ export const fillOptions = (options?: ICanvasRendererOptions) => {
 		options.scrolling = {};
 	}
 	fillScrollingOptions(options.scrolling);
+
+	if (!options.rowColumnResizing) {
+		options.rowColumnResizing = {};
+	}
+	fillRowColumnResizingOptions(options.rowColumnResizing);
 
 	return options;
 };
