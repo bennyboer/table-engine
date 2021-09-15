@@ -1,5 +1,9 @@
 # Table Engine
 
+<p align="center">
+    <img src="docs/img/logo/logo.svg" width="256">
+</p>
+
 > Library to visualize huge tables in web environments with high-performance rendering.
 
 <div style="text-align: center">

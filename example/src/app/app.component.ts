@@ -388,7 +388,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 				const valueToCopy: any = !!initialCell ? initialCell.value : "";
 
 				for (const cell of targetCells) {
-					cell.value = valueToCopy;
+					cell.value = JSON.parse(JSON.stringify(valueToCopy));
 				}
 
 				this.engine.repaint();
