@@ -241,6 +241,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _copyHandleInitial: IInitialPosition | null;
 
 	/**
+	 * Initial position of the resizing dragging process.
+	 */
+	private _resizingDragStart: IResizingDragStart | null;
+
+	/**
 	 * Current auto-scrolling state.
 	 * Auto-scrolling is used when selecting and the mouse is outside viewport bounds.
 	 */
@@ -498,6 +503,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			// Check if mouse if over a scroll bar
 			const isOverVerticalScrollBar: boolean = CanvasRenderer._isMouseOverScrollBar(x, y, true, this._lastRenderingContext.scrollBar.vertical);
 			const isOverHorizontalScrollBar: boolean = CanvasRenderer._isMouseOverScrollBar(x, y, false, this._lastRenderingContext.scrollBar.horizontal);
+			const resizingInfo: IResizerInfo = this._isMouseOverResizingSpace(x, y);
 			if (isOverVerticalScrollBar || isOverHorizontalScrollBar) {
 				const scrollVertically: boolean = isOverVerticalScrollBar;
 
@@ -526,6 +532,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				this._copyHandleInitial = {
 					row: this._selectionModel.getPrimary().initial.row,
 					column: this._selectionModel.getPrimary().initial.column,
+				};
+			} else if (this._options.renderer.canvas.rowColumnResizing.allowResizing && resizingInfo.isMouseOver) {
+				this._resizingDragStart = {
+					startX: x,
+					startY: y,
+					currentX: x,
+					currentY: y,
+					info: resizingInfo
 				};
 			} else if (this._isInMouseDragMode) {
 				this._mouseDragStart = {
@@ -723,7 +737,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param y position of the mouse
 	 * @param ctx the current rendering context
 	 */
-	private static _isMouseOverCopyHandle(x: number, y: number, ctx: IRenderContext) {
+	private static _isMouseOverCopyHandle(x: number, y: number, ctx: IRenderContext): boolean {
 		if (!ctx || !ctx.selection) {
 			return false;
 		}
@@ -736,6 +750,76 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		// Check if mouse is over copy handle
 		return x >= ctx.selection.copyHandle.bounds.left && x <= ctx.selection.copyHandle.bounds.left + ctx.selection.copyHandle.bounds.width
 			&& y >= ctx.selection.copyHandle.bounds.top && y <= ctx.selection.copyHandle.bounds.top + ctx.selection.copyHandle.bounds.height;
+	}
+
+	/**
+	 * Check whether the mouse is over a resizing space in rows or columns.
+	 * @param x position of the mouse
+	 * @param y position of the mouse
+	 */
+	private _isMouseOverResizingSpace(x: number, y: number): IResizerInfo {
+		const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
+
+		// Check whether we are allowed to row/column resize at this point
+		const isInRowCount: boolean = targetRange.startRow < this._options.renderer.canvas.rowColumnResizing.rowCount;
+		const isInColumnCount: boolean = targetRange.startColumn < this._options.renderer.canvas.rowColumnResizing.columnCount;
+
+		if (!isInRowCount && !isInColumnCount) {
+			return {isMouseOver: false};
+		}
+
+		// Check bounds of the targetRange
+		const bounds: IRectangle = this._cellModel.getBounds(targetRange);
+
+		const fixedRows: number = Math.min(this.rendererOptions.view.fixedRows, this._cellModel.getRowCount());
+		const fixedColumns: number = Math.min(this.rendererOptions.view.fixedColumns, this._cellModel.getColumnCount());
+
+		if (targetRange.startRow > fixedRows) {
+			bounds.top -= this._scrollOffset.y;
+		}
+		if (targetRange.startColumn > fixedColumns) {
+			bounds.left -= this._scrollOffset.x;
+		}
+
+		// Determine offsets from spaces between rows or columns
+		const leftXOffset: number = bounds.left;
+		const rightXOffset: number = bounds.left + bounds.width;
+
+		const topYOffset: number = bounds.top;
+		const bottomYOffset: number = bounds.top + bounds.height;
+
+		const leftXDiff: number = x - leftXOffset;
+		const rightXDiff: number = rightXOffset - x;
+
+		const topYDiff: number = y - topYOffset;
+		const bottomYDiff: number = bottomYOffset - y;
+
+		// Determine whether offsets satisfy a certain threshold to count as space between rows/columns
+		const resizerSize: number = this._options.renderer.canvas.rowColumnResizing.resizerSize;
+
+		let column: number = -1;
+		if (isInRowCount) {
+			if (rightXDiff <= resizerSize) {
+				column = targetRange.endColumn;
+			} else if (leftXDiff <= resizerSize) {
+				column = targetRange.startColumn - 1;
+			}
+		}
+
+		let row: number = -1;
+		if (isInColumnCount) {
+			if (bottomYDiff <= resizerSize) {
+				row = targetRange.endRow;
+			} else if (topYDiff <= resizerSize) {
+				row = targetRange.startRow - 1;
+			}
+		}
+
+		return {
+			isMouseOver: row !== -1 || column != -1,
+			overRow: row !== -1,
+			index: row !== -1 ? row : column
+		};
 	}
 
 	/**
@@ -774,6 +858,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			const isMouseDragging: boolean = !!this._mouseDragStart;
 			const isSelectionDragging: boolean = !!this._initialSelectionRange;
 			const isCopyHandleDragging: boolean = !!this._copyHandleDragStart;
+			const isResizerDragging: boolean = !!this._resizingDragStart;
 
 			if (isScrollBarDragging) {
 				this._onScrollBarMove(x, y, this._scrollBarDragStart);
@@ -863,6 +948,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 				resetCursor = false; // Do not change the copy-handle cursor
 				isHandled = true;
+			} else if (isResizerDragging) {
+				this._resizingDragStart.currentX = x;
+				this._resizingDragStart.currentY = y;
+
+				this._repaintScheduler.next(); // Schedule repaint to render the visualization of the resizing process
+
+				isHandled = true;
 			} else if (isMouseDragging) {
 				this._onViewPortMove(x, y, this._mouseDragStart);
 				isHandled = true;
@@ -900,6 +992,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			if (CanvasRenderer._isMouseOverCopyHandle(x, y, this._lastRenderingContext)) {
 				this._setCursor("crosshair");
 				resetCursor = false;
+			} else if (this._options.renderer.canvas.rowColumnResizing.allowResizing) {
+				const resizingInfo: IResizerInfo = this._isMouseOverResizingSpace(x, y);
+				if (resizingInfo.isMouseOver) {
+					this._setCursor(resizingInfo.overRow ? "row-resize" : "col-resize");
+					resetCursor = false;
+				}
 			}
 		}
 
@@ -1081,7 +1179,42 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		const [x, y] = this._getMouseOffset(event);
 
-		if (!!this._initialSelectionRange) {
+		if (!!this._resizingDragStart) {
+			// Determine size difference from start position
+			const sizeDiff: number = this._resizingDragStart.info.overRow
+				? y - this._resizingDragStart.startY
+				: x - this._resizingDragStart.startX;
+
+			// Determine new size
+			const oldSize: number = this._resizingDragStart.info.overRow
+				? this._cellModel.getRowSize(this._resizingDragStart.info.index)
+				: this._cellModel.getColumnSize(this._resizingDragStart.info.index);
+			let newSize: number = oldSize + sizeDiff;
+
+			// Restrict new size by the min allowed row/column sizes from options
+			if (this._resizingDragStart.info.overRow) {
+				if (newSize < this._options.renderer.canvas.rowColumnResizing.minRowSize) {
+					newSize = this._options.renderer.canvas.rowColumnResizing.minRowSize;
+				}
+			} else {
+				if (newSize < this._options.renderer.canvas.rowColumnResizing.minColumnSize) {
+					newSize = this._options.renderer.canvas.rowColumnResizing.minColumnSize;
+				}
+			}
+
+			// Call resizer handler to process the resizing
+			if (this._options.renderer.canvas.rowColumnResizing.resizingHandler(
+				newSize,
+				this._resizingDragStart.info.overRow,
+				this._resizingDragStart.info.index,
+				this._cellModel,
+				this._selectionModel
+			)) {
+				this._repaintScheduler.next(); // Schedule a repaint
+			}
+
+			this._resizingDragStart = null;
+		} else if (!!this._initialSelectionRange) {
 			// End selection extending
 			if (!this._copyHandleDragStart) {
 				const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
@@ -2212,6 +2345,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const scrollBarContext: IScrollBarRenderContext = this._calculateScrollBarContext(viewPort, fixedRowsHeight, fixedColumnsWidth);
 		const selectionContext: ISelectionRenderContext = this._calculateSelectionContext(viewPort, fixedRows, fixedColumns, fixedRowsHeight, fixedColumnsWidth);
 		const borderContext: IBorderRenderContext = this._calculateBorderContext(cellsInfo);
+		const resizerContext: IResizerRenderContext = this._calculateResizerRenderContext();
 
 		return {
 			focused: this._isFocused,
@@ -2224,6 +2358,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			scrollBar: scrollBarContext,
 			selection: selectionContext,
 			borders: borderContext,
+			resizer: resizerContext,
 			renderers: this._cellRendererLookup
 		}
 	}
@@ -2239,6 +2374,24 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			inFixedRows: !!cellsInfo.fixedRowCells ? this._calculateBorderInfo(this._borderModel.getBorders(cellsInfo.fixedRowCells.cellRange), cellsInfo.fixedRowCells.cellRange, true, false) : [],
 			inNonFixedArea: this._calculateBorderInfo(this._borderModel.getBorders(cellsInfo.nonFixedCells.cellRange), cellsInfo.nonFixedCells.cellRange, true, true)
 		};
+	}
+
+	/**
+	 * Calculate the resizer line rendering context.
+	 */
+	private _calculateResizerRenderContext(): IResizerRenderContext {
+		const context: IResizerRenderContext = {
+			showResizer: !!this._resizingDragStart,
+			color: this._options.renderer.canvas.rowColumnResizing.resizerLineColor,
+			thickness: this._options.renderer.canvas.rowColumnResizing.resizerLineThickness
+		};
+
+		if (!!this._resizingDragStart) {
+			context.isVertical = !this._resizingDragStart.info.overRow;
+			context.offset = this._resizingDragStart.info.overRow ? this._resizingDragStart.currentY : this._resizingDragStart.currentX;
+		}
+
+		return context;
 	}
 
 	/**
@@ -2524,6 +2677,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			// Render scrollbars
 			CanvasRenderer._renderScrollBars(ctx, renderingContext);
 
+			// Render resizing visualization (if currently resizing)
+			CanvasRenderer._renderResizerVisualization(ctx, renderingContext);
+
 			if (this._options.misc.debug) {
 				console.log(`RENDERING: ${window.performance.now() - renderingTime}ms, CREATING RENDERING CONTEXT: ${creatingRenderingContextTime}ms`);
 			}
@@ -2772,6 +2928,34 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		} else if (side.style === BorderStyle.DASHED) {
 			ctx.setLineDash([5 * side.size, 5 * side.size]);
 		}
+	}
+
+	/**
+	 * Render the scroll bars.
+	 * @param ctx to render with
+	 * @param context the rendering context
+	 */
+	private static _renderResizerVisualization(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
+		if (!context.resizer.showResizer) {
+			return;
+		}
+
+		// Setup drawing context
+		ctx.strokeStyle = Colors.toStyleStr(context.resizer.color);
+		ctx.lineWidth = context.resizer.thickness;
+
+		// Draw line
+		ctx.beginPath();
+
+		if (context.resizer.isVertical) {
+			ctx.moveTo(context.resizer.offset, 0);
+			ctx.lineTo(context.resizer.offset, context.viewPort.height);
+		} else {
+			ctx.moveTo(0, context.resizer.offset);
+			ctx.lineTo(context.viewPort.width, context.resizer.offset);
+		}
+
+		ctx.stroke();
 	}
 
 	/**
@@ -3030,6 +3214,11 @@ export interface IRenderContext {
 	 * Rendering context of the borders.
 	 */
 	borders: IBorderRenderContext;
+
+	/**
+	 * Rendering context of the resizer visualization (when resizing rows/columns).
+	 */
+	resizer: IResizerRenderContext;
 
 	/**
 	 * Lookup for cell renderers.
@@ -3471,5 +3660,88 @@ interface ICrossingBorderEnvironment {
 	 * Reference to the dominant horizontal border side.
 	 */
 	dominantVerticalSide: IBorderSide;
+
+}
+
+interface IResizingDragStart {
+
+	/**
+	 * The start x coordinate.
+	 */
+	startX: number;
+
+	/**
+	 * The start y coordinate.
+	 */
+	startY: number;
+
+	/**
+	 * The current x-coordinate.
+	 */
+	currentX: number;
+
+	/**
+	 * The current y-coordinate.
+	 */
+	currentY: number;
+
+	/**
+	 * Initial info of the resizer.
+	 */
+	info: IResizerInfo;
+
+}
+
+/**
+ * Info about a row/column resizer.
+ */
+interface IResizerInfo {
+
+	/**
+	 * Whether the mouse is over a resizer.
+	 */
+	isMouseOver: boolean;
+
+	/**
+	 * Whether the resizer is resizing rows or columns.
+	 */
+	overRow?: boolean;
+
+	/**
+	 * Index of the row/column resizing.
+	 */
+	index?: number;
+
+}
+
+/**
+ * Render context for the resizer (if any).
+ */
+interface IResizerRenderContext {
+
+	/**
+	 * Whether to render a resizer visualization.
+	 */
+	showResizer: boolean;
+
+	/**
+	 * Whether the resizer line is to be drawn vertically or horizontally.
+	 */
+	isVertical?: boolean;
+
+	/**
+	 * Offset of the resizer line.
+	 */
+	offset?: number;
+
+	/**
+	 * Color of the resizer line.
+	 */
+	color: IColor;
+
+	/**
+	 * Thickness of the resizer line.
+	 */
+	thickness: number;
 
 }
