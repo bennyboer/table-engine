@@ -76,7 +76,7 @@ export const fillOptions = (options?: ICanvasRendererOptions) => {
 	if (!options.rowColumnResizing) {
 		options.rowColumnResizing = {};
 	}
-	fillRowColumnResizingOptions(options.scrolling);
+	fillRowColumnResizingOptions(options.rowColumnResizing);
 
 	return options;
 };

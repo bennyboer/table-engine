@@ -351,6 +351,11 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
 			this.engine.getOptions().misc.debug = true; // Enable debug mode
 
+			// Setup row/column resizing
+			this.engine.getOptions().renderer.canvas.rowColumnResizing.allowResizing = true;
+			this.engine.getOptions().renderer.canvas.rowColumnResizing.rowCount = 1;
+			this.engine.getOptions().renderer.canvas.rowColumnResizing.columnCount = 1;
+
 			// Setup copy-handle
 			this.engine.getOptions().selection.copyHandle.showCopyHandle = true;
 			this.engine.getOptions().selection.copyHandle.copyHandler = (origin, target) => {

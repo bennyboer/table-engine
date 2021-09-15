@@ -1471,6 +1471,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			return; // Nothing to move
 		}
 
+		// Clear selections except the primary
+		const selections: ISelection[] = this._selectionModel.getSelections();
+		while (selections.length > 1) {
+			if (selections[0] === primary) {
+				this._selectionModel.removeSelection(selections[1]);
+			} else {
+				this._selectionModel.removeSelection(selections[0]);
+			}
+		}
+		this._selectionModel.setPrimary(0);
+
 		if (this._selectionModel.moveSelection(primary, xDiff, yDiff, jump)) {
 			this.scrollTo(primary.initial.row, primary.initial.column);
 
@@ -1952,7 +1963,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				selection.range.startRow = selection.range.endRow;
 			}
 		}
-		if (selection.initial.row >= maxRow) {
+		if (!!selection.initial && selection.initial.row >= maxRow) {
 			selection.initial.row = maxRow - 1;
 		}
 
@@ -1963,7 +1974,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				selection.range.startColumn = selection.range.endColumn;
 			}
 		}
-		if (selection.initial.column >= maxColumn) {
+		if (!!selection.initial && selection.initial.column >= maxColumn) {
 			selection.initial.column = maxColumn - 1;
 		}
 	}
