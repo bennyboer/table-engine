@@ -1218,7 +1218,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			// End selection extending
 			if (!this._copyHandleDragStart) {
 				const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
-				if (!CellRangeUtil.equals(this._initialSelectionRange, targetRange)) {
+				const isMultiSelection: boolean = event.ctrlKey;
+				if (!CellRangeUtil.equals(this._initialSelectionRange, targetRange) || isMultiSelection) {
 					this._updateCurrentSelection({
 						startRow: Math.min(this._initialSelectionRange.startRow, targetRange.startRow),
 						endRow: Math.max(this._initialSelectionRange.endRow, targetRange.endRow),
