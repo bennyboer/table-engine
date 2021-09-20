@@ -84,14 +84,14 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 		// Check if cell is editable
 		let isEditable: boolean = this._defaultOptions.editable;
 		let editValue: string;
-		const specialValue: ITextCellRendererValue | null = typeof event.cell.value === "object" && "text" in event.cell.value ? event.cell.value as ITextCellRendererValue : null;
+		const specialValue: ITextCellRendererValue | null = !!event.cell.value && typeof event.cell.value === "object" && "text" in event.cell.value ? event.cell.value as ITextCellRendererValue : null;
 		if (!!specialValue) {
 			if (!!specialValue.options && specialValue.options.editable !== undefined && specialValue.options.editable !== null) {
 				isEditable = specialValue.options.editable;
 			}
 			editValue = specialValue.text;
 		} else {
-			editValue = `${event.cell.value}`;
+			editValue = !!event.cell.value ? `${event.cell.value}` : "";
 		}
 
 		if (!isEditable) {

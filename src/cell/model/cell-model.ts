@@ -644,18 +644,28 @@ export class CellModel implements ICellModel {
 	 * Insert rows before the given index.
 	 * @param insertBeforeIndex index to insert rows before
 	 * @param count of rows to insert
+	 * @param cellInitializer initializer for the new cells
 	 */
-	public insertRows(insertBeforeIndex: number, count: number): void {
-		this._insert(insertBeforeIndex, count, true);
+	public insertRows(
+		insertBeforeIndex: number,
+		count: number,
+		cellInitializer?: (row: number, column: number) => ICell
+	): void {
+		this._insert(insertBeforeIndex, count, true, cellInitializer);
 	}
 
 	/**
 	 * Insert columns before the given index.
 	 * @param insertBeforeIndex index to insert columns before
 	 * @param count of columns to insert
+	 * @param cellInitializer initializer for the new cells
 	 */
-	public insertColumns(insertBeforeIndex: number, count: number): void {
-		this._insert(insertBeforeIndex, count, false);
+	public insertColumns(
+		insertBeforeIndex: number,
+		count: number,
+		cellInitializer?: (row: number, column: number) => ICell
+	): void {
+		this._insert(insertBeforeIndex, count, false, cellInitializer);
 	}
 
 	/**
@@ -663,8 +673,14 @@ export class CellModel implements ICellModel {
 	 * @param insertBeforeIndex the index to insert rows/columns before
 	 * @param count of rows/columns to insert
 	 * @param isRow whether we want to insert rows or columns
+	 * @param cellInitializer initializer for the new cells
 	 */
-	private _insert(insertBeforeIndex: number, count: number, isRow: boolean): void {
+	private _insert(
+		insertBeforeIndex: number,
+		count: number,
+		isRow: boolean,
+		cellInitializer?: (row: number, column: number) => ICell
+	): void {
 		// First and foremost collect all merged cells ranging over the new area to insert
 		const intersectingMergedAreaRanges: ICellRange[] = insertBeforeIndex > 0
 			? this._collectMergedCellsRangingOverIndex(isRow, insertBeforeIndex - 1)
@@ -676,7 +692,7 @@ export class CellModel implements ICellModel {
 		}
 
 		// Expand cell lookup and other collections
-		const totalAddedSize: number = this._expandModelForInsert(insertBeforeIndex, count, isRow);
+		const totalAddedSize: number = this._expandModelForInsert(insertBeforeIndex, count, isRow, cellInitializer);
 
 		// Shift hidden rows/columns
 		CellModel._shiftHidden(isRow ? this._hiddenRows : this._hiddenColumns, insertBeforeIndex + 1, count);
@@ -798,13 +814,19 @@ export class CellModel implements ICellModel {
 	 * @param insertBeforeIndex insert before this index (in rows or columns).
 	 * @param count of rows or columns to insert
 	 * @param isRow whether we want to insert rows or columns
+	 * @param cellInitializer initializer for the new cells
 	 * @returns the total added size (height for rows, width for columns)
 	 */
-	private _expandModelForInsert(insertBeforeIndex: number, count: number, isRow: boolean): number {
+	private _expandModelForInsert(
+		insertBeforeIndex: number,
+		count: number,
+		isRow: boolean,
+		cellInitializer?: (row: number, column: number) => ICell
+	): number {
 		if (isRow) {
-			return this._expandModelForInsertForRows(insertBeforeIndex, count);
+			return this._expandModelForInsertForRows(insertBeforeIndex, count, cellInitializer);
 		} else {
-			return this._expandModelForInsertForColumns(insertBeforeIndex, count);
+			return this._expandModelForInsertForColumns(insertBeforeIndex, count, cellInitializer);
 		}
 	}
 
@@ -812,9 +834,14 @@ export class CellModel implements ICellModel {
 	 * Expand the cell model as preparation for a row insert operation.
 	 * @param insertBeforeIndex insert before this row index
 	 * @param count of rows to insert
+	 * @param cellInitializer initializer for the new cells
 	 * @returns the height of the inserted rows
 	 */
-	private _expandModelForInsertForRows(insertBeforeIndex: number, count: number): number {
+	private _expandModelForInsertForRows(
+		insertBeforeIndex: number,
+		count: number,
+		cellInitializer?: (row: number, column: number) => ICell
+	): number {
 		const rowCount: number = this.getRowCount();
 		const columnCount: number = this.getColumnCount();
 
@@ -824,7 +851,7 @@ export class CellModel implements ICellModel {
 			rowsToInsert[row] = new Array(columnCount);
 
 			for (let column = 0; column < columnCount; column++) {
-				rowsToInsert[row][column] = null; // Empty cell
+				rowsToInsert[row][column] = !!cellInitializer ? cellInitializer(row + insertBeforeIndex, column) : null;
 			}
 		}
 
@@ -860,9 +887,14 @@ export class CellModel implements ICellModel {
 	 * Expand the cell model as preparation for a column insert operation.
 	 * @param insertBeforeIndex insert before this column index
 	 * @param count of columns to insert
+	 * @param cellInitializer initializer for the new cells
 	 * @returns the width of the inserted columns
 	 */
-	private _expandModelForInsertForColumns(insertBeforeIndex: number, count: number): number {
+	private _expandModelForInsertForColumns(
+		insertBeforeIndex: number,
+		count: number,
+		cellInitializer?: (row: number, column: number) => ICell
+	): number {
 		const rowCount = this.getRowCount();
 		const columnCount = this.getColumnCount();
 
@@ -890,7 +922,7 @@ export class CellModel implements ICellModel {
 		for (let row = 0; row < rowCount; row++) {
 			const cellsToInsert: Array<ICell | null> = new Array(count);
 			for (let i = 0; i < cellsToInsert.length; i++) {
-				cellsToInsert[i] = null; // Empty cell
+				cellsToInsert[i] = !!cellInitializer ? cellInitializer(row, i + insertBeforeIndex) : null;
 			}
 
 			this._cellLookup[row].splice(insertBeforeIndex, 0, ...cellsToInsert);

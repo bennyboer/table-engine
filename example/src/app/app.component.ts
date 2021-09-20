@@ -297,7 +297,22 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			beforeIndex = this.engine.getCellModel().getRowCount();
 		}
 
-		this.engine.getCellModel().insertRows(beforeIndex, count);
+		this.engine.getCellModel().insertRows(beforeIndex, count, (row, column) => {
+			if (column === 0) {
+				return {
+					range: {
+						startRow: row,
+						endRow: row,
+						startColumn: column,
+						endColumn: column
+					},
+					rendererName: "row-column-header",
+					value: null
+				};
+			}
+
+			return null;
+		});
 		this.engine.repaint();
 	}
 
@@ -310,7 +325,22 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			beforeIndex = this.engine.getCellModel().getColumnCount();
 		}
 
-		this.engine.getCellModel().insertColumns(beforeIndex, count);
+		this.engine.getCellModel().insertColumns(beforeIndex, count, (row, column) => {
+			if (row === 0) {
+				return {
+					range: {
+						startRow: row,
+						endRow: row,
+						startColumn: column,
+						endColumn: column
+					},
+					rendererName: "row-column-header",
+					value: null
+				};
+			}
+
+			return null;
+		});
 		this.engine.repaint();
 	}
 
