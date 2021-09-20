@@ -22,7 +22,6 @@ import {IBorderSide} from "../../border/border-side";
 import {BorderStyle} from "../../border/border-style";
 import {ICellRendererEventListener} from "../cell/event/cell-renderer-event-listener";
 import {ICellRendererEvent} from "../cell/event/cell-renderer-event";
-import {IPoint} from "../../util/point";
 import {IOverlay} from "../../overlay/overlay";
 import {ClipboardUtil} from "../../util/clipboard/clipboard-util";
 import {ISize} from "../../util/size";
@@ -31,6 +30,9 @@ import {CopyNotification} from "../../util/notification/impl/copy";
 import {ITableEngineOptions} from "../../options";
 import {IRendererOptions} from "../options";
 import {Colors} from "../../util/colors";
+import {ICellRendererMouseEvent} from "../cell/event/cell-renderer-mouse-event";
+import {ICellRendererFocusEvent} from "../cell/event/cell-renderer-focus-event";
+import {ICellRendererKeyboardEvent} from "../cell/event/cell-renderer-keyboard-event";
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
 type CellRendererEventListenerFunctionSupplier = (listener: ICellRendererEventListener) => CellRendererEventListenerFunction | null | undefined;
@@ -252,11 +254,6 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _autoScrollContext: IAutoScrollContext | null = null;
 
 	/**
-	 * Whether the table is focused.
-	 */
-	private _isFocused: boolean = false;
-
-	/**
 	 * Names of cell renderers used in the last rendering cycle.
 	 */
 	private _lastUsedCellRenderers: Set<string> = new Set<string>();
@@ -288,6 +285,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Whether to update all overlays after the next rendering cycle.
 	 */
 	private _updateOverlaysAfterRenderCycle: boolean = false;
+
+	/**
+	 * Currently focused cell position (if any).
+	 */
+	private _focusedCellPosition: IInitialPosition | null = null;
 
 	/**
 	 * Get the renderer-specific options.
@@ -352,7 +354,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Whether the table is currently focused.
 	 */
 	public isFocused(): boolean {
-		return this._isFocused;
+		return !!this._focusedCellPosition;
 	}
 
 	/**
@@ -472,7 +474,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onFocus(event: FocusEvent): void {
-		this._isFocused = true;
+		// Focus initial cell
+		const primary: ISelection | null = this._selectionModel.getPrimary();
+		if (!!primary) {
+			this._updateFocusedCell(primary.initial);
+		}
 
 		this._repaintScheduler.next();
 	}
@@ -482,7 +488,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onBlur(event: FocusEvent): void {
-		this._isFocused = false;
+		this._updateFocusedCell(null); // Blur cell focus
 
 		this._repaintScheduler.next();
 	}
@@ -558,7 +564,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					range.startRow,
 					range.startColumn,
 					(listener) => listener.onMouseDown,
-					{x, y}
+					(e) => {
+						const mouseEvent: ICellRendererMouseEvent = e as ICellRendererMouseEvent;
+						mouseEvent.offset = {x, y};
+						mouseEvent.originalEvent = event;
+						return mouseEvent;
+					}
 				);
 				if (!preventDefault) {
 					this._initialSelectionRange = range;
@@ -582,14 +593,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param row of the cell to send event for
 	 * @param column of the cell to send event for
 	 * @param eventListenerSupplier to get event listener with
-	 * @param offset if a mouse event
+	 * @param eventPopulator populator for the event
 	 * @returns whether the default action should be prevented
 	 */
 	private _sendEventForPosition(
 		row: number,
 		column: number,
 		eventListenerSupplier: CellRendererEventListenerFunctionSupplier,
-		offset?: IPoint
+		eventPopulator: (event: ICellRendererEvent) => ICellRendererEvent
 	): boolean {
 		if (row >= this._cellModel.getRowCount() || column >= this._cellModel.getColumnCount()) {
 			return false;
@@ -601,11 +612,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			const listenerFunction: CellRendererEventListenerFunction | null | undefined = eventListenerSupplier(listener);
 			if (!!listenerFunction) {
 				// Create the event
-				const event: ICellRendererEvent = {
+				const event: ICellRendererEvent = eventPopulator({
 					cell,
-					offset,
 					preventDefault: false
-				};
+				});
 
 				listenerFunction(event);
 
@@ -692,6 +702,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			if (this._selectionModel.modifySelection(primary, range, initial, true, end)) {
 				repaint = true;
 			}
+		}
+
+		if (end) {
+			const primary: ISelection = this._selectionModel.getPrimary();
+			this._updateFocusedCell(primary.initial);
 		}
 
 		if (repaint) {
@@ -1014,7 +1029,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					this._sendEventForPosition(
 						this._lastHoveredCellRange.startRow,
 						this._lastHoveredCellRange.startColumn,
-						(listener) => listener.onMouseOut
+						(listener) => listener.onMouseOut,
+						(e) => {
+							const mouseEvent: ICellRendererMouseEvent = e as ICellRendererMouseEvent;
+							mouseEvent.originalEvent = event;
+							return mouseEvent;
+						}
 					);
 				}
 
@@ -1023,7 +1043,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					range.startRow,
 					range.startColumn,
 					(listener) => listener.onMouseMove,
-					{x, y}
+					(e) => {
+						const mouseEvent: ICellRendererMouseEvent = e as ICellRendererMouseEvent;
+						mouseEvent.offset = {x, y};
+						mouseEvent.originalEvent = event;
+						return mouseEvent;
+					}
 				);
 			} else {
 				if (!!this._lastHoveredCellRange) {
@@ -1031,7 +1056,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					this._sendEventForPosition(
 						this._lastHoveredCellRange.startRow,
 						this._lastHoveredCellRange.startColumn,
-						(listener) => listener.onMouseOut
+						(listener) => listener.onMouseOut,
+						(e) => {
+							const mouseEvent: ICellRendererMouseEvent = e as ICellRendererMouseEvent;
+							mouseEvent.originalEvent = event;
+							return mouseEvent;
+						}
 					);
 				}
 			}
@@ -1218,8 +1248,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			// End selection extending
 			if (!this._copyHandleDragStart) {
 				const targetRange: ICellRange = this._getCellRangeAtPoint(x, y);
+
+				const selectionChangedFromBeginning: boolean = !CellRangeUtil.equals(this._initialSelectionRange, targetRange);
 				const isMultiSelection: boolean = event.ctrlKey;
-				if (!CellRangeUtil.equals(this._initialSelectionRange, targetRange) || isMultiSelection) {
+				if (selectionChangedFromBeginning || isMultiSelection) {
 					this._updateCurrentSelection({
 						startRow: Math.min(this._initialSelectionRange.startRow, targetRange.startRow),
 						endRow: Math.max(this._initialSelectionRange.endRow, targetRange.endRow),
@@ -1230,6 +1262,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						column: this._initialSelectionRange.startColumn,
 					}, false, false, true);
 				} else {
+					/*
+					 * Make sure the current selection is focused.
+					 * May not be the case when only selecting a single cell.
+					 */
+					const primary: ISelection | null = this._selectionModel.getPrimary();
+					if (!!primary) {
+						this._updateFocusedCell(primary.initial);
+					}
+
 					// Send event to cell renderer for the cell on the current position
 					const range: ICellRange | null = this._getCellRangeAtPoint(x, y, false);
 					if (!!range) {
@@ -1237,7 +1278,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 							range.startRow,
 							range.startColumn,
 							(listener) => listener.onMouseUp,
-							{x, y}
+							(e) => {
+								const mouseEvent: ICellRendererMouseEvent = e as ICellRendererMouseEvent;
+								mouseEvent.offset = {x, y};
+								mouseEvent.originalEvent = event;
+								return mouseEvent;
+							}
 						);
 					}
 				}
@@ -1434,6 +1480,22 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onKeyDown(event: KeyboardEvent): void {
+		const preventDefault: boolean = !!this._focusedCellPosition && this._sendEventForPosition(
+			this._focusedCellPosition.row,
+			this._focusedCellPosition.column,
+			(listener) => listener.onKeyDown,
+			(e) => {
+				const keyboardEvent: ICellRendererKeyboardEvent = e as ICellRendererKeyboardEvent;
+				keyboardEvent.originalEvent = event;
+				return keyboardEvent;
+			}
+		);
+
+		if (preventDefault) {
+			event.preventDefault();
+			return;
+		}
+
 		switch (event.code) {
 			case "Space":
 				event.preventDefault();
@@ -1590,7 +1652,56 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			}
 		}, true, false);
 
+		const primary: ISelection = this._selectionModel.getPrimary();
+		this._updateFocusedCell(primary.initial);
+
 		this._repaintScheduler.next();
+	}
+
+	/**
+	 * Update the currently focused cell position.
+	 * @param position to update to (null if blurring all focus from table)
+	 */
+	private _updateFocusedCell(position: IInitialPosition | null): void {
+		// Check if position changed
+		const changed: boolean = (
+			(!this._focusedCellPosition && !!position)
+			|| (!!this._focusedCellPosition && !position)
+		) || (
+			this._focusedCellPosition.row !== position.row
+			|| this._focusedCellPosition.column !== position.column
+		);
+
+		if (!changed) {
+			return;
+		}
+
+		// Send blur event for old focused cell
+		if (!!this._focusedCellPosition) {
+			this._sendEventForPosition(
+				this._focusedCellPosition.row,
+				this._focusedCellPosition.column,
+				(listener) => listener.onBlur,
+				(e) => e as ICellRendererFocusEvent
+			);
+		}
+
+		if (!!position) {
+			this._focusedCellPosition = {
+				row: position.row,
+				column: position.column
+			};
+
+			// Send focus event
+			this._sendEventForPosition(
+				position.row,
+				position.column,
+				(listener) => listener.onFocus,
+				(e) => e as ICellRendererFocusEvent
+			);
+		} else {
+			this._focusedCellPosition = null;
+		}
 	}
 
 	/**
@@ -1617,6 +1728,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		this._selectionModel.setPrimary(0);
 
 		if (this._selectionModel.moveSelection(primary, xDiff, yDiff, jump)) {
+			this._updateFocusedCell(primary.initial);
+
 			this.scrollTo(primary.initial.row, primary.initial.column);
 
 			this._repaintScheduler.next();
@@ -1665,6 +1778,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		this._selectionModel.moveInitial(xDiff, yDiff);
 
 		const primary = this._selectionModel.getPrimary();
+		this._updateFocusedCell(primary.initial);
 		this.scrollTo(primary.initial.row, primary.initial.column);
 
 		this._repaintScheduler.next();
@@ -1756,6 +1870,22 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onKeyUp(event: KeyboardEvent): void {
+		const preventDefault: boolean = !!this._focusedCellPosition && this._sendEventForPosition(
+			this._focusedCellPosition.row,
+			this._focusedCellPosition.column,
+			(listener) => listener.onKeyUp,
+			(e) => {
+				const keyboardEvent: ICellRendererKeyboardEvent = e as ICellRendererKeyboardEvent;
+				keyboardEvent.originalEvent = event;
+				return keyboardEvent;
+			}
+		);
+
+		if (preventDefault) {
+			event.preventDefault();
+			return;
+		}
+
 		if (event.code === "Space") {
 			this._isInMouseDragMode = false;
 		}
@@ -2349,7 +2479,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const resizerContext: IResizerRenderContext = this._calculateResizerRenderContext();
 
 		return {
-			focused: this._isFocused,
+			focused: this.isFocused(),
 			viewPort,
 			tableSize: {
 				width: this._cellModel.getWidth(),
