@@ -24,8 +24,8 @@
 
 Table Engine gives you freedom to display **any** kind of table you can imagine. Want to build a spreadsheet component
 or a high-performance data-visualization -> Why not?!
-With the Table Engine there are no such concepts as column/row headers, sorting, filtering, ... - just **cells**, **
-borders**, and one or multiple cell **selections**. Essentially Table Engine is more of a framework for building table
+With the Table Engine there are no such concepts as column/row headers, sorting, filtering, ... - just **cells**, 
+**borders**, and one or multiple cell **selections**. Essentially Table Engine is more of a framework for building table
 components so you as a developer have to build your own thing on a higher abstraction level.
 
 This project is work in progress, but you might check out our [demo](#demo) to see a snapshot of the current state.
