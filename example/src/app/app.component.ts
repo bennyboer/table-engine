@@ -31,6 +31,7 @@ import {ITextCellRendererValue} from "../../../src/renderer/canvas/cell/text/tex
 import {HorizontalAlignment} from "../../../src/util/alignment/horizontal-alignment";
 import {VerticalAlignment} from "../../../src/util/alignment/vertical-alignment";
 import {ICell} from "../../../src/cell/cell";
+import {DebugCellRenderer} from "./renderer/debug-cell-renderer";
 
 @Component({
 	selector: "app-root",
@@ -437,6 +438,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 				horizontalAlignment: HorizontalAlignment.CENTER,
 				verticalAlignment: VerticalAlignment.MIDDLE
 			}));
+			this.engine.registerCellRenderer(new DebugCellRenderer());
 			this.engine.registerCellRenderer(new RowColumnHeaderRenderer());
 			this.engine.registerCellRenderer(new ImageCellRenderer());
 			this.engine.registerCellRenderer(new LoadingCellRenderer());
@@ -523,6 +525,16 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 					range: CellRange.fromSingleRowColumn(1000, 1000),
 					rendererName: "text",
 					value: "Last cell with more text than normally"
+				},
+				{
+					range: {
+						startRow: 22,
+						endRow: 26,
+						startColumn: 9,
+						endColumn: 11
+					},
+					rendererName: "debug",
+					value: null
 				},
 				{
 					range: CellRange.fromSingleRowColumn(10, 2),
