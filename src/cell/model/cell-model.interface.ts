@@ -171,15 +171,17 @@ export interface ICellModel {
 	 * Insert rows before the given index.
 	 * @param insertBeforeIndex index to insert rows before
 	 * @param count of rows to insert
+	 * @param cellInitializer initializer for the new cells
 	 */
-	insertRows(insertBeforeIndex: number, count: number): void;
+	insertRows(insertBeforeIndex: number, count: number, cellInitializer?: (row: number, column: number) => ICell): void;
 
 	/**
 	 * Insert columns before the given index.
 	 * @param insertBeforeIndex index to insert columns before
 	 * @param count of columns to insert
+	 * @param cellInitializer initializer for the new cells
 	 */
-	insertColumns(insertBeforeIndex: number, count: number): void;
+	insertColumns(insertBeforeIndex: number, count: number, cellInitializer?: (row: number, column: number) => ICell): void;
 
 	/**
 	 * Delete rows starting with the given index.
