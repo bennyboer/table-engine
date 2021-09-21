@@ -33,6 +33,7 @@ import {Colors} from "../../util/colors";
 import {ICellRendererMouseEvent} from "../cell/event/cell-renderer-mouse-event";
 import {ICellRendererFocusEvent} from "../cell/event/cell-renderer-focus-event";
 import {ICellRendererKeyboardEvent} from "../cell/event/cell-renderer-keyboard-event";
+import {IPoint} from "../../util/point";
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
 type CellRendererEventListenerFunctionSupplier = (listener: ICellRendererEventListener) => CellRendererEventListenerFunction | null | undefined;
@@ -235,17 +236,22 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	/**
 	 * The initially selected cell range of the current selection process (if in progress).
 	 */
-	private _initialSelectionRange: ICellRange | null;
+	private _initialSelectionRange: ICellRange | null = null;
+
+	/**
+	 * The last known mouse position.
+	 */
+	private _lastMousePosition: IPoint | null = null;
 
 	/**
 	 * Initial cell position of the copy handle drag.
 	 */
-	private _copyHandleInitial: IInitialPosition | null;
+	private _copyHandleInitial: IInitialPosition | null = null;
 
 	/**
 	 * Initial position of the resizing dragging process.
 	 */
-	private _resizingDragStart: IResizingDragStart | null;
+	private _resizingDragStart: IResizingDragStart | null = null;
 
 	/**
 	 * Current auto-scrolling state.
@@ -1066,6 +1072,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				}
 			}
 		}
+
+		this._lastMousePosition = {x, y};
 	}
 
 	/**
@@ -1121,6 +1129,22 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			this._scrollOffset.y + yScrollDiff
 		)) {
 			this._repaintScheduler.next();
+		}
+
+		// Update selection extending when currently dragging selection
+		const isSelectionDragging: boolean = !!this._initialSelectionRange;
+		if (isSelectionDragging) {
+			const targetRange: ICellRange = this._getCellRangeAtPoint(this._lastMousePosition.x, this._lastMousePosition.y);
+
+			this._updateCurrentSelection({
+				startRow: Math.min(this._initialSelectionRange.startRow, targetRange.startRow),
+				endRow: Math.max(this._initialSelectionRange.endRow, targetRange.endRow),
+				startColumn: Math.min(this._initialSelectionRange.startColumn, targetRange.startColumn),
+				endColumn: Math.max(this._initialSelectionRange.endColumn, targetRange.endColumn),
+			}, {
+				row: this._initialSelectionRange.startRow,
+				column: this._initialSelectionRange.startColumn,
+			}, false, false, false);
 		}
 
 		// Schedule next animation frame
