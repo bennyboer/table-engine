@@ -502,6 +502,12 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 				endColumn: 3
 			});
 
+			this.engine.getBorderModel().setBorderLine(10, 2, {
+				style: BorderStyle.DOTTED,
+				size: 3,
+				color: {red: 140, blue: 180, green: 160, alpha: 1.0}
+			}, {bottom: true, top: true});
+
 			this.engine.initialize();
 		});
 	}
