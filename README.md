@@ -28,12 +28,17 @@ With the Table Engine there are no such concepts as column/row headers, sorting,
 **borders**, and one or multiple cell **selections**. Essentially Table Engine is more of a framework for building table
 components so you as a developer have to build your own thing on a higher abstraction level.
 
-This project is work in progress, but you might check out our [demo](#demo) to see a snapshot of the current state.
+This project is nearly feature-complete.
+If you feel like there is something missing feel free to open an issue!
 
 ## Demo
 
 You might want to take a look at the current example being constantly rebuilt during
 development: https://bennyboer.github.io/table-engine/.
+
+Note that the demo application is **just an example**.
+If you decide to use the Table-Engine, your use case may look very different to that depicted in the demo application.
+In case you're unsure whether this library fits your use-case you may open an issue to discuss the topic.
 
 ## Architecture
 
