@@ -32,6 +32,8 @@ import {HorizontalAlignment} from "../../../src/util/alignment/horizontal-alignm
 import {VerticalAlignment} from "../../../src/util/alignment/vertical-alignment";
 import {ICell} from "../../../src/cell/cell";
 import {DebugCellRenderer} from "./renderer/debug-cell-renderer";
+import {CheckboxCellRenderer} from "../../../src/renderer/canvas/cell/checkbox/checkbox-cell-renderer";
+import {ICheckboxCellRendererValue} from "../../../src/renderer/canvas/cell/checkbox/checkbox-cell-renderer-value";
 
 @Component({
 	selector: "app-root",
@@ -472,6 +474,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			this.engine.registerCellRenderer(new RowColumnHeaderRenderer());
 			this.engine.registerCellRenderer(new ImageCellRenderer());
 			this.engine.registerCellRenderer(new LoadingCellRenderer());
+			this.engine.registerCellRenderer(new CheckboxCellRenderer());
 
 			// Set an example border
 			this.engine.getBorderModel().setBorder({
@@ -581,6 +584,21 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 							return new Promise(resolve => setTimeout(() => resolve("Done 😀"), 2000))
 						},
 					} as ILoadingCellRendererValue
+				},
+				{
+					range: CellRange.fromSingleRowColumn(13, 3),
+					rendererName: CheckboxCellRenderer.NAME,
+					value: {
+						checked: false
+					} as ICheckboxCellRendererValue
+				},
+				{
+					range: CellRange.fromSingleRowColumn(14, 3),
+					rendererName: CheckboxCellRenderer.NAME,
+					value: {
+						checked: false,
+						label: "with Label"
+					} as ICheckboxCellRendererValue
 				}
 			],
 			(row, column) => row * column,

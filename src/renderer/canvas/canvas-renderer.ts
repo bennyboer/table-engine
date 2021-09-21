@@ -3075,6 +3075,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private static _applyBorderStyle(ctx: CanvasRenderingContext2D, side: IBorderSide): void {
 		ctx.strokeStyle = Colors.toStyleStr(side.color);
 		ctx.lineWidth = side.size;
+		ctx.lineCap = "butt";
 
 		if (side.style === BorderStyle.SOLID) {
 			ctx.setLineDash([]);
