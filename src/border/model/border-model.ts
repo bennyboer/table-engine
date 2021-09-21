@@ -4,6 +4,8 @@ import {ICellRange} from "../../cell/range/cell-range";
 import {ICellModel} from "../../cell/model/cell-model.interface";
 import {ICell} from "../../cell/cell";
 import {ITableEngineOptions} from "../../options";
+import {IBorderSide} from "../border-side";
+import {IBorderMask} from "./border-mask";
 
 /**
  * Border model of the table-engine.
@@ -85,6 +87,51 @@ export class BorderModel implements IBorderModel {
 					};
 				}
 			}
+		}
+	}
+
+	/**
+	 * Set a border line.
+	 * @param row to set border line to
+	 * @param column to set border line to
+	 * @param borderSide to set
+	 * @param mask to apply border with
+	 */
+	public setBorderLine(row: number, column: number, borderSide: IBorderSide, mask: IBorderMask): void {
+		const border: IBorder = this._getCellBorder(row, column, true);
+		const priority: number = ++this._priorityCounter;
+
+		if (mask.top) {
+			border.top = {
+				priority,
+				color: borderSide.color,
+				size: borderSide.size,
+				style: borderSide.style
+			};
+		}
+		if (mask.bottom) {
+			border.bottom = {
+				priority,
+				color: borderSide.color,
+				size: borderSide.size,
+				style: borderSide.style
+			};
+		}
+		if (mask.left) {
+			border.left = {
+				priority,
+				color: borderSide.color,
+				size: borderSide.size,
+				style: borderSide.style
+			};
+		}
+		if (mask.right) {
+			border.right = {
+				priority,
+				color: borderSide.color,
+				size: borderSide.size,
+				style: borderSide.style
+			};
 		}
 	}
 
