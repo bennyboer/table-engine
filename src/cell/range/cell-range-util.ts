@@ -26,6 +26,21 @@ export class CellRangeUtil {
 	}
 
 	/**
+	 * Check whether the two given cell ranges overlap.
+	 * @param a first cell range
+	 * @param b second cell range
+	 */
+	public static overlap(a: ICellRange, b: ICellRange): boolean {
+		const cantOverlapVertically: boolean = a.startRow > b.endRow || a.endRow < b.startRow;
+		if (cantOverlapVertically) {
+			return false;
+		}
+
+		const cantOverlapHorizontally: boolean = a.startColumn > b.endColumn || a.endColumn < b.startColumn;
+		return !cantOverlapHorizontally;
+	}
+
+	/**
 	 * Apply the exclusive or (XOR) operation on two cell ranges.
 	 * @param a first cell range
 	 * @param b second cell range
@@ -37,7 +52,7 @@ export class CellRangeUtil {
 		if (a.startRow !== b.startRow) {
 			result.push({
 				startRow: Math.min(a.startRow, b.startRow),
-				endRow: Math.max(a.startRow, b.startRow),
+				endRow: Math.max(a.startRow, b.startRow) - 1, // Exclusive!
 				startColumn: Math.min(a.startColumn, b.startColumn),
 				endColumn: Math.max(a.endColumn, b.endColumn)
 			});
@@ -46,7 +61,7 @@ export class CellRangeUtil {
 		// Cut bottom rows in necessary
 		if (a.endRow !== b.endRow) {
 			result.push({
-				startRow: Math.min(a.endRow, b.endRow),
+				startRow: Math.min(a.endRow, b.endRow) + 1, // Exclusive!
 				endRow: Math.max(a.endRow, b.endRow),
 				startColumn: Math.min(a.startColumn, b.startColumn),
 				endColumn: Math.max(a.endColumn, b.endColumn)
@@ -59,7 +74,7 @@ export class CellRangeUtil {
 				startRow: Math.max(a.startRow, b.startRow),
 				endRow: Math.min(a.endRow, b.endRow),
 				startColumn: Math.min(a.startColumn, b.startColumn),
-				endColumn: Math.max(a.startColumn, b.startColumn)
+				endColumn: Math.max(a.startColumn, b.startColumn) - 1 // Exclusive!
 			});
 		}
 
@@ -68,7 +83,7 @@ export class CellRangeUtil {
 			result.push({
 				startRow: Math.max(a.startRow, b.startRow),
 				endRow: Math.min(a.endRow, b.endRow),
-				startColumn: Math.min(a.endColumn, b.endColumn),
+				startColumn: Math.min(a.endColumn, b.endColumn) + 1, // Exclusive!
 				endColumn: Math.max(a.endColumn, b.endColumn)
 			});
 		}

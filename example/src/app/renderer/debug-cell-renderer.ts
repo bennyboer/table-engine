@@ -10,6 +10,9 @@ import {VerticalAlignment} from "../../../../src/util/alignment/vertical-alignme
 import {HorizontalAlignment} from "../../../../src/util/alignment/horizontal-alignment";
 
 export class DebugCellRenderer implements ICanvasCellRenderer {
+
+	public static readonly NAME: string = "debug";
+
 	/**
 	 * Event listeners on cells rendered with this cell renderer.
 	 */
@@ -72,7 +75,7 @@ export class DebugCellRenderer implements ICanvasCellRenderer {
 	}
 
 	public getName(): string {
-		return "debug";
+		return DebugCellRenderer.NAME;
 	}
 
 	public initialize(engine: TableEngine): void {
@@ -81,6 +84,14 @@ export class DebugCellRenderer implements ICanvasCellRenderer {
 
 	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
 		ctx.fillText(cell.value ?? "[No event yet]", Math.round(bounds.left + bounds.width / 2), Math.round(bounds.top + bounds.height / 2));
+	}
+
+	/**
+	 * Called when the passed cell is disappearing from the visible area (viewport).
+	 * @param cell that is disappearing
+	 */
+	public onDisappearing(cell: ICell): void {
+		// Do nothing
 	}
 
 }

@@ -293,6 +293,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _updateOverlaysAfterRenderCycle: boolean = false;
 
 	/**
+	 * List of overlays to update after the next rendering cycle.
+	 * If this list is empty, all available overlays will be updated.
+	 */
+	private _overlaysToUpdateAfterRenderCycle: IOverlay[] = [];
+
+	/**
 	 * Currently focused cell position (if any).
 	 */
 	private _focusedCellPosition: IInitialPosition | null = null;
@@ -1467,13 +1473,22 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const newBounds: DOMRect = this._container.getBoundingClientRect();
 
 		// Re-size scroll bar offsets as well
-		const fixedRowsHeight: number = !!this._lastRenderingContext.cells.fixedRowCells ? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height : 0;
-		const fixedColumnsWidth: number = !!this._lastRenderingContext.cells.fixedColumnCells ? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width : 0;
+		const fixedRowsHeight: number = !!this._lastRenderingContext && !!this._lastRenderingContext.cells.fixedRowCells
+			? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height
+			: 0;
+		const fixedColumnsWidth: number = !!this._lastRenderingContext && !!this._lastRenderingContext.cells.fixedColumnCells
+			? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width
+			: 0;
 
 		const tableHeight: number = this._cellModel.getHeight() - fixedRowsHeight;
 		const tableWidth: number = this._cellModel.getWidth() - fixedColumnsWidth;
 
-		const oldViewPort: IRectangle = this._lastRenderingContext.cells.nonFixedCells.viewPortBounds;
+		const oldViewPort: IRectangle = !!this._lastRenderingContext ? this._lastRenderingContext.cells.nonFixedCells.viewPortBounds : {
+			top: 0,
+			left: 0,
+			width: 0,
+			height: 0
+		};
 
 		if (tableWidth > newBounds.width) {
 			const oldMaxOffset = (tableWidth - oldViewPort.width);
@@ -1688,14 +1703,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 */
 	private _updateFocusedCell(position: IInitialPosition | null): void {
 		// Check if position changed
-		const changed: boolean = (
-			(!this._focusedCellPosition && !!position)
-			|| (!!this._focusedCellPosition && !position)
-		) || (
-			this._focusedCellPosition.row !== position.row
-			|| this._focusedCellPosition.column !== position.column
-		);
+		const oldRow: number = !!this._focusedCellPosition ? this._focusedCellPosition.row : -1;
+		const oldColumn: number = !!this._focusedCellPosition ? this._focusedCellPosition.column : -1;
 
+		const newRow: number = !!position ? position.row : -1;
+		const newColumn: number = !!position ? position.column : -1;
+
+		const changed: boolean = newRow !== oldRow || newColumn !== oldColumn;
 		if (!changed) {
 			return;
 		}
@@ -1821,6 +1835,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			this._zoom = newZoom;
 
 			this._updateOverlaysAfterRenderCycle = true;
+
 			this._repaintScheduler.next();
 		}
 	}
@@ -2749,6 +2764,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
+	 * Get a cell renderer by its name.
+	 * @param rendererName name of the renderer to get
+	 */
+	private _getCellRendererForName(rendererName: string): ICanvasCellRenderer {
+		const cellRenderer: ICanvasCellRenderer = this._cellRendererLookup.get(rendererName);
+		if (!cellRenderer) {
+			throw new Error(`Could not find cell renderer for name '${rendererName}'`);
+		}
+
+		return cellRenderer;
+	}
+
+	/**
 	 * Cleanup the cell viewport caches for cells that are out of the current viewport bounds.
 	 * @param oldCells the former rendered cells
 	 * @param newCells the new cells to render
@@ -2773,7 +2801,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			const cells: ICell[] = this._cellModel.getCells(range);
 
 			for (const cell of cells) {
-				cell.viewportCache = undefined; // Clearing cache property
+				// For merged cells make sure that the cell is completely disappeared from the viewport before clearing
+				const isMergedCell: boolean = !CellRangeUtil.isSingleRowColumnRange(cell.range);
+				if (isMergedCell) {
+					const isNotCompletelyInvisible: boolean = CellRangeUtil.overlap(cell.range, newRange);
+					if (isNotCompletelyInvisible) {
+						continue;
+					}
+				}
+
+				// Clearing viewport cache property since the cell is no more visible
+				this._getCellRendererForName(cell.rendererName).onDisappearing(cell);
+
+				cell.viewportCache = undefined;
 			}
 		}
 	}
@@ -3239,11 +3279,29 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
+	 * Update the given overlay.
+	 * @param overlay to update
+	 */
+	public updateOverlay(overlay: IOverlay): void {
+		// Schedule an overlay update for the passed overlay
+		this._updateOverlaysAfterRenderCycle = true;
+		this._overlaysToUpdateAfterRenderCycle.push(overlay);
+	}
+
+	/**
 	 * Update all overlays.
 	 */
 	private _updateOverlays(): void {
-		for (const overlay of this._overlays) {
+		const toUpdate: IOverlay[] = this._overlaysToUpdateAfterRenderCycle.length > 0
+			? this._overlaysToUpdateAfterRenderCycle
+			: this.getOverlays();
+
+		for (const overlay of toUpdate) {
 			this._layoutOverlay(overlay);
+		}
+
+		if (this._overlaysToUpdateAfterRenderCycle.length > 0) {
+			this._overlaysToUpdateAfterRenderCycle.length = 0;
 		}
 	}
 
@@ -3260,7 +3318,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		let top: number = overlay.bounds.top;
 		let height: number = overlay.bounds.height;
-		if (overlay.bounds.top < fixedRowsHeight) {
+		const isInFixedRows: boolean = overlay.bounds.top < fixedRowsHeight;
+		if (isInFixedRows) {
 			// Overlaps with fixed rows
 			const remaining: number = fixedRowsHeight - overlay.bounds.top;
 			if (overlay.bounds.height > remaining) {
@@ -3271,15 +3330,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			// Is only in scrollable area
 			if (top - this._scrollOffset.y < fixedRowsHeight) {
 				height -= fixedRowsHeight - (top - this._scrollOffset.y);
-				top = fixedRowsHeight;
-			} else {
-				top = top - this._scrollOffset.y;
 			}
+
+			top = top - this._scrollOffset.y;
 		}
 
 		let left: number = overlay.bounds.left;
 		let width: number = overlay.bounds.width;
-		if (overlay.bounds.left < fixedColumnsWidth) {
+		const isInFixedColumns: boolean = overlay.bounds.left < fixedColumnsWidth;
+		if (isInFixedColumns) {
 			// Overlaps with fixed columns
 			const remaining: number = fixedColumnsWidth - overlay.bounds.left;
 			if (overlay.bounds.width > remaining) {
@@ -3290,21 +3349,33 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			// Is only in scrollable area
 			if (left - this._scrollOffset.x < fixedColumnsWidth) {
 				width -= fixedColumnsWidth - (left - this._scrollOffset.x);
-				left = fixedColumnsWidth;
-			} else {
-				left = left - this._scrollOffset.x;
 			}
+
+			left = left - this._scrollOffset.x;
 		}
 
 		const isVisible: boolean = height > 0 && top < viewPortHeight
 			&& width > 0 && left < viewPortWidth;
 		if (isVisible) {
 			overlay.element.style.display = "block";
+			overlay.element.style.overflow = "hidden";
 
 			overlay.element.style.left = `${left * this._zoom}px`;
 			overlay.element.style.top = `${top * this._zoom}px`;
-			overlay.element.style.width = `${width * this._zoom}px`;
-			overlay.element.style.height = `${height * this._zoom}px`;
+			overlay.element.style.width = `${overlay.bounds.width * this._zoom}px`;
+			overlay.element.style.height = `${overlay.bounds.height * this._zoom}px`;
+
+			if (width < overlay.bounds.width || height < overlay.bounds.height) {
+				// Add clipping
+				const leftClipping: number = overlay.bounds.width - width;
+				const topClipping: number = overlay.bounds.height - height;
+
+				overlay.element.style.clipPath = `inset(${topClipping * this._zoom}px 0 0 ${leftClipping * this._zoom}px)`;
+			} else {
+				if (overlay.element.style.clipPath.length > 0) {
+					overlay.element.style.clipPath = "";
+				}
+			}
 		} else {
 			overlay.element.style.display = "none";
 		}

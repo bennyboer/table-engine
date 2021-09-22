@@ -22,4 +22,10 @@ export interface IOverlayManager {
 	 */
 	getOverlays(): IOverlay[];
 
+	/**
+	 * Update the given overlay.
+	 * @param overlay to update
+	 */
+	updateOverlay(overlay: IOverlay): void;
+
 }

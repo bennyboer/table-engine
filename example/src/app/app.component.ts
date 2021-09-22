@@ -34,6 +34,7 @@ import {ICell} from "../../../src/cell/cell";
 import {DebugCellRenderer} from "./renderer/debug-cell-renderer";
 import {CheckboxCellRenderer} from "../../../src/renderer/canvas/cell/checkbox/checkbox-cell-renderer";
 import {ICheckboxCellRendererValue} from "../../../src/renderer/canvas/cell/checkbox/checkbox-cell-renderer-value";
+import {DOMCellRenderer} from "../../../src/renderer/canvas/cell/dom/dom-cell-renderer";
 
 @Component({
 	selector: "app-root",
@@ -308,7 +309,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 						startColumn: column,
 						endColumn: column
 					},
-					rendererName: "row-column-header",
+					rendererName: RowColumnHeaderRenderer.NAME,
 					value: null
 				};
 			}
@@ -336,7 +337,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 						startColumn: column,
 						endColumn: column
 					},
-					rendererName: "row-column-header",
+					rendererName: RowColumnHeaderRenderer.NAME,
 					value: null
 				};
 			}
@@ -382,7 +383,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			const cellModel = AppComponent.initializeCellModel();
 			this.engine = new TableEngine(this.tableContainer.nativeElement, cellModel);
 
-			this.engine.getOptions().misc.debug = true; // Enable debug mode
+			this.engine.getOptions().misc.debug = false; // Enable/Disable debug mode
 
 			// Setup row/column resizing
 			this.engine.getOptions().renderer.canvas.rowColumnResizing.allowResizing = true;
@@ -475,6 +476,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			this.engine.registerCellRenderer(new ImageCellRenderer());
 			this.engine.registerCellRenderer(new LoadingCellRenderer());
 			this.engine.registerCellRenderer(new CheckboxCellRenderer());
+			this.engine.registerCellRenderer(new DOMCellRenderer());
 
 			// Set an example border
 			this.engine.getBorderModel().setBorder({
@@ -537,10 +539,10 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 						startColumn: 5,
 						endColumn: 8
 					},
-					rendererName: "loading",
+					rendererName: LoadingCellRenderer.NAME,
 					value:
 						{
-							cellRenderer: "image",
+							cellRenderer: ImageCellRenderer.NAME,
 							promiseSupplier: async () => {
 								return new Promise(resolve => setTimeout(() => resolve({
 									src: "assets/sloth.svg"
@@ -550,7 +552,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 				},
 				{
 					range: CellRange.fromSingleRowColumn(25, 4),
-					rendererName: "text",
+					rendererName: TextCellRenderer.NAME,
 					value: {
 						text: "This is a cell for which we enabled line wrapping since this text is pretty long and will not fit into the cells available space.",
 						options: {
@@ -562,7 +564,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 				},
 				{
 					range: CellRange.fromSingleRowColumn(1000, 1000),
-					rendererName: "text",
+					rendererName: TextCellRenderer.NAME,
 					value: "Last cell with more text than normally"
 				},
 				{
@@ -572,14 +574,14 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 						startColumn: 9,
 						endColumn: 11
 					},
-					rendererName: "debug",
+					rendererName: DebugCellRenderer.NAME,
 					value: null
 				},
 				{
 					range: CellRange.fromSingleRowColumn(10, 2),
-					rendererName: "loading",
+					rendererName: LoadingCellRenderer.NAME,
 					value: {
-						cellRenderer: "text",
+						cellRenderer: TextCellRenderer.NAME,
 						promiseSupplier: async () => {
 							return new Promise(resolve => setTimeout(() => resolve("Done 😀"), 2000))
 						},
@@ -599,14 +601,54 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 						checked: false,
 						label: "with Label"
 					} as ICheckboxCellRendererValue
+				},
+				{
+					range: {
+						startRow: 30,
+						endRow: 33,
+						startColumn: 3,
+						endColumn: 3
+					},
+					rendererName: TextCellRenderer.NAME,
+					value: {
+						text: "HTML/DOM cell renderer:",
+						options: {
+							horizontalAlignment: HorizontalAlignment.RIGHT,
+							verticalAlignment: VerticalAlignment.MIDDLE,
+							fontSize: 18,
+							useLineWrapping: true,
+							editable: false
+						}
+					} as ITextCellRendererValue
+				},
+				{
+					range: {
+						startRow: 30,
+						endRow: 40,
+						startColumn: 4,
+						endColumn: 5
+					},
+					rendererName: DOMCellRenderer.NAME,
+					value: `
+<div style="padding: 5px; user-select: none">
+	<p>The Table-Engine is able to render HTML in a cell</p>
+	<p><button>A button for example!</button></p>
+	<ul>
+		<li>Or</li>
+		<li>a</li>
+		<li>list!</li>
+	</ul>
+	<p style="color: darkred">Nevertheless use these types of renderers <strong>sparingly</strong>, as they may result in poor performance</p>
+</div>
+`
 				}
 			],
 			(row, column) => row * column,
 			(row, column) => {
 				if (row === 0 || column === 0) {
-					return "row-column-header";
+					return RowColumnHeaderRenderer.NAME;
 				} else {
-					return "text";
+					return TextCellRenderer.NAME;
 				}
 			},
 			(row) => 25,

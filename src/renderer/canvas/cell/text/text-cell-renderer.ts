@@ -22,6 +22,11 @@ import {HorizontalAlignment} from "../../../../util/alignment/horizontal-alignme
 export class TextCellRenderer implements ICanvasCellRenderer {
 
 	/**
+	 * Name of the cell renderer.
+	 */
+	public static readonly NAME: string = "text";
+
+	/**
 	 * Max duration of two mouse up events to be detected as double click (in milliseconds).
 	 */
 	private static readonly MAX_DOUBLE_CLICK_DURATION: number = 300;
@@ -130,10 +135,14 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 			editor.removeEventListener("keydown", keyDownListener);
 
 			// Save changes
-			if (!!specialValue) {
-				specialValue.text = editor.value;
-			} else {
-				event.cell.value = editor.value;
+			const callback = !!specialValue && !!specialValue.options.onChange ? specialValue.options.onChange : this._defaultOptions.onChange;
+			const acceptChange: boolean = !!callback ? callback(event.cell, editValue, editor.value) : true;
+			if (acceptChange) {
+				if (!!specialValue) {
+					specialValue.text = editor.value;
+				} else {
+					event.cell.value = editor.value;
+				}
 			}
 
 			// Invalidate viewport cache for cell
@@ -166,7 +175,7 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 	 * This must be unique.
 	 */
 	public getName(): string {
-		return "text";
+		return TextCellRenderer.NAME;
 	}
 
 	/**
@@ -368,7 +377,7 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 				if (lineCount === 1) {
 					return offset;
 				} else {
-					return offset - (lineHeight * lineCount) / 2;
+					return offset - (lineHeight * (lineCount - 1)) / 2;
 				}
 			case VerticalAlignment.TOP:
 				return bounds.top;
@@ -410,6 +419,14 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Called when the passed cell is disappearing from the visible area (viewport).
+	 * @param cell that is disappearing
+	 */
+	public onDisappearing(cell: ICell): void {
+		// Do nothing
 	}
 
 }

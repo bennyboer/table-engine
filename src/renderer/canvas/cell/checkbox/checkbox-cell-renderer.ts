@@ -150,6 +150,14 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 		this._engine = engine;
 	}
 
+	/**
+	 * Called when the passed cell is disappearing from the visible area (viewport).
+	 * @param cell that is disappearing
+	 */
+	public onDisappearing(cell: ICell): void {
+		// Do nothing
+	}
+
 	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
 		let isContextSaved: boolean = false;
 

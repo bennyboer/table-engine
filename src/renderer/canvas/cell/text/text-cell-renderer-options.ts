@@ -2,6 +2,7 @@ import {IColor} from "../../../../util/color";
 import {HorizontalAlignment} from "../../../../util/alignment/horizontal-alignment";
 import {VerticalAlignment} from "../../../../util/alignment/vertical-alignment";
 import {Colors} from "../../../../util/colors";
+import {ICell} from "../../../../cell/cell";
 
 /**
  * The default font family in use.
@@ -37,6 +38,13 @@ export const DEFAULT_LINE_HEIGHT: number = 16;
  * Options of the text cell renderer.
  */
 export interface ITextCellRendererOptions {
+
+	/**
+	 * Callback called when the value of the text cell renderer has been edited.
+	 * @param cell that contains the changed value
+	 * @returns whether the change is to be accepted or declined
+	 */
+	onChange?: (cell: ICell, oldValue: string, newValue: string) => boolean;
 
 	/**
 	 * Font family name.
