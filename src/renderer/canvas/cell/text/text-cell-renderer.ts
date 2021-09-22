@@ -135,10 +135,14 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 			editor.removeEventListener("keydown", keyDownListener);
 
 			// Save changes
-			if (!!specialValue) {
-				specialValue.text = editor.value;
-			} else {
-				event.cell.value = editor.value;
+			const callback = !!specialValue && !!specialValue.options.onChange ? specialValue.options.onChange : this._defaultOptions.onChange;
+			const acceptChange: boolean = !!callback ? callback(event.cell, editValue, editor.value) : true;
+			if (acceptChange) {
+				if (!!specialValue) {
+					specialValue.text = editor.value;
+				} else {
+					event.cell.value = editor.value;
+				}
 			}
 
 			// Invalidate viewport cache for cell
@@ -373,7 +377,7 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 				if (lineCount === 1) {
 					return offset;
 				} else {
-					return offset - (lineHeight * lineCount) / 2;
+					return offset - (lineHeight * (lineCount - 1)) / 2;
 				}
 			case VerticalAlignment.TOP:
 				return bounds.top;

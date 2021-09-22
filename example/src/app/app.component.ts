@@ -34,6 +34,7 @@ import {ICell} from "../../../src/cell/cell";
 import {DebugCellRenderer} from "./renderer/debug-cell-renderer";
 import {CheckboxCellRenderer} from "../../../src/renderer/canvas/cell/checkbox/checkbox-cell-renderer";
 import {ICheckboxCellRendererValue} from "../../../src/renderer/canvas/cell/checkbox/checkbox-cell-renderer-value";
+import {DOMCellRenderer} from "../../../src/renderer/canvas/cell/dom/dom-cell-renderer";
 
 @Component({
 	selector: "app-root",
@@ -475,6 +476,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			this.engine.registerCellRenderer(new ImageCellRenderer());
 			this.engine.registerCellRenderer(new LoadingCellRenderer());
 			this.engine.registerCellRenderer(new CheckboxCellRenderer());
+			this.engine.registerCellRenderer(new DOMCellRenderer());
 
 			// Set an example border
 			this.engine.getBorderModel().setBorder({
@@ -599,6 +601,46 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 						checked: false,
 						label: "with Label"
 					} as ICheckboxCellRendererValue
+				},
+				{
+					range: {
+						startRow: 30,
+						endRow: 33,
+						startColumn: 3,
+						endColumn: 3
+					},
+					rendererName: TextCellRenderer.NAME,
+					value: {
+						text: "HTML/DOM cell renderer:",
+						options: {
+							horizontalAlignment: HorizontalAlignment.RIGHT,
+							verticalAlignment: VerticalAlignment.MIDDLE,
+							fontSize: 18,
+							useLineWrapping: true,
+							editable: true
+						}
+					} as ITextCellRendererValue
+				},
+				{
+					range: {
+						startRow: 30,
+						endRow: 40,
+						startColumn: 4,
+						endColumn: 5
+					},
+					rendererName: DOMCellRenderer.NAME,
+					value: `
+<div style="padding: 5px; user-select: none">
+	<p>The Table-Engine is able to render HTML in a cell</p>
+	<p><button>A button for example!</button></p>
+	<ul>
+		<li>Or</li>
+		<li>a</li>
+		<li>list!</li>
+	</ul>
+	<p style="color: darkred">Nevertheless use these types of renderers <strong>sparingly</strong>, as they may result in poor performance</p>
+</div>
+`
 				}
 			],
 			(row, column) => row * column,
