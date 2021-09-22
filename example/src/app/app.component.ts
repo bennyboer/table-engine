@@ -617,7 +617,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 							verticalAlignment: VerticalAlignment.MIDDLE,
 							fontSize: 18,
 							useLineWrapping: true,
-							editable: true
+							editable: false
 						}
 					} as ITextCellRendererValue
 				},
