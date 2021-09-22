@@ -11,6 +11,11 @@ import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-even
 export class LoadingCellRenderer implements ICanvasCellRenderer {
 
 	/**
+	 * Name of the cell renderer.
+	 */
+	public static readonly NAME: string = "loading";
+
+	/**
 	 * Duration of one full animation in milliseconds.
 	 */
 	private static readonly DURATION_MS: number = 1500;
@@ -79,7 +84,7 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	 * This must be unique.
 	 */
 	public getName(): string {
-		return "loading";
+		return LoadingCellRenderer.NAME;
 	}
 
 	/**
@@ -196,6 +201,14 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	 */
 	public getCopyValue(cell: ICell): string {
 		return "";
+	}
+
+	/**
+	 * Called when the passed cell is disappearing from the visible area (viewport).
+	 * @param cell that is disappearing
+	 */
+	public onDisappearing(cell: ICell): void {
+		// Do nothing
 	}
 
 }

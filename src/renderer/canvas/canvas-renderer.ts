@@ -2749,6 +2749,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
+	 * Get a cell renderer by its name.
+	 * @param rendererName name of the renderer to get
+	 */
+	private _getCellRendererForName(rendererName: string): ICanvasCellRenderer {
+		const cellRenderer: ICanvasCellRenderer = this._cellRendererLookup.get(rendererName);
+		if (!cellRenderer) {
+			throw new Error(`Could not find cell renderer for name '${rendererName}'`);
+		}
+
+		return cellRenderer;
+	}
+
+	/**
 	 * Cleanup the cell viewport caches for cells that are out of the current viewport bounds.
 	 * @param oldCells the former rendered cells
 	 * @param newCells the new cells to render
@@ -2773,7 +2786,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			const cells: ICell[] = this._cellModel.getCells(range);
 
 			for (const cell of cells) {
-				cell.viewportCache = undefined; // Clearing cache property
+				// For merged cells make sure that the cell is completely disappeared from the viewport before clearing
+				const isMergedCell: boolean = !CellRangeUtil.isSingleRowColumnRange(cell.range);
+				if (isMergedCell) {
+					const isNotCompletelyInvisible: boolean = CellRangeUtil.overlap(cell.range, newRange);
+					if (isNotCompletelyInvisible) {
+						continue;
+					}
+				}
+
+				// Clearing viewport cache property since the cell is no more visible
+				this._getCellRendererForName(cell.rendererName).onDisappearing(cell);
+
+				cell.viewportCache = undefined;
 			}
 		}
 	}

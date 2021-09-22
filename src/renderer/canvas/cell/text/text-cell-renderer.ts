@@ -22,6 +22,11 @@ import {HorizontalAlignment} from "../../../../util/alignment/horizontal-alignme
 export class TextCellRenderer implements ICanvasCellRenderer {
 
 	/**
+	 * Name of the cell renderer.
+	 */
+	public static readonly NAME: string = "text";
+
+	/**
 	 * Max duration of two mouse up events to be detected as double click (in milliseconds).
 	 */
 	private static readonly MAX_DOUBLE_CLICK_DURATION: number = 300;
@@ -166,7 +171,7 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 	 * This must be unique.
 	 */
 	public getName(): string {
-		return "text";
+		return TextCellRenderer.NAME;
 	}
 
 	/**
@@ -410,6 +415,14 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Called when the passed cell is disappearing from the visible area (viewport).
+	 * @param cell that is disappearing
+	 */
+	public onDisappearing(cell: ICell): void {
+		// Do nothing
 	}
 
 }

@@ -308,7 +308,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 						startColumn: column,
 						endColumn: column
 					},
-					rendererName: "row-column-header",
+					rendererName: RowColumnHeaderRenderer.NAME,
 					value: null
 				};
 			}
@@ -336,7 +336,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 						startColumn: column,
 						endColumn: column
 					},
-					rendererName: "row-column-header",
+					rendererName: RowColumnHeaderRenderer.NAME,
 					value: null
 				};
 			}
@@ -382,7 +382,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			const cellModel = AppComponent.initializeCellModel();
 			this.engine = new TableEngine(this.tableContainer.nativeElement, cellModel);
 
-			this.engine.getOptions().misc.debug = true; // Enable debug mode
+			this.engine.getOptions().misc.debug = false; // Enable/Disable debug mode
 
 			// Setup row/column resizing
 			this.engine.getOptions().renderer.canvas.rowColumnResizing.allowResizing = true;
@@ -537,10 +537,10 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 						startColumn: 5,
 						endColumn: 8
 					},
-					rendererName: "loading",
+					rendererName: LoadingCellRenderer.NAME,
 					value:
 						{
-							cellRenderer: "image",
+							cellRenderer: ImageCellRenderer.NAME,
 							promiseSupplier: async () => {
 								return new Promise(resolve => setTimeout(() => resolve({
 									src: "assets/sloth.svg"
@@ -550,7 +550,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 				},
 				{
 					range: CellRange.fromSingleRowColumn(25, 4),
-					rendererName: "text",
+					rendererName: TextCellRenderer.NAME,
 					value: {
 						text: "This is a cell for which we enabled line wrapping since this text is pretty long and will not fit into the cells available space.",
 						options: {
@@ -561,8 +561,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 					} as ITextCellRendererValue
 				},
 				{
-					range: CellRange.fromSingleRowColumn(1000, 1000),
-					rendererName: "text",
+					range: CellRange.fromSingleRowColumn(200, 150),
+					rendererName: TextCellRenderer.NAME,
 					value: "Last cell with more text than normally"
 				},
 				{
@@ -572,14 +572,14 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 						startColumn: 9,
 						endColumn: 11
 					},
-					rendererName: "debug",
+					rendererName: DebugCellRenderer.NAME,
 					value: null
 				},
 				{
 					range: CellRange.fromSingleRowColumn(10, 2),
-					rendererName: "loading",
+					rendererName: LoadingCellRenderer.NAME,
 					value: {
-						cellRenderer: "text",
+						cellRenderer: TextCellRenderer.NAME,
 						promiseSupplier: async () => {
 							return new Promise(resolve => setTimeout(() => resolve("Done 😀"), 2000))
 						},
@@ -604,9 +604,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			(row, column) => row * column,
 			(row, column) => {
 				if (row === 0 || column === 0) {
-					return "row-column-header";
+					return RowColumnHeaderRenderer.NAME;
 				} else {
-					return "text";
+					return TextCellRenderer.NAME;
 				}
 			},
 			(row) => 25,

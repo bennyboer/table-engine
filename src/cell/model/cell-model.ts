@@ -4,6 +4,7 @@ import {CellRangeUtil} from "../range/cell-range-util";
 import {IRectangle} from "../../util/rect";
 import {ICellModel} from "./cell-model.interface";
 import {IBorder} from "../../border/border";
+import {TextCellRenderer} from "../../renderer/canvas/cell/text/text-cell-renderer";
 
 /**
  * Model managing cells and their position and size in the table.
@@ -13,7 +14,7 @@ export class CellModel implements ICellModel {
 	/**
 	 * The default cell renderer name to use.
 	 */
-	private static readonly DEFAULT_CELL_RENDERER_NAME: string = "text";
+	private static readonly DEFAULT_CELL_RENDERER_NAME: string = TextCellRenderer.NAME;
 
 	/**
 	 * The default row size.

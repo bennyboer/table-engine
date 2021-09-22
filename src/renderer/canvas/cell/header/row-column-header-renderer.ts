@@ -12,6 +12,11 @@ import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-even
 export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 
 	/**
+	 * Name of the cell renderer.
+	 */
+	public static readonly NAME: string = "row-column-header";
+
+	/**
 	 * Available letters in the alphabet to use for generating column names.
 	 */
 	private static readonly ALPHABET: string = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -86,7 +91,7 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	 * This must be unique.
 	 */
 	public getName(): string {
-		return "row-column-header";
+		return RowColumnHeaderRenderer.NAME;
 	}
 
 	/**
@@ -96,7 +101,6 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	 * @param context of the current rendering cycle
 	 */
 	public before(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
-		// TODO Make those things customizable (Renderer options?)
 		ctx.textBaseline = "middle";
 		ctx.textAlign = "center";
 	}
@@ -236,6 +240,14 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	 */
 	public getCopyValue(cell: ICell): string {
 		return "";
+	}
+
+	/**
+	 * Called when the passed cell is disappearing from the visible area (viewport).
+	 * @param cell that is disappearing
+	 */
+	public onDisappearing(cell: ICell): void {
+		// Do nothing
 	}
 
 }

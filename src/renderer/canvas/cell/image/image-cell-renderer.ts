@@ -11,6 +11,11 @@ import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-even
 export class ImageCellRenderer implements ICanvasCellRenderer {
 
 	/**
+	 * Name of the cell renderer.
+	 */
+	public static readonly NAME: string = "image";
+
+	/**
 	 * Cache for already loaded images.
 	 */
 	private readonly _imageCache: Map<string, CanvasImageSource> = new Map<string, CanvasImageSource>();
@@ -34,7 +39,7 @@ export class ImageCellRenderer implements ICanvasCellRenderer {
 	 * This must be unique.
 	 */
 	public getName(): string {
-		return "image";
+		return ImageCellRenderer.NAME;
 	}
 
 	/**
@@ -210,6 +215,14 @@ export class ImageCellRenderer implements ICanvasCellRenderer {
 		} else {
 			return "";
 		}
+	}
+
+	/**
+	 * Called when the passed cell is disappearing from the visible area (viewport).
+	 * @param cell that is disappearing
+	 */
+	public onDisappearing(cell: ICell): void {
+		// Do nothing
 	}
 
 }

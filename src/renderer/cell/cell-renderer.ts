@@ -42,4 +42,10 @@ export interface ICellRenderer<C> {
 	 */
 	getCopyValue(cell: ICell): string;
 
+	/**
+	 * Called when a cell is disappearing from the visible area (viewport).
+	 * @param cell that is disappearing
+	 */
+	onDisappearing(cell: ICell): void;
+
 }
