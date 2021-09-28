@@ -2,9 +2,13 @@ import {ICell} from "../cell";
 import {CellRange, ICellRange} from "../range/cell-range";
 import {CellRangeUtil} from "../range/cell-range-util";
 import {IRectangle} from "../../util/rect";
-import {ICellModel} from "./cell-model.interface";
+import {ICellModel, IGetCellsOptions} from "./cell-model.interface";
 import {IBorder} from "../../border/border";
 import {TextCellRenderer} from "../../renderer/canvas/cell/text/text-cell-renderer";
+import {Observable, Subject} from "rxjs";
+import {ICellModelEvent} from "./event/cell-model-change";
+import {BeforeDeleteEvent} from "./event/before-delete-event";
+import {HiddenEvent} from "./event/hidden-event";
 
 /**
  * Model managing cells and their position and size in the table.
@@ -74,6 +78,11 @@ export class CellModel implements ICellModel {
 	 */
 	private readonly _cellLookup: Array<Array<ICell | null>>;
 
+	/**
+	 * Subject emitting certain events in the cell model.
+	 */
+	private readonly _events: Subject<ICellModelEvent> = new Subject<ICellModelEvent>();
+
 	constructor(cellLookup: Array<Array<ICell | null>>, rowSizes: number[], columnSizes: number[], hiddenRows: Set<number>, hiddenColumns: Set<number>) {
 		this._cellLookup = cellLookup;
 		this._rowSizes = rowSizes;
@@ -83,6 +92,20 @@ export class CellModel implements ICellModel {
 
 		this._rowOffsets = CellModel._calculateOffsets(rowSizes, hiddenRows);
 		this._columnOffsets = CellModel._calculateOffsets(columnSizes, hiddenColumns);
+	}
+
+	/**
+	 * Get an observable about certain events in the cell model.
+	 */
+	public events(): Observable<ICellModelEvent> {
+		return this._events.asObservable();
+	}
+
+	/**
+	 * Cleanup when the cell model is no more needed.
+	 */
+	public cleanup(): void {
+		this._events.complete();
 	}
 
 	/**
@@ -269,9 +292,12 @@ export class CellModel implements ICellModel {
 	/**
 	 * Get all cells in the provided range.
 	 * @param range to get cells in
+	 * @param options for the method
 	 */
-	public getCells(range: ICellRange): ICell[] {
+	public getCells(range: ICellRange, options?: IGetCellsOptions): ICell[] {
 		const cells: ICell[] = new Array((range.endRow - range.startRow + 1) * (range.endColumn - range.startColumn + 1));
+
+		const includeHidden: boolean = !!options ? options.includeHidden : false;
 
 		let cellCount: number = 0;
 		this._forEachCellInRange(range, (cell, row, column) => {
@@ -280,7 +306,7 @@ export class CellModel implements ICellModel {
 			}
 		}, {
 			unique: true,
-			includeHidden: false
+			includeHidden
 		});
 
 		// Adjust result list length that may not be correct due to merged cells or empty (null) cells
@@ -981,6 +1007,9 @@ export class CellModel implements ICellModel {
 	 * @param isRow whether we want to delete rows or columns
 	 */
 	private _delete(fromIndex: number, count: number, isRow: boolean): void {
+		// Publish "before delete"-event to outside
+		this._events.next(new BeforeDeleteEvent(fromIndex, count, isRow));
+
 		// Find all merged cells ranging over the first row/column to delete
 		const intersectingMergedAreaRanges: ICellRange[] = fromIndex > 0
 			? this._collectMergedCellsRangingOverIndex(isRow, fromIndex - 1)
@@ -1323,7 +1352,11 @@ export class CellModel implements ICellModel {
 	 * @param rowIndices indices to hide rows for
 	 */
 	public hideRows(rowIndices: number[]): void {
-		CellModel._hide(rowIndices, this._rowOffsets, this._hiddenRows, this._rowSizes);
+		const hiddenIndices: number[] = CellModel._hide(rowIndices, this._rowOffsets, this._hiddenRows, this._rowSizes);
+
+		if (hiddenIndices.length > 0) {
+			this._events.next(new HiddenEvent(hiddenIndices, true));
+		}
 	}
 
 	/**
@@ -1331,7 +1364,11 @@ export class CellModel implements ICellModel {
 	 * @param columnIndices to hide columns for
 	 */
 	public hideColumns(columnIndices: number[]): void {
-		CellModel._hide(columnIndices, this._columnOffsets, this._hiddenColumns, this._columnSizes);
+		const hiddenIndices: number[] = CellModel._hide(columnIndices, this._columnOffsets, this._hiddenColumns, this._columnSizes);
+
+		if (hiddenIndices.length > 0) {
+			this._events.next(new HiddenEvent(hiddenIndices, false));
+		}
 	}
 
 	/**
@@ -1340,8 +1377,9 @@ export class CellModel implements ICellModel {
 	 * @param offsets to adjust (for rows or columns)
 	 * @param hidden lookup of hidden rows or columns
 	 * @param sizes lookup for the indices
+	 * @returns consecutive sorted indices that have been hidden
 	 */
-	private static _hide(indices: number[], offsets: number[], hidden: Set<number>, sizes: number[]): void {
+	private static _hide(indices: number[], offsets: number[], hidden: Set<number>, sizes: number[]): number[] {
 		// Add indices to the hidden collection first
 		const adjustOffsetsIndices: number[] = [];
 		for (const index of indices) {
@@ -1376,7 +1414,11 @@ export class CellModel implements ICellModel {
 					}
 				}
 			}
+
+			return adjustOffsetsIndices;
 		}
+
+		return [];
 	}
 
 	/**
@@ -1469,4 +1511,21 @@ interface ForEachInRangeOptions {
 	 * for hidden cells as well, otherwise they are filtered.
 	 */
 	includeHidden: boolean;
+}
+
+/**
+ * A range of indices.
+ */
+interface IndexRange {
+
+	/**
+	 * From index (inclusively).
+	 */
+	from: number;
+
+	/**
+	 * To index (inclusively).
+	 */
+	to: number;
+
 }

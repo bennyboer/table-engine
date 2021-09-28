@@ -41,6 +41,26 @@ export class CellRangeUtil {
 	}
 
 	/**
+	 * Apply the AND operation on two cell ranges.
+	 * Will return the cell range that overlaps or null if they do not overlap.
+	 * @param a first cell range
+	 * @param b second cell range
+	 */
+	public static and(a: ICellRange, b: ICellRange): ICellRange | null {
+		// First and foremost check that the two cell ranges overlap
+		if (!CellRangeUtil.overlap(a, b)) {
+			return null;
+		}
+
+		return {
+			startRow: Math.max(a.startRow, b.startRow),
+			endRow: Math.min(a.endRow, b.endRow),
+			startColumn: Math.max(a.startColumn, b.startColumn),
+			endColumn: Math.min(a.endColumn, b.endColumn)
+		};
+	}
+
+	/**
 	 * Apply the exclusive or (XOR) operation on two cell ranges.
 	 * @param a first cell range
 	 * @param b second cell range

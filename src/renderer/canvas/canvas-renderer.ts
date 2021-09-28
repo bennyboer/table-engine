@@ -34,6 +34,10 @@ import {ICellRendererMouseEvent} from "../cell/event/cell-renderer-mouse-event";
 import {ICellRendererFocusEvent} from "../cell/event/cell-renderer-focus-event";
 import {ICellRendererKeyboardEvent} from "../cell/event/cell-renderer-keyboard-event";
 import {IPoint} from "../../util/point";
+import {ICellModelEvent} from "../../cell/model/event/cell-model-change";
+import {CellModelEventType} from "../../cell/model/event/cell-model-event-type";
+import {BeforeDeleteEvent} from "../../cell/model/event/before-delete-event";
+import {HiddenEvent} from "../../cell/model/event/hidden-event";
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
 type CellRendererEventListenerFunctionSupplier = (listener: ICellRendererEventListener) => CellRendererEventListenerFunction | null | undefined;
@@ -340,10 +344,136 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		this._borderModel = engine.getBorderModel();
 		this._options = options;
 
+		this._cellModel.events()
+			.pipe(takeUntil(this._onCleanup))
+			.subscribe((event) => this._onCellModelEvent(event));
+
 		this._initializeRenderingElements();
 		this._bindListeners();
 
 		this._initializeCellRenderers();
+	}
+
+	/**
+	 * Called before cells are deleted.
+	 * @param fromIndex from index (row or column) to be deleted
+	 * @param count of rows/columns to be deleted
+	 * @param isRow whether rows or columns are to be deleted
+	 */
+	private _onBeforeDeletingCells(fromIndex: number, count: number, isRow: boolean): void {
+		this._cleanupViewportCacheBeforeDeletingCells(fromIndex, count, isRow);
+	}
+
+	/**
+	 * Cleanup the viewport cache for cells that are currently in the viewport
+	 * and are to be deleted.
+	 * @param fromIndex start index to delete cells from (row/column)
+	 * @param count of rows/columns to deleted
+	 * @param isRow whether to delete rows or columns
+	 */
+	private _cleanupViewportCacheBeforeDeletingCells(fromIndex: number, count: number, isRow: boolean): void {
+		this._doForCellAreaRange((range) => {
+			// Collect all cells to be deleted and clear the viewport cache
+			let rangeToBeDeleted: ICellRange;
+			if (isRow) {
+				rangeToBeDeleted = {
+					startRow: Math.max(fromIndex, range.startRow),
+					endRow: Math.min(fromIndex + count - 1, range.endRow),
+					startColumn: range.startColumn,
+					endColumn: range.endColumn
+				};
+			} else {
+				rangeToBeDeleted = {
+					startRow: range.startRow,
+					endRow: range.endRow,
+					startColumn: Math.max(fromIndex, range.startColumn),
+					endColumn: Math.min(fromIndex + count - 1, range.endColumn)
+				};
+			}
+
+			if (rangeToBeDeleted.startRow > rangeToBeDeleted.endRow
+				|| rangeToBeDeleted.startColumn > rangeToBeDeleted.endColumn) {
+				return;
+			}
+
+			// Clear viewport cache
+			this._cleanupCellViewportCachesForCellRange(
+				rangeToBeDeleted,
+				(cellRange) => CellRangeUtil.contains(cellRange, rangeToBeDeleted)
+			);
+		});
+	}
+
+	/**
+	 * Called when cells are hidden.
+	 * @param indices of rows or columns to be hidden
+	 * @param isRow whether rows or columns are hidden
+	 */
+	private _onHiddenCells(indices: number[], isRow: boolean): void {
+		this._cleanupViewportCacheDueToHidingCells(indices, isRow);
+	}
+
+	/**
+	 * Cleanup viewport caches of cells that are now hidden.
+	 * @param indices of rows or columns to be hidden
+	 * @param isRow whether rows or columns are hidden
+	 */
+	private _cleanupViewportCacheDueToHidingCells(indices: number[], isRow: boolean): void {
+		// Collect all consecutive index ranges that have been hidden
+		let firstIndex: number = -1;
+		let lastIndex: number = -1;
+		let indexRanges: IndexRange[] = [];
+		for (const index of indices) {
+			if (firstIndex === -1) {
+				firstIndex = index;
+				lastIndex = index;
+			} else if (index === lastIndex + 1) {
+				lastIndex = index;
+			} else {
+				indexRanges.push({from: firstIndex, to: lastIndex});
+
+				firstIndex = index;
+				lastIndex = index;
+			}
+		}
+		indexRanges.push({from: firstIndex, to: lastIndex});
+
+		// Transform index ranges to cell ranges
+		const maxRowIndex: number = this._cellModel.getRowCount() - 1;
+		const maxColumnIndex: number = this._cellModel.getColumnCount() - 1;
+		const hiddenRanges: ICellRange[] = indexRanges.map(indexRange => ({
+			startRow: isRow ? indexRange.from : 0,
+			endRow: isRow ? indexRange.to : maxRowIndex,
+			startColumn: isRow ? 0 : indexRange.from,
+			endColumn: isRow ? maxColumnIndex : indexRange.to
+		}));
+
+		this._doForCellAreaRange((range) => {
+			for (const hiddenRange of hiddenRanges) {
+				const rangeToClean: ICellRange | null = CellRangeUtil.and(hiddenRange, range);
+				if (!!rangeToClean) {
+					this._cleanupCellViewportCachesForCellRange(
+						rangeToClean,
+						(cellRange) => !this._cellModel.isRangeVisible(cellRange),
+						true
+					);
+				}
+			}
+		});
+	}
+
+	/**
+	 * Called on a cell model event.
+	 * @param event that occurred
+	 */
+	private _onCellModelEvent(event: ICellModelEvent): void {
+		if (event.type === CellModelEventType.BEFORE_DELETE) {
+			const e: BeforeDeleteEvent = event as BeforeDeleteEvent;
+			this._onBeforeDeletingCells(e.startIndex, e.count, e.isRow);
+		} else if (event.type === CellModelEventType.HIDDEN) {
+			const e: HiddenEvent = event as HiddenEvent;
+			this._onHiddenCells(e.indices, e.isRow);
+		}
 	}
 
 	/**
@@ -2782,10 +2912,29 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param newCells the new cells to render
 	 */
 	private _cleanupCellViewportCaches(oldCells: ICellRenderContextCollection, newCells: ICellRenderContextCollection): void {
-		this._cleanupCellViewportCachesForCellRange(oldCells.nonFixedCells.cellRange, newCells.nonFixedCells.cellRange);
-		this._cleanupCellViewportCachesForCellRange(oldCells.fixedRowCells.cellRange, newCells.fixedRowCells.cellRange);
-		this._cleanupCellViewportCachesForCellRange(oldCells.fixedColumnCells.cellRange, newCells.fixedColumnCells.cellRange);
-		this._cleanupCellViewportCachesForCellRange(oldCells.fixedCornerCells.cellRange, newCells.fixedCornerCells.cellRange);
+		this._cleanupCellViewportCachesForOverlappingCellRanges(oldCells.nonFixedCells.cellRange, newCells.nonFixedCells.cellRange);
+		this._cleanupCellViewportCachesForOverlappingCellRanges(oldCells.fixedRowCells.cellRange, newCells.fixedRowCells.cellRange);
+		this._cleanupCellViewportCachesForOverlappingCellRanges(oldCells.fixedColumnCells.cellRange, newCells.fixedColumnCells.cellRange);
+		this._cleanupCellViewportCachesForOverlappingCellRanges(oldCells.fixedCornerCells.cellRange, newCells.fixedCornerCells.cellRange);
+	}
+
+	/**
+	 * Do something for each available cell area range.
+	 * @param fct to do something with an cell area range (fixed corner, fixed rows, fixed columns, scrollable area)
+	 */
+	private _doForCellAreaRange(fct: (range: ICellRange) => void): void {
+		if (!this._lastRenderingContext) {
+			return;
+		}
+
+		console.log("### Fixed corner ###");
+		fct(this._lastRenderingContext.cells.fixedCornerCells.cellRange);
+		console.log("### Fixed rows ###");
+		fct(this._lastRenderingContext.cells.fixedRowCells.cellRange);
+		console.log("### Fixed columns ###");
+		fct(this._lastRenderingContext.cells.fixedColumnCells.cellRange);
+		console.log("### Non-fixed ###");
+		fct(this._lastRenderingContext.cells.nonFixedCells.cellRange);
 	}
 
 	/**
@@ -2794,27 +2943,40 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param oldRange the old cell range
 	 * @param newRange the new cell range
 	 */
-	private _cleanupCellViewportCachesForCellRange(oldRange: ICellRange, newRange: ICellRange): void {
+	private _cleanupCellViewportCachesForOverlappingCellRanges(oldRange: ICellRange, newRange: ICellRange): void {
 		const candidateRanges: ICellRange[] = CellRangeUtil.xor(oldRange, newRange);
 
 		for (const range of candidateRanges) {
-			const cells: ICell[] = this._cellModel.getCells(range);
+			this._cleanupCellViewportCachesForCellRange(range, (cellRange) => !CellRangeUtil.overlap(cellRange, newRange));
+		}
+	}
 
-			for (const cell of cells) {
-				// For merged cells make sure that the cell is completely disappeared from the viewport before clearing
-				const isMergedCell: boolean = !CellRangeUtil.isSingleRowColumnRange(cell.range);
-				if (isMergedCell) {
-					const isNotCompletelyInvisible: boolean = CellRangeUtil.overlap(cell.range, newRange);
-					if (isNotCompletelyInvisible) {
-						continue;
-					}
+	/**
+	 * Cleanup all the viewport caches for all cells in the given cell range
+	 * as long as they are completely invisible (merged cells might not be completely invisible).
+	 * @param range to cleanup viewport caches of cells in
+	 * @param mergedCellCleanupCheck check function whether to cleanup a merged cell as well
+	 * @param includeHidden whether to include hidden cells in the cleanup (default=false)
+	 */
+	private _cleanupCellViewportCachesForCellRange(range: ICellRange, mergedCellCleanupCheck: (range) => boolean, includeHidden?: boolean): void {
+		const cells: ICell[] = this._cellModel.getCells(range, {
+			includeHidden
+		});
+
+		for (const cell of cells) {
+			// For merged cells make sure that the cell is completely disappeared from the viewport before clearing
+			const isMergedCell: boolean = !CellRangeUtil.isSingleRowColumnRange(cell.range);
+			if (isMergedCell) {
+				const cleanupMergedCell: boolean = mergedCellCleanupCheck(cell.range);
+				if (!cleanupMergedCell) {
+					continue;
 				}
-
-				// Clearing viewport cache property since the cell is no more visible
-				this._getCellRendererForName(cell.rendererName).onDisappearing(cell);
-
-				cell.viewportCache = undefined;
 			}
+
+			// Clearing viewport cache property since the cell is no more visible
+			this._getCellRendererForName(cell.rendererName).onDisappearing(cell);
+
+			cell.viewportCache = undefined;
 		}
 	}
 
@@ -3054,21 +3216,6 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			dominantHorizontalSide: CanvasRenderer._determineDominantBorderSide(horizontalSides),
 			dominantVerticalSide: CanvasRenderer._determineDominantBorderSide(verticalSides)
 		}
-	}
-
-	/**
-	 * Calculate the maximum border side size in the given samples.
-	 * @param sides to calculate maximum border side size in
-	 */
-	private static _calculateMaxBorderSideSize(sides: IBorderSide[]): number {
-		let maxSize: number = 0;
-		for (const side of sides) {
-			if (!!side && side.size > maxSize) {
-				maxSize = side.size;
-			}
-		}
-
-		return maxSize;
 	}
 
 	/**
@@ -3970,5 +4117,22 @@ interface IResizerRenderContext {
 	 * Thickness of the resizer line.
 	 */
 	thickness: number;
+
+}
+
+/**
+ * Range of indices.
+ */
+interface IndexRange {
+
+	/**
+	 * First index in the range.
+	 */
+	from: number;
+
+	/**
+	 * Second index in the range.
+	 */
+	to: number;
 
 }
