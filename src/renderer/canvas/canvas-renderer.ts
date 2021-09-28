@@ -3503,21 +3503,27 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			overlay.element.style.display = "block";
 			overlay.element.style.overflow = "hidden";
 
-			overlay.element.style.left = `${left * this._zoom}px`;
-			overlay.element.style.top = `${top * this._zoom}px`;
-			overlay.element.style.width = `${overlay.bounds.width * this._zoom}px`;
-			overlay.element.style.height = `${overlay.bounds.height * this._zoom}px`;
+			overlay.element.style.left = `${left * this.getZoom()}px`;
+			overlay.element.style.top = `${top * this.getZoom()}px`;
+			overlay.element.style.width = `${overlay.bounds.width}px`;
+			overlay.element.style.height = `${overlay.bounds.height}px`;
 
 			if (width < overlay.bounds.width || height < overlay.bounds.height) {
 				// Add clipping
 				const leftClipping: number = overlay.bounds.width - width;
 				const topClipping: number = overlay.bounds.height - height;
 
-				overlay.element.style.clipPath = `inset(${topClipping * this._zoom}px 0 0 ${leftClipping * this._zoom}px)`;
-			} else {
-				if (overlay.element.style.clipPath.length > 0) {
-					overlay.element.style.clipPath = "";
-				}
+				overlay.element.style.clipPath = `inset(${topClipping}px 0 0 ${leftClipping}px)`;
+			} else if (overlay.element.style.clipPath.length > 0) {
+				overlay.element.style.clipPath = "";
+			}
+
+			if (this.getZoom() > 1) {
+				overlay.element.style.transform = `scale(${this.getZoom()})`;
+				overlay.element.style.transformOrigin = "left top";
+			} else if (overlay.element.style.transform.length > 0) {
+				overlay.element.style.transform = "";
+				overlay.element.style.transformOrigin = "";
 			}
 		} else {
 			overlay.element.style.display = "none";
