@@ -17,6 +17,8 @@ export class Colors {
 
 	public static readonly DARKCORAL: IColor = {red: 225, green: 21, blue: 72, alpha: 1.0};
 
+	public static readonly ORANGE: IColor = {red: 255, green: 165, blue: 0, alpha: 1.0};
+
 	/**
 	 * Convert the passed color to a CSS color style representation.
 	 * @param color to convert
