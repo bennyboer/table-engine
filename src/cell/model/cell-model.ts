@@ -1512,20 +1512,3 @@ interface ForEachInRangeOptions {
 	 */
 	includeHidden: boolean;
 }
-
-/**
- * A range of indices.
- */
-interface IndexRange {
-
-	/**
-	 * From index (inclusively).
-	 */
-	from: number;
-
-	/**
-	 * To index (inclusively).
-	 */
-	to: number;
-
-}

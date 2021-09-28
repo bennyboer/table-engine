@@ -2927,13 +2927,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			return;
 		}
 
-		console.log("### Fixed corner ###");
 		fct(this._lastRenderingContext.cells.fixedCornerCells.cellRange);
-		console.log("### Fixed rows ###");
 		fct(this._lastRenderingContext.cells.fixedRowCells.cellRange);
-		console.log("### Fixed columns ###");
 		fct(this._lastRenderingContext.cells.fixedColumnCells.cellRange);
-		console.log("### Non-fixed ###");
 		fct(this._lastRenderingContext.cells.nonFixedCells.cellRange);
 	}
 
