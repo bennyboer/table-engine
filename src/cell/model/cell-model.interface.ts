@@ -1,6 +1,8 @@
 import {ICell} from "../cell";
 import {ICellRange} from "../range/cell-range";
 import {IRectangle} from "../../util/rect";
+import {Observable} from "rxjs";
+import {ICellModelEvent} from "./event/cell-model-change";
 
 /**
  * Representation of a cell model.
@@ -34,8 +36,9 @@ export interface ICellModel {
 	/**
 	 * Get all cells in the provided range.
 	 * @param range to get cells in
+	 * @param options for the method
 	 */
-	getCells(range: ICellRange): ICell[];
+	getCells(range: ICellRange, options?: IGetCellsOptions): ICell[];
 
 	/**
 	 * Get a list of cells in the provided rectangle (metric is pixel).
@@ -254,5 +257,27 @@ export interface ICellModel {
 	 * Show all hidden rows and columns.
 	 */
 	showAll(): void;
+
+	/**
+	 * Get an observable about certain events in the cell model.
+	 */
+	events(): Observable<ICellModelEvent>;
+
+	/**
+	 * Cleanup when the cell model is no more needed.
+	 */
+	cleanup(): void;
+
+}
+
+/**
+ * Options for the getCells method.
+ */
+export interface IGetCellsOptions {
+
+	/**
+	 * Whether to include hidden cells in the result.
+	 */
+	includeHidden?: boolean;
 
 }

@@ -202,6 +202,7 @@ export class TableEngine {
 	 */
 	public cleanup(): void {
 		this._renderer.cleanup();
+		this._cellModel.cleanup();
 
 		this._events.complete();
 	}
