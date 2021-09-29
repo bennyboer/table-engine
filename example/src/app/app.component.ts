@@ -35,6 +35,7 @@ import {DebugCellRenderer} from "./renderer/debug-cell-renderer";
 import {CheckboxCellRenderer} from "../../../src/renderer/canvas/cell/checkbox/checkbox-cell-renderer";
 import {ICheckboxCellRendererValue} from "../../../src/renderer/canvas/cell/checkbox/checkbox-cell-renderer-value";
 import {DOMCellRenderer} from "../../../src/renderer/canvas/cell/dom/dom-cell-renderer";
+import {RatingCellRenderer} from "../../../src/renderer/canvas/cell/rating/rating-cell-renderer";
 
 @Component({
 	selector: "app-root",
@@ -477,6 +478,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			this.engine.registerCellRenderer(new LoadingCellRenderer());
 			this.engine.registerCellRenderer(new CheckboxCellRenderer());
 			this.engine.registerCellRenderer(new DOMCellRenderer());
+			this.engine.registerCellRenderer(new RatingCellRenderer({
+				editable: true
+			}));
 
 			// Set an example border
 			this.engine.getBorderModel().setBorder({
@@ -641,6 +645,11 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 	<p style="color: darkred">Nevertheless use these types of renderers <strong>sparingly</strong>, as they may result in poor performance</p>
 </div>
 `
+				},
+				{
+					range: CellRange.fromSingleRowColumn(16, 3),
+					rendererName: RatingCellRenderer.NAME,
+					value: 3.5
 				}
 			],
 			(row, column) => row * column,
