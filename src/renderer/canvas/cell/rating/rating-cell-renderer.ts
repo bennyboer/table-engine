@@ -139,7 +139,9 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 		if (isSpecialValue) {
 			return cell.value as IRatingCellRendererValue;
 		} else {
-			const value: IRatingCellRendererValue = {rating: cell.value};
+			const rating: number = cell.value !== undefined && cell.value !== null ? cell.value : 0;
+
+			const value: IRatingCellRendererValue = {rating};
 			cell.value = value;
 			return value;
 		}
@@ -195,11 +197,12 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
 		this._ctx = ctx;
 
-		if (!cell.value) {
+		const value: IRatingCellRendererValue = RatingCellRenderer._value(cell);
+
+		if (!value) {
 			return;
 		}
 
-		const value: IRatingCellRendererValue = RatingCellRenderer._value(cell);
 		const cache: IRatingCellRendererViewportCache = RatingCellRenderer._cache(cell);
 
 		let starCount: number = this._options.starCount;
@@ -241,35 +244,45 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 			}
 		}
 
-		// Create rating path
+		const boundsChanged: boolean = !cache.oldBounds
+			|| (cache.oldBounds.top !== bounds.top
+				|| cache.oldBounds.left !== bounds.left
+				|| cache.oldBounds.width !== bounds.width
+				|| cache.oldBounds.height !== bounds.height);
+
 		const sizePerStar: number = Math.min((bounds.width - padding * 2) / starCount, bounds.height - padding * 2);
 		const totalWidth: number = sizePerStar * starCount;
 
 		const xOffset: number = bounds.left + Math.round((bounds.width - totalWidth) / 2);
 		const yOffset: number = bounds.top + Math.round((bounds.height - sizePerStar) / 2);
 
-		const outerRadius: number = (sizePerStar - spacing) / 2;
-		const innerRadius: number = outerRadius / 2;
-		const starPath: Path2D = RatingCellRenderer._makeStarPath(
-			{x: 0, y: 0},
-			outerRadius,
-			innerRadius,
-			spikeCount
-		);
-		const ratingPath: Path2D = new Path2D();
-		const paths: Path2D[] = [];
-		for (let i = 0; i < starCount; i++) {
-			const translatedStarPath: Path2D = new Path2D();
-			translatedStarPath.addPath(
-				starPath,
-				new DOMMatrix().translateSelf(xOffset + sizePerStar * i, yOffset)
+		// Create rating path
+		if (boundsChanged) {
+			const outerRadius: number = (sizePerStar - spacing) / 2;
+			const innerRadius: number = outerRadius / 2;
+			const starPath: Path2D = RatingCellRenderer._makeStarPath(
+				{x: 0, y: 0},
+				outerRadius,
+				innerRadius,
+				spikeCount
 			);
+			const ratingPath: Path2D = new Path2D();
+			const paths: Path2D[] = [];
+			for (let i = 0; i < starCount; i++) {
+				const translatedStarPath: Path2D = new Path2D();
+				translatedStarPath.addPath(
+					starPath,
+					new DOMMatrix().translateSelf(xOffset + sizePerStar * i, yOffset)
+				);
 
-			paths.push(translatedStarPath);
+				paths.push(translatedStarPath);
 
-			ratingPath.addPath(translatedStarPath);
+				ratingPath.addPath(translatedStarPath);
+			}
+
+			cache.starPaths = paths;
+			cache.ratingPath = ratingPath;
 		}
-		cache.starPaths = paths;
 
 		// Render rating
 		const colorStr: string = Colors.toStyleStr(color);
@@ -286,16 +299,39 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 
 		if (normalizedValue <= 0) {
 			ctx.fillStyle = inactiveColorStr;
+			ctx.fill(cache.ratingPath);
 		} else if (normalizedValue >= 1) {
 			ctx.fillStyle = colorStr;
+			ctx.fill(cache.ratingPath);
 		} else {
-			const gradient = ctx.createLinearGradient(xOffset, 0, xOffset + totalWidth, 0);
-			gradient.addColorStop(0, colorStr);
-			gradient.addColorStop(normalizedValue, colorStr);
-			gradient.addColorStop(normalizedValue, inactiveColorStr);
-			gradient.addColorStop(1, inactiveColorStr);
+			const starCountValue: number = normalizedValue * starCount;
+			const filledStarCount: number = Math.floor(starCountValue);
 
-			ctx.fillStyle = gradient;
+			const partlyFilledStarFraction: number = starCountValue - filledStarCount;
+			const partlyFilledStarIndex: number = (partlyFilledStarFraction > 0) ? filledStarCount : -1;
+
+			for (let i = 0; i < starCount; i++) {
+				const starPath: Path2D = cache.starPaths[i];
+
+				if (i < filledStarCount) {
+					ctx.fillStyle = colorStr; // Draw star filled
+				} else if (i === partlyFilledStarIndex) {
+					// Draw star partly filled
+					const starXOffset: number = xOffset + sizePerStar * i;
+					const gradient: CanvasGradient = ctx.createLinearGradient(starXOffset, 0, starXOffset + (sizePerStar - spacing), 0);
+
+					gradient.addColorStop(0, colorStr);
+					gradient.addColorStop(partlyFilledStarFraction, colorStr);
+					gradient.addColorStop(partlyFilledStarFraction, inactiveColorStr);
+					gradient.addColorStop(1, inactiveColorStr);
+
+					ctx.fillStyle = gradient;
+				} else {
+					ctx.fillStyle = inactiveColorStr; // Draw star inactive
+				}
+
+				ctx.fill(starPath);
+			}
 		}
 
 		if (isHovered) {
@@ -309,7 +345,7 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 			}
 		}
 
-		ctx.fill(ratingPath);
+		cache.oldBounds = bounds;
 	}
 
 	/**
@@ -369,6 +405,16 @@ interface IRatingCellRendererViewportCache {
 	 * Paths of the rendered stars.
 	 */
 	starPaths?: Path2D[];
+
+	/**
+	 * Path of the complete rating.
+	 */
+	ratingPath?: Path2D;
+
+	/**
+	 * Bounds the ratingPath and starPaths have been created with.
+	 */
+	oldBounds?: IRectangle;
 
 	/**
 	 * The currently hovered star (if any).
