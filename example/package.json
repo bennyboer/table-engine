@@ -21,8 +21,8 @@
     "@angular/platform-browser": "^14.0.6",
     "@angular/platform-browser-dynamic": "^14.0.6",
     "@angular/router": "^14.0.6",
-    "ngx-color-picker": "^11.0.0",
-    "rxjs": "~6.6.0",
+    "ngx-color-picker": "^12.0.1",
+    "rxjs": "~7.2.0",
     "table-engine": "file:../lib",
     "tslib": "^2.0.0",
     "zone.js": "~0.11.3"
