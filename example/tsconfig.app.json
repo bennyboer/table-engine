@@ -5,9 +5,6 @@
     "outDir": "./out-tsc/app",
     "typeRoots": [
       "./node_modules/@types"
-    ],
-    "types": [
-      "resize-observer-browser"
     ]
   },
   "files": [

@@ -53,6 +53,6 @@ Afterwards install yarn if you haven't already using `npm install -g yarn`.
 
 Install dependencies using `yarn install --frozen-lockfile` in the root of the repository and also under `example` if you intend to run the example.
 
-Build the library using `npm run build` or run tests with `npm run test`.
+Build the library using `yarn build` or run tests with `yarn test`.
 
-The example is an Angular application that you may start using `npm run start` in the `example` folder.
+The example is an Angular application that you may start using `yarn start` in the `example` folder.

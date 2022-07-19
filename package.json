@@ -24,7 +24,6 @@
 	"homepage": "https://github.com/bennyboer/table-engine#readme",
 	"devDependencies": {
 		"@types/jest": "^26.0.24",
-		"@types/resize-observer-browser": "^0.1.6",
 		"jest": "^27.0.6",
 		"ts-jest": "^27.0.4",
 		"ts-loader": "^9.2.4",
@@ -33,6 +32,6 @@
 		"webpack-cli": "^4.7.2"
 	},
 	"dependencies": {
-		"rxjs": "^7.2.0"
+		"rxjs": "^7.4.0"
 	}
 }

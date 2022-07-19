@@ -10,7 +10,7 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v2
         with:
-          node-version: 16.5.0
+          node-version: 18.6.0
           registry-url: 'https://registry.npmjs.org'
       - name: Install dependencies
         run: |
