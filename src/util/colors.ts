@@ -6,8 +6,8 @@ import {IColor} from "./color";
 export class Colors {
 
 	public static readonly WHITE: IColor = {red: 255, green: 255, blue: 255, alpha: 1.0};
-
 	public static readonly BLACK: IColor = {red: 0, green: 0, blue: 0, alpha: 1.0};
+	public static readonly TRANSPARENT: IColor = {red: 0, green: 0, blue: 0, alpha: 0.0};
 
 	public static readonly DARKGRAY: IColor = {red: 70, green: 70, blue: 70, alpha: 1.0};
 	public static readonly GRAY: IColor = {red: 127, green: 127, blue: 127, alpha: 1.0};
