@@ -12,3 +12,11 @@ body {
 .small-form-field .mat-form-field-infix {
   padding: 0.5em 0;
 }
+
+ul.table-engine-combobox-dropdown-list {
+  li {
+    &:hover {
+      background-color: #F9F9F9;
+    }
+  }
+}

@@ -14,6 +14,8 @@ import {ICellRendererMouseEvent} from "../../../cell/event/cell-renderer-mouse-e
 import {IComboBoxCellRendererValue, IComboBoxOption} from "./combobox-cell-renderer-value";
 import {IColor} from "../../../../util/color";
 import {Colors} from "../../../../util/colors";
+import {IOverlay} from "../../../../overlay/overlay";
+import {IPoint} from "../../../../util/point";
 
 export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 
@@ -154,7 +156,6 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 				.scaleSelf(style.selectArrowOptions.size, style.selectArrowOptions.size)
 		);
 
-		console.log(style.hovered);
 		ctx.strokeStyle = Colors.toStyleStr(style.hovered ? style.selectArrowOptions.hoverColor : style.selectArrowOptions.color);
 		ctx.lineWidth = style.selectArrowOptions.thickness;
 		ctx.lineCap = style.selectArrowOptions.lineCap;
@@ -199,8 +200,111 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 	}
 
 	private _onClick(event: ICellRendererMouseEvent): void {
-		// TODO
-		console.log(event);
+		const cache: IViewportCache = ComboBoxCellRenderer._cache(event.cell);
+		const value: IComboBoxCellRendererValue = ComboBoxCellRenderer._value(event.cell);
+
+		let editable: boolean = this._options.editable;
+		if (!!value.options && value.options.editable !== undefined && value.options.editable !== null) {
+			editable = value.options.editable;
+		}
+
+		if (editable) {
+			const cellBounds: IRectangle = this._engine.getCellModel().getBounds(event.cell.range);
+			this._openDropdownOverlay(value, cellBounds);
+		}
+	}
+
+	private _openDropdownOverlay(value: IComboBoxCellRendererValue, cellBounds: IRectangle): void {
+		const listItemFontSize: number = 12; // TODO Configurable
+		const listItemHorizontalPadding: number = 8; // TODO Configurable
+		const listItemVerticalPadding: number = 4; // TODO Configurable
+		const listItemSeparatorSize: number = 1; // TODO Configurable
+
+		const overlayElement: HTMLElement = document.createElement("div");
+		overlayElement.style.background = "white";
+		overlayElement.style.borderRadius = "0 0 2px 2px";
+		overlayElement.style.boxShadow = "2px 2px 4px #999";
+		overlayElement.tabIndex = -1; // Div element is focusable
+
+		const listContainerElement: HTMLElement = document.createElement("div");
+		listContainerElement.style.height = "100%";
+		listContainerElement.style.overflow = "auto";
+
+		// TODO Calculate max available height to the top and bottom
+		// TODO Calculate height the dropdown would approx. need
+		// TODO When that height is too much for bottom use top direction
+		// TODO When top direction is also not enough decide the direction based on which offers more space
+		// TODO Restrict overlay height by that available space
+
+		const list: HTMLElement = document.createElement("ul");
+		list.className = "table-engine-combobox-dropdown-list";
+		list.style.listStyleType = "none";
+		list.style.margin = "0";
+		list.style.padding = "0";
+
+		let approximateHeight = 0;
+		for (const optionId in value.select_options) {
+			const label = value.select_options[optionId].label;
+
+			const listItem: HTMLElement = document.createElement("li");
+			listItem.style.lineHeight = "1.0";
+			listItem.style.fontSize = `${listItemFontSize}px`;
+			listItem.style.padding = `${listItemVerticalPadding}px ${listItemHorizontalPadding}px`;
+			listItem.style.borderBottom = `${listItemSeparatorSize}px solid #EAEAEA`;
+			listItem.textContent = label;
+
+			list.appendChild(listItem);
+
+			const mouseDownListener: (MouseEvent) => void = (event: MouseEvent) => {
+				event.stopPropagation(); // Prevent table selection
+			};
+			const clickListener: (MouseEvent) => void = (event: MouseEvent) => {
+				event.stopPropagation(); // Stop table selection
+				console.log("Selected element " + optionId);
+			};
+			listItem.addEventListener("mousedown", mouseDownListener);
+			listItem.addEventListener("click", clickListener);
+
+			approximateHeight += listItemFontSize + listItemVerticalPadding * 2 + listItemSeparatorSize;
+		}
+
+		listContainerElement.appendChild(list);
+		overlayElement.appendChild(listContainerElement);
+
+		const maxDropdownHeight: number = 200; // TODO Configurable
+		let dropdownHeight = maxDropdownHeight;
+		if (approximateHeight < maxDropdownHeight) {
+			dropdownHeight = approximateHeight;
+		}
+
+		const overlay: IOverlay = {
+			element: overlayElement,
+			bounds: {
+				left: cellBounds.left,
+				top: cellBounds.top + cellBounds.height,
+				width: cellBounds.width,
+				height: dropdownHeight
+			}
+		};
+		this._engine.getOverlayManager().addOverlay(overlay);
+
+		const scrollListener: (MouseEvent) => void = (event: MouseEvent) => {
+			event.stopPropagation(); // Stop table scrolling
+		};
+		const blurListener: () => void = () => {
+			// Remove all event listeners again
+			overlayElement.removeEventListener("wheel", scrollListener);
+			overlayElement.removeEventListener("blur", blurListener);
+
+			this._engine.getOverlayManager().removeOverlay(overlay); // Remove overlay
+			this._engine.requestFocus(); // Re-focus table
+		};
+		overlayElement.addEventListener("wheel", scrollListener);
+		overlayElement.addEventListener("blur", blurListener);
+
+		setTimeout(() => {
+			overlayElement.focus();
+		});
 	}
 
 	private _onMouseMove(event: ICellRendererMouseEvent): void {
