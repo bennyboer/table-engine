@@ -235,17 +235,23 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		const value: IComboBoxCellRendererValue = ComboBoxCellRenderer._value(event.cell);
 
 		let editable: boolean = this._options.editable;
-		if (!!value.options && value.options.editable !== undefined && value.options.editable !== null) {
-			editable = value.options.editable;
+		let onChanged: (cell: ICell) => void = this._options.onChanged;
+		if (!!value.options) {
+			if (value.options.editable !== undefined && value.options.editable !== null) {
+				editable = value.options.editable;
+			}
+			if (!!value.options.onChanged) {
+				onChanged = value.options.onChanged;
+			}
 		}
 
 		if (editable) {
-			this._openDropdownOverlay(value, event.cell.range);
+			this._openDropdownOverlay(value, event.cell, onChanged);
 		}
 	}
 
-	private _openDropdownOverlay(value: IComboBoxCellRendererValue, cellRange: ICellRange): void {
-		const cellBounds: IRectangle = this._engine.getCellModel().getBounds(cellRange);
+	private _openDropdownOverlay(value: IComboBoxCellRendererValue, cell: ICell, onChanged: (cell: ICell) => void): void {
+		const cellBounds: IRectangle = this._engine.getCellModel().getBounds(cell.range);
 
 		// Determine height available to the top and bottom of the given cell range
 		const viewport = this._engine.getViewport();
@@ -275,6 +281,11 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 			const clickListener: (MouseEvent) => void = (event: MouseEvent) => {
 				event.stopPropagation(); // Stop table selection
 				value.selected_option_id = optionId;
+
+				if (!!onChanged) {
+					onChanged(cell);
+				}
+
 				blurListener();
 			};
 			listItem.addEventListener("mousedown", mouseDownListener);
