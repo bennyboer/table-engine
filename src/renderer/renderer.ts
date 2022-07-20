@@ -2,6 +2,8 @@ import {ICellRenderer} from "./cell/cell-renderer";
 import {TableEngine} from "../table-engine";
 import {IOverlayManager} from "../overlay/overlay-manager";
 import {ITableEngineOptions} from "../options";
+import {IPoint} from "../util/point";
+import {IRectangle} from "../util/rect";
 
 /**
  * Representation of a renderer of the table engine.
@@ -49,6 +51,26 @@ export interface ITableEngineRenderer extends IOverlayManager {
 	 * Get the current zoom level (1.0 = 100%).
 	 */
 	getZoom(): number;
+
+	/**
+	 * Get the current scroll offset.
+	 */
+	getScrollOffset(): IPoint;
+
+	/**
+	 * Get the current viewport rectangle.
+	 */
+	getViewport(): IRectangle;
+
+	/**
+	 * Get the height of the fixed rows or 0.
+	 */
+	getFixedRowsHeight(): number;
+
+	/**
+	 * Get the width of the fixed columns or 0.
+	 */
+	getFixedColumnsWidth(): number;
 
 	/**
 	 * Cleanup the renderer when no more needed.

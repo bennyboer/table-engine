@@ -11,6 +11,8 @@ import {SelectionModel} from "./selection/model/selection-model";
 import {IBorderModel} from "./border/model/border-model.interface";
 import {BorderModel} from "./border/model/border-model";
 import {IOverlayManager} from "./overlay/overlay-manager";
+import {IPoint} from "./util/point";
+import {IRectangle} from "./util/rect";
 
 /**
  * Entry point of the table engine library.
@@ -141,6 +143,22 @@ export class TableEngine {
 	 */
 	public getZoom(): number {
 		return this._renderer.getZoom();
+	}
+
+	public getScrollOffset(): IPoint {
+		return this._renderer.getScrollOffset();
+	}
+
+	public getViewport(): IRectangle {
+		return this._renderer.getViewport();
+	}
+
+	public getFixedRowsHeight(): number {
+		return this._renderer.getFixedRowsHeight();
+	}
+
+	public getFixedColumnsWidth(): number {
+		return this._renderer.getFixedColumnsWidth();
 	}
 
 	/**

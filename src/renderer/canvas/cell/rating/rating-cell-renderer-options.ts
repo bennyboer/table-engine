@@ -6,8 +6,8 @@ export const DEFAULT_STAR_COUNT: number = 5;
 export const DEFAULT_STAR_SPIKE_COUNT: number = 5;
 export const DEFAULT_COLOR: IColor = Colors.ORANGE;
 export const DEFAULT_INACTIVE_COLOR: IColor = Colors.LIGHTGRAY;
-export const DEFAULT_HOVER_BORDER_COLOR: IColor = Colors.GRAY;
-export const DEFAULT_HOVER_BORDER_THICKNESS: number = 2;
+export const DEFAULT_HOVER_BORDER_COLOR: IColor = Colors.ORANGE;
+export const DEFAULT_HOVER_BORDER_THICKNESS: number = 1;
 export const DEFAULT_SPACING: number = 2;
 export const DEFAULT_PADDING: number = 2;
 

@@ -36,6 +36,8 @@ import {CheckboxCellRenderer} from "../../../src/renderer/canvas/cell/checkbox/c
 import {ICheckboxCellRendererValue} from "../../../src/renderer/canvas/cell/checkbox/checkbox-cell-renderer-value";
 import {DOMCellRenderer} from "../../../src/renderer/canvas/cell/dom/dom-cell-renderer";
 import {RatingCellRenderer} from "../../../src/renderer/canvas/cell/rating/rating-cell-renderer";
+import {ComboBoxCellRenderer} from "../../../src/renderer/canvas/cell/combobox/combobox-cell-renderer";
+import {IComboBoxCellRendererValue} from "../../../src/renderer/canvas/cell/combobox/combobox-cell-renderer-value";
 
 @Component({
 	selector: "app-root",
@@ -481,6 +483,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			this.engine.registerCellRenderer(new RatingCellRenderer({
 				editable: true
 			}));
+			this.engine.registerCellRenderer(new ComboBoxCellRenderer());
 
 			// Set an example border
 			this.engine.getBorderModel().setBorder({
@@ -650,6 +653,35 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 					range: CellRange.fromSingleRowColumn(16, 3),
 					rendererName: RatingCellRenderer.NAME,
 					value: 3.5
+				},
+				{
+					range: CellRange.fromSingleRowColumn(18, 3),
+					rendererName: ComboBoxCellRenderer.NAME,
+					value: {
+						select_options: {
+							apple: {label: "Apple"},
+							banana: {label: "Banana"},
+							orange: {label: "Orange"}
+						}
+					} as IComboBoxCellRendererValue
+				},
+				{
+					range: CellRange.fromSingleRowColumn(19, 3),
+					rendererName: ComboBoxCellRenderer.NAME,
+					value: {
+						selected_option_id: "cow",
+						select_options: {
+							cat: {label: "Meow"},
+							dog: {label: "Woof"},
+							wolf: {label: "Howl"},
+							chicken: {label: "Bah-gawk"},
+							cow: {label: "Moo"},
+							bear: {label: "Roar"},
+							bee: {label: "Buzz"},
+							cricket: {label: "Chirp"},
+							duck: {label: "Quack"}
+						}
+					} as IComboBoxCellRendererValue
 				}
 			],
 			(row, column) => row * column,
