@@ -1977,6 +1977,33 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		return this._zoom;
 	}
 
+	public getScrollOffset(): IPoint {
+		return {
+			x: this._scrollOffset.x,
+			y: this._scrollOffset.y
+		};
+	}
+
+	public getViewport(): IRectangle {
+		if (!!this._lastRenderingContext) {
+			return this._lastRenderingContext.viewPort;
+		}
+
+		return this._getViewPort();
+	}
+
+	public getFixedRowsHeight(): number {
+		return !!this._lastRenderingContext && !!this._lastRenderingContext.cells.fixedRowCells
+			? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds.height
+			: 0;
+	}
+
+	public getFixedColumnsWidth(): number {
+		return !!this._lastRenderingContext && !!this._lastRenderingContext.cells.fixedColumnCells
+			? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds.width
+			: 0;
+	}
+
 	/**
 	 * Scroll to the cell at the given row and column (if not already in the current view).
 	 * @param row to scroll to

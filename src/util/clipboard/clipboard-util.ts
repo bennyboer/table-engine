@@ -18,6 +18,7 @@ export class ClipboardUtil {
 		// Hide the dummy element from the user
 		clipboardDummyElement.style.position = 'absolute';
 		clipboardDummyElement.style.left = '-9999px';
+		clipboardDummyElement.style.userSelect = "text";
 
 		// Add to DOM
 		document.body.appendChild(clipboardDummyElement);

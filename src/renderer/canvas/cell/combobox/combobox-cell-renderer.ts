@@ -1,7 +1,7 @@
 import {ICanvasCellRenderer} from "../canvas-cell-renderer";
 import {
 	fillOptions,
-	IComboBoxCellRendererOptions,
+	IComboBoxCellRendererOptions, ILabelOptions,
 	IPlaceholderOptions,
 	ISelectArrowOptions
 } from "./combobox-cell-renderer-options";
@@ -12,10 +12,9 @@ import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-even
 import {IRectangle} from "../../../../util/rect";
 import {ICellRendererMouseEvent} from "../../../cell/event/cell-renderer-mouse-event";
 import {IComboBoxCellRendererValue, IComboBoxOption} from "./combobox-cell-renderer-value";
-import {IColor} from "../../../../util/color";
 import {Colors} from "../../../../util/colors";
 import {IOverlay} from "../../../../overlay/overlay";
-import {IPoint} from "../../../../util/point";
+import {ICellRange} from "../../../../cell/range/cell-range";
 
 export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 
@@ -70,7 +69,12 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 	}
 
 	getCopyValue(cell: ICell): string {
-		return `${ComboBoxCellRenderer._value(cell)}`;
+		const value = ComboBoxCellRenderer._value(cell);
+		if (!!value.selected_option_id) {
+			return value.select_options[value.selected_option_id].label;
+		}
+
+		return "";
 	}
 
 	getEventListener(): ICellRendererEventListener | null {
@@ -95,15 +99,15 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 
 		const style: IRenderingStyle = this._determineRenderingStyle(value, cache);
 
-		ComboBoxCellRenderer._renderLabel(ctx, bounds, value, style);
-		ComboBoxCellRenderer._renderSelectArrow(ctx, bounds, style);
+		const selectArrowWidth: number = ComboBoxCellRenderer._renderSelectArrow(ctx, bounds, style);
+		ComboBoxCellRenderer._renderLabel(ctx, bounds, value, style, selectArrowWidth);
 	}
 
 	private _determineRenderingStyle(value: IComboBoxCellRendererValue, cache: IViewportCache): IRenderingStyle {
 		let editable: boolean = this._options.editable;
 		let hovered = cache.hovered;
-		let labelColor: IColor = this._options.labelColor;
 		let padding: number = this._options.padding;
+		let labelOptions: ILabelOptions = this._options.label;
 		let placeholderOptions: IPlaceholderOptions = this._options.placeholder;
 		let selectArrowOptions: ISelectArrowOptions = this._options.selectArrow;
 
@@ -111,11 +115,11 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 			if (value.options.editable !== undefined && value.options.editable !== null) {
 				editable = value.options.editable;
 			}
-			if (!!value.options.labelColor) {
-				labelColor = value.options.labelColor;
-			}
 			if (value.options.padding !== undefined && value.options.padding !== null) {
 				padding = value.options.padding;
+			}
+			if (!!value.options.label) {
+				labelOptions = value.options.label;
 			}
 			if (!!value.options.placeholder) {
 				placeholderOptions = value.options.placeholder;
@@ -128,8 +132,8 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		return {
 			editable,
 			hovered,
-			labelColor,
 			padding,
+			labelOptions,
 			placeholderOptions,
 			selectArrowOptions
 		}
@@ -139,7 +143,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		ctx: CanvasRenderingContext2D,
 		bounds: IRectangle,
 		style: IRenderingStyle
-	) {
+	): number {
 		const selectArrowPath: ISelectArrowPath = ComboBoxCellRenderer._makeSelectArrowPath();
 
 		const selectArrowWidth: number = selectArrowPath.width * style.selectArrowOptions.size;
@@ -162,26 +166,54 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		ctx.lineJoin = style.selectArrowOptions.lineJoin;
 
 		ctx.stroke(transformedSelectArrowPath);
+
+		return selectArrowWidth + 2 * style.padding;
 	}
 
 	private static _renderLabel(
 		ctx: CanvasRenderingContext2D,
 		bounds: IRectangle,
 		value: IComboBoxCellRendererValue,
-		style: IRenderingStyle
+		style: IRenderingStyle,
+		selectArrowWidth: number
 	) {
 		const labelXOffset = bounds.left + style.padding;
 		const labelYOffset = bounds.top + Math.round(bounds.height / 2);
 
-		const showPlaceholder = !value.selected_option_id;
-		if (showPlaceholder) {
-			ctx.fillStyle = Colors.toStyleStr(style.placeholderOptions.color);
-			ctx.fillText(style.placeholderOptions.text, labelXOffset, labelYOffset);
-		} else {
+		let labelText = style.placeholderOptions.text;
+		let color = style.placeholderOptions.color;
+
+		const hasLabelSelected = !!value.selected_option_id;
+		if (hasLabelSelected) {
 			const selectedOption: IComboBoxOption = value.select_options[value.selected_option_id];
 
-			ctx.fillStyle = Colors.toStyleStr(style.labelColor);
-			ctx.fillText(selectedOption.label, labelXOffset, labelYOffset);
+			labelText = selectedOption.label;
+			color = style.labelOptions.color;
+		}
+
+		if (style.hovered) {
+			color = style.labelOptions.hoveredColor;
+		}
+
+		ctx.font = `${style.labelOptions.fontSize}px ${style.labelOptions.fontFamily}`;
+		ctx.fillStyle = Colors.toStyleStr(color);
+
+		// Check if label fits into box
+		const maxLabelWidth: number = bounds.width - style.padding - selectArrowWidth;
+		const measuredWidth: number = ctx.measureText(labelText).width;
+		const overflow: boolean = measuredWidth > maxLabelWidth;
+		if (overflow) {
+			const clippingRegion = new Path2D();
+			clippingRegion.rect(bounds.left, bounds.top, bounds.width - selectArrowWidth, bounds.height);
+
+			ctx.save();
+			ctx.clip(clippingRegion);
+		}
+
+		ctx.fillText(labelText, labelXOffset, labelYOffset);
+
+		if (overflow) {
+			ctx.restore();
 		}
 	}
 
@@ -200,7 +232,6 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 	}
 
 	private _onClick(event: ICellRendererMouseEvent): void {
-		const cache: IViewportCache = ComboBoxCellRenderer._cache(event.cell);
 		const value: IComboBoxCellRendererValue = ComboBoxCellRenderer._value(event.cell);
 
 		let editable: boolean = this._options.editable;
@@ -209,82 +240,99 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		}
 
 		if (editable) {
-			const cellBounds: IRectangle = this._engine.getCellModel().getBounds(event.cell.range);
-			this._openDropdownOverlay(value, cellBounds);
+			this._openDropdownOverlay(value, event.cell.range);
 		}
 	}
 
-	private _openDropdownOverlay(value: IComboBoxCellRendererValue, cellBounds: IRectangle): void {
-		const listItemFontSize: number = 12; // TODO Configurable
-		const listItemHorizontalPadding: number = 8; // TODO Configurable
-		const listItemVerticalPadding: number = 4; // TODO Configurable
-		const listItemSeparatorSize: number = 1; // TODO Configurable
+	private _openDropdownOverlay(value: IComboBoxCellRendererValue, cellRange: ICellRange): void {
+		const cellBounds: IRectangle = this._engine.getCellModel().getBounds(cellRange);
+
+		// Determine height available to the top and bottom of the given cell range
+		const viewport = this._engine.getViewport();
+		const fixedRowsHeight: number = this._engine.getFixedRowsHeight();
+		const availableHeightToTheTop = cellBounds.top - (viewport.top + fixedRowsHeight);
+		const availableHeightToTheBottom = (viewport.top + viewport.height - cellBounds.height) - cellBounds.top;
 
 		const overlayElement: HTMLElement = document.createElement("div");
-		overlayElement.style.background = "white";
-		overlayElement.style.borderRadius = "0 0 2px 2px";
-		overlayElement.style.boxShadow = "2px 2px 4px #999";
-		overlayElement.tabIndex = -1; // Div element is focusable
+		overlayElement.className = this._options.dropdown.overlayClassName;
+		overlayElement.tabIndex = -1; // Div element must be focusable to enable the blur event
 
 		const listContainerElement: HTMLElement = document.createElement("div");
 		listContainerElement.style.height = "100%";
 		listContainerElement.style.overflow = "auto";
 
-		// TODO Calculate max available height to the top and bottom
-		// TODO Calculate height the dropdown would approx. need
-		// TODO When that height is too much for bottom use top direction
-		// TODO When top direction is also not enough decide the direction based on which offers more space
-		// TODO Restrict overlay height by that available space
-
 		const list: HTMLElement = document.createElement("ul");
-		list.className = "table-engine-combobox-dropdown-list";
-		list.style.listStyleType = "none";
-		list.style.margin = "0";
-		list.style.padding = "0";
 
-		let approximateHeight = 0;
 		for (const optionId in value.select_options) {
 			const label = value.select_options[optionId].label;
 
 			const listItem: HTMLElement = document.createElement("li");
-			listItem.style.lineHeight = "1.0";
-			listItem.style.fontSize = `${listItemFontSize}px`;
-			listItem.style.padding = `${listItemVerticalPadding}px ${listItemHorizontalPadding}px`;
-			listItem.style.borderBottom = `${listItemSeparatorSize}px solid #EAEAEA`;
 			listItem.textContent = label;
-
-			list.appendChild(listItem);
 
 			const mouseDownListener: (MouseEvent) => void = (event: MouseEvent) => {
 				event.stopPropagation(); // Prevent table selection
 			};
 			const clickListener: (MouseEvent) => void = (event: MouseEvent) => {
 				event.stopPropagation(); // Stop table selection
-				console.log("Selected element " + optionId);
+				value.selected_option_id = optionId;
+				blurListener();
 			};
 			listItem.addEventListener("mousedown", mouseDownListener);
 			listItem.addEventListener("click", clickListener);
 
-			approximateHeight += listItemFontSize + listItemVerticalPadding * 2 + listItemSeparatorSize;
+			list.appendChild(listItem);
 		}
 
 		listContainerElement.appendChild(list);
 		overlayElement.appendChild(listContainerElement);
 
-		const maxDropdownHeight: number = 200; // TODO Configurable
+		// Create render container to render overlay to measure the needed height
+		const renderContainer: HTMLElement = document.createElement("div");
+		renderContainer.style.position = "absolute";
+		renderContainer.style.left = "-9999px";
+		renderContainer.style.top = "-9999px";
+		renderContainer.style.visibility = "hidden";
+		renderContainer.appendChild(overlayElement);
+		document.body.appendChild(renderContainer);
+		const neededOverlayHeight: number = renderContainer.getBoundingClientRect().height;
+		document.body.removeChild(renderContainer);
+
+		const maxDropdownHeight: number = this._options.dropdown.maxHeight;
 		let dropdownHeight = maxDropdownHeight;
-		if (approximateHeight < maxDropdownHeight) {
-			dropdownHeight = approximateHeight;
+		if (neededOverlayHeight < maxDropdownHeight) {
+			dropdownHeight = neededOverlayHeight;
+		}
+
+		// Check in which direction (top or bottom) to open the combobox dropdown
+		let openToBottom: boolean = true;
+		if (availableHeightToTheBottom < dropdownHeight) {
+			if (availableHeightToTheTop < dropdownHeight) {
+				openToBottom = availableHeightToTheBottom > availableHeightToTheTop;
+
+				// Cut dropdown height by the available space
+				if (openToBottom) {
+					dropdownHeight = availableHeightToTheBottom;
+				} else {
+					dropdownHeight = availableHeightToTheTop;
+				}
+			} else {
+				openToBottom = false;
+			}
+		}
+
+		let dropdownBounds = {
+			left: cellBounds.left,
+			top: cellBounds.top + cellBounds.height,
+			width: cellBounds.width,
+			height: dropdownHeight
+		};
+		if (!openToBottom) {
+			dropdownBounds.top = cellBounds.top - dropdownHeight;
 		}
 
 		const overlay: IOverlay = {
 			element: overlayElement,
-			bounds: {
-				left: cellBounds.left,
-				top: cellBounds.top + cellBounds.height,
-				width: cellBounds.width,
-				height: dropdownHeight
-			}
+			bounds: dropdownBounds
 		};
 		this._engine.getOverlayManager().addOverlay(overlay);
 
@@ -341,8 +389,8 @@ interface ISelectArrowPath {
 interface IRenderingStyle {
 	editable: boolean;
 	hovered: boolean;
-	labelColor: IColor;
 	padding: number;
+	labelOptions: ILabelOptions;
 	placeholderOptions: IPlaceholderOptions;
 	selectArrowOptions: ISelectArrowOptions;
 }
