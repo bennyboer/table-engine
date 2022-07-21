@@ -209,7 +209,7 @@ export class BorderModel implements IBorderModel {
 					const b: IBorder = {};
 					result[rowOffset][columnOffset] = b;
 
-					if (row === startRow) {
+					if (row === cell.range.startRow) {
 						// Fill border top
 						b.top = border.top;
 
@@ -221,7 +221,7 @@ export class BorderModel implements IBorderModel {
 							}
 						}
 					}
-					if (row === endRow) {
+					if (row === cell.range.endRow) {
 						// Fill border bottom
 						b.bottom = border.bottom;
 
@@ -233,7 +233,7 @@ export class BorderModel implements IBorderModel {
 							}
 						}
 					}
-					if (column === startColumn) {
+					if (column === cell.range.startColumn) {
 						// Fill border left
 						b.left = border.left;
 
@@ -245,7 +245,7 @@ export class BorderModel implements IBorderModel {
 							}
 						}
 					}
-					if (column === endColumn) {
+					if (column === cell.range.endColumn) {
 						// Fill border right
 						b.right = border.right;
 
@@ -263,14 +263,14 @@ export class BorderModel implements IBorderModel {
 
 		// Fill remaining cells in matrix with default border (if specified)
 		for (let rowOffset = 0; rowOffset < result.length; rowOffset++) {
-			const row: IBorder[] = result[rowOffset];
+			const rowBorders: IBorder[] = result[rowOffset];
 
-			for (let columnOffset = 0; columnOffset < row.length; columnOffset++) {
-				let border: IBorder | null = row[columnOffset];
+			for (let columnOffset = 0; columnOffset < rowBorders.length; columnOffset++) {
+				let border: IBorder | null = rowBorders[columnOffset];
 				if (!border) {
 					// Fill with defaults
 					const defaultBorder: IBorder = this._getDefaultBorder(range.startRow + rowOffset, range.startColumn + columnOffset);
-					row[columnOffset] = {
+					rowBorders[columnOffset] = {
 						top: defaultBorder.top,
 						bottom: defaultBorder.bottom,
 						left: defaultBorder.left,
