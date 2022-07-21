@@ -3041,17 +3041,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			ctx.translate(0.5, 0.5);
 
 			// Render "normal" (non-fixed) cells first
-			CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.nonFixedCells, renderingContext.borders.inNonFixedArea, renderingContext.selection?.inNonFixedArea);
+			CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.nonFixedCells, renderingContext.borders.inNonFixedArea, renderingContext.selection?.inNonFixedArea, true);
 
 			// Then render fixed cells (if any).
 			if (!!renderingContext.cells.fixedColumnCells) {
-				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedColumnCells, renderingContext.borders.inFixedColumns, renderingContext.selection?.inFixedColumns);
+				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedColumnCells, renderingContext.borders.inFixedColumns, renderingContext.selection?.inFixedColumns, true);
 			}
 			if (!!renderingContext.cells.fixedRowCells) {
-				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedRowCells, renderingContext.borders.inFixedRows, renderingContext.selection?.inFixedRows);
+				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedRowCells, renderingContext.borders.inFixedRows, renderingContext.selection?.inFixedRows, true);
 			}
 			if (!!renderingContext.cells.fixedCornerCells) {
-				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedCornerCells, renderingContext.borders.inFixedCorner, renderingContext.selection?.inFixedCorner);
+				CanvasRenderer._renderArea(ctx, renderingContext, renderingContext.cells.fixedCornerCells, renderingContext.borders.inFixedCorner, renderingContext.selection?.inFixedCorner, true);
 			}
 
 			// Render scrollbars
@@ -3091,16 +3091,32 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param cellArea to render for the area
 	 * @param borders to render
 	 * @param selectionInfos to render for the area
+	 * @param clipArea whether to clip the area so every drawing outside the area is removed
 	 */
 	private static _renderArea(
 		ctx: CanvasRenderingContext2D,
 		context: IRenderContext,
 		cellArea: ICellAreaRenderContext,
 		borders: IBorderInfo[][],
-		selectionInfos?: ISelectionRenderInfo[]
+		selectionInfos?: ISelectionRenderInfo[],
+		clipArea?: boolean
 	): void {
+		let restoreContext = false;
+		if (clipArea) {
+			// Clip drawing to allowed area
+			const clippingRegion = new Path2D();
+			clippingRegion.rect(cellArea.viewPortBounds.left, cellArea.viewPortBounds.top, cellArea.viewPortBounds.width, cellArea.viewPortBounds.height);
+			ctx.save();
+			ctx.clip(clippingRegion);
+			restoreContext = true;
+		}
+
 		CanvasRenderer._renderAreaCells(ctx, context, cellArea);
 		CanvasRenderer._renderBorders(ctx, context, borders);
+
+		if (restoreContext) {
+			ctx.restore();
+		}
 
 		// Render selection that may be displayed the area
 		if (!!selectionInfos) {
