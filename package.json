@@ -6,6 +6,7 @@
 		"lib/**/*"
 	],
 	"main": "lib/bundled/bundle.js",
+	"type": "module",
 	"scripts": {
 		"build": "tsc",
 		"test": "jest --config jest.config.js",

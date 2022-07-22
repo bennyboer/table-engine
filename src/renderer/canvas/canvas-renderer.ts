@@ -3746,18 +3746,24 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			oldCells.nonFixedCells.cellRange,
 			newCells.nonFixedCells.cellRange
 		);
-		this._cleanupCellViewportCachesForOverlappingCellRanges(
-			oldCells.fixedRowCells.cellRange,
-			newCells.fixedRowCells.cellRange
-		);
-		this._cleanupCellViewportCachesForOverlappingCellRanges(
-			oldCells.fixedColumnCells.cellRange,
-			newCells.fixedColumnCells.cellRange
-		);
-		this._cleanupCellViewportCachesForOverlappingCellRanges(
-			oldCells.fixedCornerCells.cellRange,
-			newCells.fixedCornerCells.cellRange
-		);
+		if (!!oldCells.fixedRowCells && !!newCells.fixedRowCells) {
+			this._cleanupCellViewportCachesForOverlappingCellRanges(
+				oldCells.fixedRowCells.cellRange,
+				newCells.fixedRowCells.cellRange
+			);
+		}
+		if (!!oldCells.fixedColumnCells && !!newCells.fixedColumnCells) {
+			this._cleanupCellViewportCachesForOverlappingCellRanges(
+				oldCells.fixedColumnCells.cellRange,
+				newCells.fixedColumnCells.cellRange
+			);
+		}
+		if (!!oldCells.fixedCornerCells && !!newCells.fixedCornerCells) {
+			this._cleanupCellViewportCachesForOverlappingCellRanges(
+				oldCells.fixedCornerCells.cellRange,
+				newCells.fixedCornerCells.cellRange
+			);
+		}
 	}
 
 	/**

@@ -1,10 +1,25 @@
-const path = require('path');
+import path from 'path';
+import { fileURLToPath } from 'url';
+import CircularDependencyPlugin from 'circular-dependency-plugin';
 
-const CircularDependencyPlugin = require('circular-dependency-plugin');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-module.exports = {
+export default {
 	mode: 'production',
 	entry: './src/index.ts',
+	experiments: {
+		outputModule: true,
+	},
+	resolve: {
+		extensions: ['.tsx', '.ts', '.js'],
+	},
+	output: {
+		filename: 'bundle.js',
+		path: path.resolve(__dirname, 'lib/bundled'),
+		library: {
+			type: 'module',
+		},
+	},
 	module: {
 		rules: [
 			{
@@ -13,13 +28,6 @@ module.exports = {
 				exclude: /node_modules/,
 			},
 		],
-	},
-	resolve: {
-		extensions: ['.tsx', '.ts', '.js'],
-	},
-	output: {
-		filename: 'bundle.js',
-		path: path.resolve(__dirname, 'lib/bundled'),
 	},
 	plugins: [
 		new CircularDependencyPlugin({
@@ -30,4 +38,5 @@ module.exports = {
 			cwd: process.cwd(),
 		}),
 	],
+	devtool: 'source-map',
 };
