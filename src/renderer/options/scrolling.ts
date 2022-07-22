@@ -15,7 +15,6 @@ const DEFAULT_TOUCH_SCROLLING_ACCELERATION: number = -600;
  * Options regarding scrolling.
  */
 export interface IScrollingOptions {
-
 	/**
 	 * Speed factor for touch scrolling.
 	 * The higher, the more impact a scroll when swiping fast.
@@ -28,7 +27,6 @@ export interface IScrollingOptions {
 	 * touch swipes on the phone to scroll the table.
 	 */
 	touchScrollingAcceleration?: number;
-
 }
 
 /**
@@ -40,14 +38,21 @@ export const fillOptions = (options?: IScrollingOptions) => {
 		options = {};
 	}
 
-	if (options.touchScrollingSpeedFactor === undefined || options.touchScrollingSpeedFactor === null) {
-		options.touchScrollingSpeedFactor = DEFAULT_TOUCH_SCROLLING_SPEED_FACTOR;
+	if (
+		options.touchScrollingSpeedFactor === undefined ||
+		options.touchScrollingSpeedFactor === null
+	) {
+		options.touchScrollingSpeedFactor =
+			DEFAULT_TOUCH_SCROLLING_SPEED_FACTOR;
 	}
 
-	if (options.touchScrollingAcceleration === undefined || options.touchScrollingAcceleration === null) {
-		options.touchScrollingAcceleration = DEFAULT_TOUCH_SCROLLING_ACCELERATION;
+	if (
+		options.touchScrollingAcceleration === undefined ||
+		options.touchScrollingAcceleration === null
+	) {
+		options.touchScrollingAcceleration =
+			DEFAULT_TOUCH_SCROLLING_ACCELERATION;
 	}
 
 	return options;
 };
-

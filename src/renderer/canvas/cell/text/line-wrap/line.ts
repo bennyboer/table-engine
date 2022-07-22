@@ -2,7 +2,6 @@
  * Representation of a line in a paragraph.
  */
 export interface ILine {
-
 	/**
 	 * Text of the line.
 	 */
@@ -12,5 +11,4 @@ export interface ILine {
 	 * Width of the line.
 	 */
 	width: number;
-
 }

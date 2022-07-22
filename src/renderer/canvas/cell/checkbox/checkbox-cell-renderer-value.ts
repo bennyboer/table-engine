@@ -1,4 +1,4 @@
-import {ICheckboxCellRendererOptions} from "./checkbox-cell-renderer-options";
+import { ICheckboxCellRendererOptions } from './checkbox-cell-renderer-options';
 
 /**
  * Value of the checkbox cell renderer value.
@@ -7,7 +7,6 @@ import {ICheckboxCellRendererOptions} from "./checkbox-cell-renderer-options";
  * will allow more control and unlock more options.
  */
 export interface ICheckboxCellRendererValue {
-
 	/**
 	 * Whether the checkbox is checked.
 	 */
@@ -23,5 +22,4 @@ export interface ICheckboxCellRendererValue {
 	 * If not set the default options of the checkbox cell renderer are applied.
 	 */
 	options?: ICheckboxCellRendererOptions;
-
 }

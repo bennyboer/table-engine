@@ -1,24 +1,19 @@
-import {ICell} from "../cell";
-import {CellRange, ICellRange} from "../range/cell-range";
-import {CellRangeUtil} from "../range/cell-range-util";
-import {IRectangle} from "../../util/rect";
-import {ICellModel, IGetCellsOptions} from "./cell-model.interface";
-import {IBorder} from "../../border/border";
-import {TextCellRenderer} from "../../renderer/canvas/cell/text/text-cell-renderer";
-import {Observable, Subject} from "rxjs";
-import {ICellModelEvent} from "./event/cell-model-change";
-import {BeforeDeleteEvent} from "./event/before-delete-event";
-import {HiddenEvent} from "./event/hidden-event";
+import { ICell } from '../cell';
+import { CellRange, CellRangeUtil, ICellRange } from '../range';
+import { IRectangle } from '../../util';
+import { ICellModel, IGetCellsOptions } from './cell-model.interface';
+import { IBorder } from '../../border';
+import { Observable, Subject } from 'rxjs';
+import { BeforeDeleteEvent, HiddenEvent, ICellModelEvent } from './event';
 
 /**
  * Model managing cells and their position and size in the table.
  */
 export class CellModel implements ICellModel {
-
 	/**
 	 * The default cell renderer name to use.
 	 */
-	private static readonly DEFAULT_CELL_RENDERER_NAME: string = TextCellRenderer.NAME;
+	private static readonly DEFAULT_CELL_RENDERER_NAME: string = 'text';
 
 	/**
 	 * The default row size.
@@ -81,9 +76,16 @@ export class CellModel implements ICellModel {
 	/**
 	 * Subject emitting certain events in the cell model.
 	 */
-	private readonly _events: Subject<ICellModelEvent> = new Subject<ICellModelEvent>();
+	private readonly _events: Subject<ICellModelEvent> =
+		new Subject<ICellModelEvent>();
 
-	constructor(cellLookup: Array<Array<ICell | null>>, rowSizes: number[], columnSizes: number[], hiddenRows: Set<number>, hiddenColumns: Set<number>) {
+	constructor(
+		cellLookup: Array<Array<ICell | null>>,
+		rowSizes: number[],
+		columnSizes: number[],
+		hiddenRows: Set<number>,
+		hiddenColumns: Set<number>
+	) {
 		this._cellLookup = cellLookup;
 		this._rowSizes = rowSizes;
 		this._columnSizes = columnSizes;
@@ -91,7 +93,10 @@ export class CellModel implements ICellModel {
 		this._hiddenColumns = hiddenColumns;
 
 		this._rowOffsets = CellModel._calculateOffsets(rowSizes, hiddenRows);
-		this._columnOffsets = CellModel._calculateOffsets(columnSizes, hiddenColumns);
+		this._columnOffsets = CellModel._calculateOffsets(
+			columnSizes,
+			hiddenColumns
+		);
 	}
 
 	/**
@@ -165,28 +170,44 @@ export class CellModel implements ICellModel {
 		// Fill cell lookup with cells
 		for (let row = 0; row < rowCount; row++) {
 			for (let column = 0; column < columnCount; column++) {
-				const cellAlreadyFilledInLookup: boolean = !!cellLookup[row][column];
+				const cellAlreadyFilledInLookup: boolean =
+					!!cellLookup[row][column];
 				if (!cellAlreadyFilledInLookup) {
 					// Create new cell and fill lookup
 					const cell: ICell = cellsByKey.get(`${row}_${column}`);
 					if (!!cell) {
 						// Fill cell into lookup
-						for (let r = cell.range.startRow; r <= cell.range.endRow; r++) {
-							for (let c = cell.range.startColumn; c <= cell.range.endColumn; c++) {
+						for (
+							let r = cell.range.startRow;
+							r <= cell.range.endRow;
+							r++
+						) {
+							for (
+								let c = cell.range.startColumn;
+								c <= cell.range.endColumn;
+								c++
+							) {
 								cellLookup[r][c] = cell;
 							}
 						}
 					} else {
 						// Encountered empty cell
 						const value: any = emptyCellValueSupplier(row, column);
-						const rendererName: string = emptyCellRendererSupplier(row, column);
+						const rendererName: string = emptyCellRendererSupplier(
+							row,
+							column
+						);
 
-						const hasValue: boolean = value !== null && value !== undefined;
+						const hasValue: boolean =
+							value !== null && value !== undefined;
 						if (hasValue || !!rendererName) {
 							cellLookup[row][column] = {
 								value,
 								rendererName,
-								range: CellRange.fromSingleRowColumn(row, column)
+								range: CellRange.fromSingleRowColumn(
+									row,
+									column
+								),
 							};
 						} else {
 							/*
@@ -200,7 +221,13 @@ export class CellModel implements ICellModel {
 			}
 		}
 
-		return new CellModel(cellLookup, rowSizes, columnSizes, hiddenRows, hiddenColumns);
+		return new CellModel(
+			cellLookup,
+			rowSizes,
+			columnSizes,
+			hiddenRows,
+			hiddenColumns
+		);
 	}
 
 	/**
@@ -208,7 +235,10 @@ export class CellModel implements ICellModel {
 	 * @param sizes to calculate offsets from
 	 * @param hidden rows/columns that need to be left out
 	 */
-	private static _calculateOffsets(sizes: number[], hidden: Set<number>): number[] {
+	private static _calculateOffsets(
+		sizes: number[],
+		hidden: Set<number>
+	): number[] {
 		const result = new Array(sizes.length);
 
 		let currentOffset = 0;
@@ -230,7 +260,11 @@ export class CellModel implements ICellModel {
 	 * @param columnIndex to get cell at
 	 * @param fill whether to fill the cell lookup with a new cell instance, if it is currently null (Default: false)
 	 */
-	public getCell(rowIndex: number, columnIndex: number, fill?: boolean): ICell | null {
+	public getCell(
+		rowIndex: number,
+		columnIndex: number,
+		fill?: boolean
+	): ICell | null {
 		if (fill === undefined || fill === null) {
 			fill = false;
 		}
@@ -257,7 +291,7 @@ export class CellModel implements ICellModel {
 			const newCell: ICell = {
 				range: CellRange.fromSingleRowColumn(rowIndex, columnIndex),
 				value: null,
-				rendererName: CellModel.DEFAULT_CELL_RENDERER_NAME
+				rendererName: CellModel.DEFAULT_CELL_RENDERER_NAME,
 			};
 
 			// Fill in matrix
@@ -284,7 +318,11 @@ export class CellModel implements ICellModel {
 	 * @param columnIndex index of the column
 	 * @param rendererName name of the renderer to set
 	 */
-	public setRenderer(rowIndex: number, columnIndex: number, rendererName: string): void {
+	public setRenderer(
+		rowIndex: number,
+		columnIndex: number,
+		rendererName: string
+	): void {
 		const cell: ICell = this._getCellOrFill(rowIndex, columnIndex);
 		cell.rendererName = rendererName;
 	}
@@ -295,19 +333,28 @@ export class CellModel implements ICellModel {
 	 * @param options for the method
 	 */
 	public getCells(range: ICellRange, options?: IGetCellsOptions): ICell[] {
-		const cells: ICell[] = new Array((range.endRow - range.startRow + 1) * (range.endColumn - range.startColumn + 1));
+		const cells: ICell[] = new Array(
+			(range.endRow - range.startRow + 1) *
+				(range.endColumn - range.startColumn + 1)
+		);
 
-		const includeHidden: boolean = !!options ? options.includeHidden : false;
+		const includeHidden: boolean = !!options
+			? options.includeHidden
+			: false;
 
 		let cellCount: number = 0;
-		this._forEachCellInRange(range, (cell, row, column) => {
-			if (!!cell) {
-				cells[cellCount++] = cell;
+		this._forEachCellInRange(
+			range,
+			(cell, row, column) => {
+				if (!!cell) {
+					cells[cellCount++] = cell;
+				}
+			},
+			{
+				unique: true,
+				includeHidden,
 			}
-		}, {
-			unique: true,
-			includeHidden
-		});
+		);
 
 		// Adjust result list length that may not be correct due to merged cells or empty (null) cells
 		cells.length = cellCount;
@@ -350,7 +397,12 @@ export class CellModel implements ICellModel {
 	 * @param offset to get nearest row at
 	 */
 	public getRowAtOffset(offset: number): number {
-		return CellModel._calculateIndexForOffset(offset, this._rowOffsets, this._rowSizes, this._hiddenRows);
+		return CellModel._calculateIndexForOffset(
+			offset,
+			this._rowOffsets,
+			this._rowSizes,
+			this._hiddenRows
+		);
 	}
 
 	/**
@@ -358,7 +410,12 @@ export class CellModel implements ICellModel {
 	 * @param offset to get nearest column at
 	 */
 	public getColumnAtOffset(offset: number): number {
-		return CellModel._calculateIndexForOffset(offset, this._columnOffsets, this._columnSizes, this._hiddenColumns);
+		return CellModel._calculateIndexForOffset(
+			offset,
+			this._columnOffsets,
+			this._columnSizes,
+			this._hiddenColumns
+		);
 	}
 
 	/**
@@ -376,7 +433,11 @@ export class CellModel implements ICellModel {
 		}
 
 		let isAtLeastOneColumnVisible: boolean = false;
-		for (let column = range.startColumn; column <= range.endColumn; column++) {
+		for (
+			let column = range.startColumn;
+			column <= range.endColumn;
+			column++
+		) {
 			if (!this.isColumnHidden(column)) {
 				isAtLeastOneColumnVisible = true;
 				break;
@@ -392,7 +453,11 @@ export class CellModel implements ICellModel {
 	 * @returns the next visible row or -1
 	 */
 	public findNextVisibleRow(from: number): number {
-		return CellModel._findNextVisibleIndex(from, this.getRowCount() - 1, this._hiddenRows);
+		return CellModel._findNextVisibleIndex(
+			from,
+			this.getRowCount() - 1,
+			this._hiddenRows
+		);
 	}
 
 	/**
@@ -401,7 +466,11 @@ export class CellModel implements ICellModel {
 	 * @returns the next visible column or -1
 	 */
 	public findNextVisibleColumn(from: number): number {
-		return CellModel._findNextVisibleIndex(from, this.getColumnCount() - 1, this._hiddenColumns);
+		return CellModel._findNextVisibleIndex(
+			from,
+			this.getColumnCount() - 1,
+			this._hiddenColumns
+		);
 	}
 
 	/**
@@ -411,7 +480,11 @@ export class CellModel implements ICellModel {
 	 * @param hidden all hidden indices
 	 * @returns the next visible index or -1
 	 */
-	private static _findNextVisibleIndex(from: number, maxIndex: number, hidden: Set<number>): number {
+	private static _findNextVisibleIndex(
+		from: number,
+		maxIndex: number,
+		hidden: Set<number>
+	): number {
 		for (let i = from; i <= maxIndex; i++) {
 			if (!hidden.has(i)) {
 				return i;
@@ -445,7 +518,10 @@ export class CellModel implements ICellModel {
 	 * @param hidden all hidden indices
 	 * @returns the previous visible index or -1
 	 */
-	private static _findPreviousVisibleIndex(from: number, hidden: Set<number>): number {
+	private static _findPreviousVisibleIndex(
+		from: number,
+		hidden: Set<number>
+	): number {
 		for (let i = from; i >= 0; i--) {
 			if (!hidden.has(i)) {
 				return i;
@@ -462,15 +538,23 @@ export class CellModel implements ICellModel {
 	public getBounds(range: ICellRange): IRectangle {
 		const top: number = this.getRowOffset(range.startRow);
 		const left: number = this.getColumnOffset(range.startColumn);
-		const bottom: number = this.getRowOffset(range.endRow) + (this.isRowHidden(range.endRow) ? 0.0 : this.getRowSize(range.endRow));
-		const right: number = this.getColumnOffset(range.endColumn) + (this.isColumnHidden(range.endColumn) ? 0.0 : this.getColumnSize(range.endColumn));
+		const bottom: number =
+			this.getRowOffset(range.endRow) +
+			(this.isRowHidden(range.endRow)
+				? 0.0
+				: this.getRowSize(range.endRow));
+		const right: number =
+			this.getColumnOffset(range.endColumn) +
+			(this.isColumnHidden(range.endColumn)
+				? 0.0
+				: this.getColumnSize(range.endColumn));
 
 		return {
 			top,
 			left,
 			height: bottom - top,
-			width: right - left
-		}
+			width: right - left,
+		};
 	}
 
 	/**
@@ -479,10 +563,30 @@ export class CellModel implements ICellModel {
 	 */
 	private _calculateCellRangeForRect(rect: IRectangle): ICellRange {
 		return {
-			startRow: CellModel._calculateIndexForOffset(rect.top, this._rowOffsets, this._rowSizes, this._hiddenRows),
-			endRow: CellModel._calculateIndexForOffset(rect.top + rect.height, this._rowOffsets, this._rowSizes, this._hiddenRows),
-			startColumn: CellModel._calculateIndexForOffset(rect.left, this._columnOffsets, this._columnSizes, this._hiddenColumns),
-			endColumn: CellModel._calculateIndexForOffset(rect.left + rect.width, this._columnOffsets, this._columnSizes, this._hiddenColumns),
+			startRow: CellModel._calculateIndexForOffset(
+				rect.top,
+				this._rowOffsets,
+				this._rowSizes,
+				this._hiddenRows
+			),
+			endRow: CellModel._calculateIndexForOffset(
+				rect.top + rect.height,
+				this._rowOffsets,
+				this._rowSizes,
+				this._hiddenRows
+			),
+			startColumn: CellModel._calculateIndexForOffset(
+				rect.left,
+				this._columnOffsets,
+				this._columnSizes,
+				this._hiddenColumns
+			),
+			endColumn: CellModel._calculateIndexForOffset(
+				rect.left + rect.width,
+				this._columnOffsets,
+				this._columnSizes,
+				this._hiddenColumns
+			),
 		};
 	}
 
@@ -501,18 +605,25 @@ export class CellModel implements ICellModel {
 	): number {
 		const indexCount: number = sizes.length;
 		if (indexCount === 0) {
-			throw new Error(`There are no indices yet. Do you have any rows/columns yet in the cell model?`);
+			throw new Error(
+				`There are no indices yet. Do you have any rows/columns yet in the cell model?`
+			);
 		}
 
 		const maxIndex: number = indexCount - 1;
-		const maxOffset: number = offsets[maxIndex] + (hidden.has(maxIndex) ? 0.0 : sizes[maxIndex]);
+		const maxOffset: number =
+			offsets[maxIndex] + (hidden.has(maxIndex) ? 0.0 : sizes[maxIndex]);
 
 		// Guess a possible index
-		let currentIndex: number = Math.round(Math.min(maxOffset / indexCount, maxIndex));
+		let currentIndex: number = Math.round(
+			Math.min(maxOffset / indexCount, maxIndex)
+		);
 
 		// Calculate the lower and upper offsets of the index
 		let lowerOffsetBound: number = offsets[currentIndex];
-		let upperOffsetBound: number = lowerOffsetBound + (hidden.has(currentIndex) ? 0.0 : sizes[currentIndex]);
+		let upperOffsetBound: number =
+			lowerOffsetBound +
+			(hidden.has(currentIndex) ? 0.0 : sizes[currentIndex]);
 
 		// Determine the direction we need to walk (next or previous index?)
 		const direction: number = offset < lowerOffsetBound ? -1 : 1;
@@ -530,7 +641,9 @@ export class CellModel implements ICellModel {
 
 			// Calculate new lower and upper offsets for the index
 			lowerOffsetBound = offsets[currentIndex];
-			upperOffsetBound = lowerOffsetBound + (hidden.has(currentIndex) ? 0.0 : sizes[currentIndex]);
+			upperOffsetBound =
+				lowerOffsetBound +
+				(hidden.has(currentIndex) ? 0.0 : sizes[currentIndex]);
 		}
 
 		return currentIndex;
@@ -556,7 +669,12 @@ export class CellModel implements ICellModel {
 	public getWidth(): number {
 		const lastColumnIndex: number = this.getColumnCount() - 1;
 
-		return this._columnOffsets[lastColumnIndex] + (this.isColumnHidden(lastColumnIndex) ? 0.0 : this.getColumnSize(lastColumnIndex));
+		return (
+			this._columnOffsets[lastColumnIndex] +
+			(this.isColumnHidden(lastColumnIndex)
+				? 0.0
+				: this.getColumnSize(lastColumnIndex))
+		);
 	}
 
 	/**
@@ -565,7 +683,12 @@ export class CellModel implements ICellModel {
 	public getHeight(): number {
 		const lastRowIndex: number = this.getRowCount() - 1;
 
-		return this._rowOffsets[lastRowIndex] + (this.isRowHidden(lastRowIndex) ? 0.0 : this.getRowSize(lastRowIndex));
+		return (
+			this._rowOffsets[lastRowIndex] +
+			(this.isRowHidden(lastRowIndex)
+				? 0.0
+				: this.getRowSize(lastRowIndex))
+		);
 	}
 
 	/**
@@ -606,7 +729,13 @@ export class CellModel implements ICellModel {
 	 * @param size new size for the rows to resize
 	 */
 	public resizeRows(rowIndices: number[], size: number): void {
-		CellModel._resize(this._rowSizes, this._rowOffsets, this._hiddenRows, rowIndices, size);
+		CellModel._resize(
+			this._rowSizes,
+			this._rowOffsets,
+			this._hiddenRows,
+			rowIndices,
+			size
+		);
 	}
 
 	/**
@@ -615,7 +744,13 @@ export class CellModel implements ICellModel {
 	 * @param size new size for the columns to resize
 	 */
 	public resizeColumns(columnIndices: number[], size: number): void {
-		CellModel._resize(this._columnSizes, this._columnOffsets, this._hiddenColumns, columnIndices, size);
+		CellModel._resize(
+			this._columnSizes,
+			this._columnOffsets,
+			this._hiddenColumns,
+			columnIndices,
+			size
+		);
 	}
 
 	/**
@@ -709,9 +844,13 @@ export class CellModel implements ICellModel {
 		cellInitializer?: (row: number, column: number) => ICell
 	): void {
 		// First and foremost collect all merged cells ranging over the new area to insert
-		const intersectingMergedAreaRanges: ICellRange[] = insertBeforeIndex > 0
-			? this._collectMergedCellsRangingOverIndex(isRow, insertBeforeIndex - 1)
-			: [];
+		const intersectingMergedAreaRanges: ICellRange[] =
+			insertBeforeIndex > 0
+				? this._collectMergedCellsRangingOverIndex(
+						isRow,
+						insertBeforeIndex - 1
+				  )
+				: [];
 
 		// Split those merged cells before inserting
 		for (const range of intersectingMergedAreaRanges) {
@@ -719,13 +858,26 @@ export class CellModel implements ICellModel {
 		}
 
 		// Expand cell lookup and other collections
-		const totalAddedSize: number = this._expandModelForInsert(insertBeforeIndex, count, isRow, cellInitializer);
+		const totalAddedSize: number = this._expandModelForInsert(
+			insertBeforeIndex,
+			count,
+			isRow,
+			cellInitializer
+		);
 
 		// Shift hidden rows/columns
-		CellModel._shiftHidden(isRow ? this._hiddenRows : this._hiddenColumns, insertBeforeIndex + 1, count);
+		CellModel._shiftHidden(
+			isRow ? this._hiddenRows : this._hiddenColumns,
+			insertBeforeIndex + 1,
+			count
+		);
 
 		// Shift offsets for the old rows/columns below/after the inserted ones by the total added size
-		CellModel._shiftOffsets(isRow ? this._rowOffsets : this._columnOffsets, insertBeforeIndex + count, totalAddedSize);
+		CellModel._shiftOffsets(
+			isRow ? this._rowOffsets : this._columnOffsets,
+			insertBeforeIndex + count,
+			totalAddedSize
+		);
 
 		// Shift cell ranges for all cells below/after the inserted ones
 		this._shiftCellRangesForInsert(isRow, insertBeforeIndex + count, count);
@@ -750,37 +902,49 @@ export class CellModel implements ICellModel {
 	 * @param fromIndex from which index to start shifting (inclusive)
 	 * @param by what amount to shift
 	 */
-	private _shiftCellRangesForInsert(isRowAxis: boolean, fromIndex: number, by: number): void {
+	private _shiftCellRangesForInsert(
+		isRowAxis: boolean,
+		fromIndex: number,
+		by: number
+	): void {
 		const forEachOptions: ForEachInRangeOptions = {
 			unique: true,
-			includeHidden: true
+			includeHidden: true,
 		};
 		if (isRowAxis) {
-			this._forEachCellInRange({
-				startRow: fromIndex,
-				endRow: this.getRowCount() - 1,
-				startColumn: 0,
-				endColumn: this.getColumnCount() - 1
-			}, (cell, row, column) => {
-				if (!!cell) {
-					// Change cell range for the cell
-					cell.range.startRow += by;
-					cell.range.endRow += by;
-				}
-			}, forEachOptions);
+			this._forEachCellInRange(
+				{
+					startRow: fromIndex,
+					endRow: this.getRowCount() - 1,
+					startColumn: 0,
+					endColumn: this.getColumnCount() - 1,
+				},
+				(cell, row, column) => {
+					if (!!cell) {
+						// Change cell range for the cell
+						cell.range.startRow += by;
+						cell.range.endRow += by;
+					}
+				},
+				forEachOptions
+			);
 		} else {
-			this._forEachCellInRange({
-				startRow: 0,
-				endRow: this.getRowCount() - 1,
-				startColumn: fromIndex,
-				endColumn: this.getColumnCount() - 1
-			}, (cell, row, column) => {
-				if (!!cell) {
-					// Change cell range for the cell
-					cell.range.startColumn += by;
-					cell.range.endColumn += by;
-				}
-			}, forEachOptions);
+			this._forEachCellInRange(
+				{
+					startRow: 0,
+					endRow: this.getRowCount() - 1,
+					startColumn: fromIndex,
+					endColumn: this.getColumnCount() - 1,
+				},
+				(cell, row, column) => {
+					if (!!cell) {
+						// Change cell range for the cell
+						cell.range.startColumn += by;
+						cell.range.endColumn += by;
+					}
+				},
+				forEachOptions
+			);
 		}
 	}
 
@@ -803,13 +967,21 @@ export class CellModel implements ICellModel {
 				continue;
 			}
 
-			for (let column = range.startColumn; column <= range.endColumn; column++) {
+			for (
+				let column = range.startColumn;
+				column <= range.endColumn;
+				column++
+			) {
 				if (!options.includeHidden && this.isColumnHidden(column)) {
 					continue;
 				}
 
 				const cell: ICell = this.getCell(row, column);
-				if (options.unique && !!cell && !CellRangeUtil.isSingleRowColumnRange(cell.range)) {
+				if (
+					options.unique &&
+					!!cell &&
+					!CellRangeUtil.isSingleRowColumnRange(cell.range)
+				) {
 					// Check if we already processed the cell with the given range
 					if (alreadyEncounteredMergedCells.has(cell)) {
 						continue;
@@ -830,7 +1002,11 @@ export class CellModel implements ICellModel {
 	 * @param fromIndex from which index to start shifting
 	 * @param by the amount to shift by
 	 */
-	private static _shiftOffsets(offsets: number[], fromIndex: number, by: number): void {
+	private static _shiftOffsets(
+		offsets: number[],
+		fromIndex: number,
+		by: number
+	): void {
 		for (let i = fromIndex; i < offsets.length; i++) {
 			offsets[i] += by;
 		}
@@ -851,9 +1027,17 @@ export class CellModel implements ICellModel {
 		cellInitializer?: (row: number, column: number) => ICell
 	): number {
 		if (isRow) {
-			return this._expandModelForInsertForRows(insertBeforeIndex, count, cellInitializer);
+			return this._expandModelForInsertForRows(
+				insertBeforeIndex,
+				count,
+				cellInitializer
+			);
 		} else {
-			return this._expandModelForInsertForColumns(insertBeforeIndex, count, cellInitializer);
+			return this._expandModelForInsertForColumns(
+				insertBeforeIndex,
+				count,
+				cellInitializer
+			);
 		}
 	}
 
@@ -878,14 +1062,19 @@ export class CellModel implements ICellModel {
 			rowsToInsert[row] = new Array(columnCount);
 
 			for (let column = 0; column < columnCount; column++) {
-				rowsToInsert[row][column] = !!cellInitializer ? cellInitializer(row + insertBeforeIndex, column) : null;
+				rowsToInsert[row][column] = !!cellInitializer
+					? cellInitializer(row + insertBeforeIndex, column)
+					: null;
 			}
 		}
 
 		// Prepare new row sizes
-		const defaultRowSize = rowCount > 0
-			? (insertBeforeIndex < rowCount ? this.getRowSize(insertBeforeIndex) : this.getRowSize(rowCount - 1))
-			: CellModel.DEFAULT_ROW_SIZE;
+		const defaultRowSize =
+			rowCount > 0
+				? insertBeforeIndex < rowCount
+					? this.getRowSize(insertBeforeIndex)
+					: this.getRowSize(rowCount - 1)
+				: CellModel.DEFAULT_ROW_SIZE;
 		const rowSizesToInsert: number[] = new Array(count);
 		let totalAddedHeight: number = 0;
 		for (let i = 0; i < count; i++) {
@@ -895,7 +1084,10 @@ export class CellModel implements ICellModel {
 		}
 
 		// Prepare new offsets
-		let lastOffset: number = insertBeforeIndex < rowCount ? this.getRowOffset(insertBeforeIndex) : this.getHeight();
+		let lastOffset: number =
+			insertBeforeIndex < rowCount
+				? this.getRowOffset(insertBeforeIndex)
+				: this.getHeight();
 		const offsetsToInsert: number[] = new Array(count);
 		for (let i = 0; i < count; i++) {
 			offsetsToInsert[i] = lastOffset;
@@ -926,9 +1118,12 @@ export class CellModel implements ICellModel {
 		const columnCount = this.getColumnCount();
 
 		// Prepare columns sizes
-		const defaultColumnSize = columnCount > 0
-			? (insertBeforeIndex < columnCount ? this.getColumnSize(insertBeforeIndex) : this.getColumnSize(columnCount - 1))
-			: CellModel.DEFAULT_COLUMN_SIZE;
+		const defaultColumnSize =
+			columnCount > 0
+				? insertBeforeIndex < columnCount
+					? this.getColumnSize(insertBeforeIndex)
+					: this.getColumnSize(columnCount - 1)
+				: CellModel.DEFAULT_COLUMN_SIZE;
 		const columnSizesToInsert: number[] = new Array(count);
 		let totalAddedWidth: number = 0;
 		for (let i = 0; i < count; i++) {
@@ -938,7 +1133,10 @@ export class CellModel implements ICellModel {
 		}
 
 		// Prepare offsets
-		let lastOffset: number = insertBeforeIndex < columnCount ? this.getColumnOffset(insertBeforeIndex) : this.getWidth();
+		let lastOffset: number =
+			insertBeforeIndex < columnCount
+				? this.getColumnOffset(insertBeforeIndex)
+				: this.getWidth();
 		const offsetsToInsert: number[] = new Array(count);
 		for (let i = 0; i < count; i++) {
 			offsetsToInsert[i] = lastOffset;
@@ -949,10 +1147,16 @@ export class CellModel implements ICellModel {
 		for (let row = 0; row < rowCount; row++) {
 			const cellsToInsert: Array<ICell | null> = new Array(count);
 			for (let i = 0; i < cellsToInsert.length; i++) {
-				cellsToInsert[i] = !!cellInitializer ? cellInitializer(row, i + insertBeforeIndex) : null;
+				cellsToInsert[i] = !!cellInitializer
+					? cellInitializer(row, i + insertBeforeIndex)
+					: null;
 			}
 
-			this._cellLookup[row].splice(insertBeforeIndex, 0, ...cellsToInsert);
+			this._cellLookup[row].splice(
+				insertBeforeIndex,
+				0,
+				...cellsToInsert
+			);
 		}
 
 		// Expand other collections
@@ -968,7 +1172,11 @@ export class CellModel implements ICellModel {
 	 * @param fromIndex index to start shifting from (inclusive)
 	 * @param offset to shift indices by
 	 */
-	private static _shiftHidden(hidden: Set<number>, fromIndex: number, offset: number): void {
+	private static _shiftHidden(
+		hidden: Set<number>,
+		fromIndex: number,
+		offset: number
+	): void {
 		const tmp: number[] = Array.from(hidden.values());
 
 		hidden.clear();
@@ -1011,14 +1219,23 @@ export class CellModel implements ICellModel {
 		this._events.next(new BeforeDeleteEvent(fromIndex, count, isRow));
 
 		// Find all merged cells ranging over the first row/column to delete
-		const intersectingMergedAreaRanges: ICellRange[] = fromIndex > 0
-			? this._collectMergedCellsRangingOverIndex(isRow, fromIndex - 1)
-			: [];
+		const intersectingMergedAreaRanges: ICellRange[] =
+			fromIndex > 0
+				? this._collectMergedCellsRangingOverIndex(isRow, fromIndex - 1)
+				: [];
 
 		const lastIndexToRemove: number = fromIndex + count - 1;
 		const totalSizeToRemove: number = isRow
-			? (this.getRowOffset(lastIndexToRemove) + (this.isRowHidden(lastIndexToRemove) ? 0.0 : this.getRowSize(lastIndexToRemove))) - this.getRowOffset(fromIndex)
-			: (this.getColumnOffset(lastIndexToRemove) + (this.isColumnHidden(lastIndexToRemove) ? 0.0 : this.getColumnSize(lastIndexToRemove))) - this.getColumnOffset(fromIndex)
+			? this.getRowOffset(lastIndexToRemove) +
+			  (this.isRowHidden(lastIndexToRemove)
+					? 0.0
+					: this.getRowSize(lastIndexToRemove)) -
+			  this.getRowOffset(fromIndex)
+			: this.getColumnOffset(lastIndexToRemove) +
+			  (this.isColumnHidden(lastIndexToRemove)
+					? 0.0
+					: this.getColumnSize(lastIndexToRemove)) -
+			  this.getColumnOffset(fromIndex);
 
 		// Adjust cell ranges ranging over the first row/column to delete,
 		// but not ranges that that span over the whole area to delete
@@ -1026,13 +1243,19 @@ export class CellModel implements ICellModel {
 		for (const range of intersectingMergedAreaRanges) {
 			if (isRow) {
 				if (range.endRow <= lastIndexToRemove) {
-					const cell: ICell = this.getCell(range.startRow, range.startColumn);
+					const cell: ICell = this.getCell(
+						range.startRow,
+						range.startColumn
+					);
 
 					cell.range.endRow = fromIndex - 1;
 				}
 			} else {
 				if (range.endColumn <= lastIndexToRemove) {
-					const cell: ICell = this.getCell(range.startRow, range.startColumn);
+					const cell: ICell = this.getCell(
+						range.startRow,
+						range.startColumn
+					);
 
 					cell.range.endColumn = fromIndex - 1;
 				}
@@ -1043,16 +1266,24 @@ export class CellModel implements ICellModel {
 		this._shiftCellRangesForDelete(isRow, fromIndex, count);
 
 		// Remove hidden rows/columns from the lookup
-		const hidden: Set<number> = isRow ? this._hiddenRows : this._hiddenColumns;
+		const hidden: Set<number> = isRow
+			? this._hiddenRows
+			: this._hiddenColumns;
 		for (let i = fromIndex; i < fromIndex + count; i++) {
 			hidden.delete(i);
 		}
 
 		// Shift hidden rows/columns to the left as there are now less rows/columns
-		CellModel._shiftHidden(isRow ? this._hiddenRows : this._hiddenColumns, fromIndex + count, -count);
+		CellModel._shiftHidden(
+			isRow ? this._hiddenRows : this._hiddenColumns,
+			fromIndex + count,
+			-count
+		);
 
 		// Delete from the offset lookup
-		const offsets: number[] = isRow ? this._rowOffsets : this._columnOffsets;
+		const offsets: number[] = isRow
+			? this._rowOffsets
+			: this._columnOffsets;
 		offsets.splice(fromIndex, count); // Remove offsets for rows/columns that are now deleted
 
 		// Shift offsets by the removed size
@@ -1080,66 +1311,84 @@ export class CellModel implements ICellModel {
 	 * @param fromIndex the index rows/columns are deleted from (inclusive)
 	 * @param count of rows/columns that are deleted
 	 */
-	private _shiftCellRangesForDelete(isRowAxis: boolean, fromIndex: number, count: number): void {
+	private _shiftCellRangesForDelete(
+		isRowAxis: boolean,
+		fromIndex: number,
+		count: number
+	): void {
 		const forEachOptions: ForEachInRangeOptions = {
 			unique: true,
-			includeHidden: true
+			includeHidden: true,
 		};
 
 		if (isRowAxis) {
-			this._forEachCellInRange({
-				startRow: fromIndex + count,
-				endRow: this.getRowCount() - 1,
-				startColumn: 0,
-				endColumn: this.getColumnCount() - 1
-			}, (cell, row, column) => {
-				if (!!cell) {
-					if (CellRangeUtil.isSingleRowColumnRange(cell.range)) {
-						cell.range.startRow -= count;
-						cell.range.endRow -= count;
-					} else {
-						if (cell.range.startRow < fromIndex) {
-							// Case 1: Merged cell starts in row above the rows to delete
-							cell.range.endRow -= count;
-						} else if (cell.range.startRow < fromIndex + count) {
-							// Case 2: Merged cell starts in a row to delete
-							cell.range.startRow = fromIndex;
-							cell.range.endRow -= count;
-						} else {
-							// Case 3: Merged cell starts without concern to the deleted area
+			this._forEachCellInRange(
+				{
+					startRow: fromIndex + count,
+					endRow: this.getRowCount() - 1,
+					startColumn: 0,
+					endColumn: this.getColumnCount() - 1,
+				},
+				(cell, row, column) => {
+					if (!!cell) {
+						if (CellRangeUtil.isSingleRowColumnRange(cell.range)) {
 							cell.range.startRow -= count;
 							cell.range.endRow -= count;
+						} else {
+							if (cell.range.startRow < fromIndex) {
+								// Case 1: Merged cell starts in row above the rows to delete
+								cell.range.endRow -= count;
+							} else if (
+								cell.range.startRow <
+								fromIndex + count
+							) {
+								// Case 2: Merged cell starts in a row to delete
+								cell.range.startRow = fromIndex;
+								cell.range.endRow -= count;
+							} else {
+								// Case 3: Merged cell starts without concern to the deleted area
+								cell.range.startRow -= count;
+								cell.range.endRow -= count;
+							}
 						}
 					}
-				}
-			}, forEachOptions);
+				},
+				forEachOptions
+			);
 		} else {
-			this._forEachCellInRange({
-				startRow: 0,
-				endRow: this.getRowCount() - 1,
-				startColumn: fromIndex + count,
-				endColumn: this.getColumnCount() - 1
-			}, (cell, row, column) => {
-				if (!!cell) {
-					if (CellRangeUtil.isSingleRowColumnRange(cell.range)) {
-						cell.range.startColumn -= count;
-						cell.range.endColumn -= count;
-					} else {
-						if (cell.range.startColumn < fromIndex) {
-							// Case 1: Merged cell starts in column before the columns to delete
-							cell.range.endColumn -= count;
-						} else if (cell.range.startColumn < fromIndex + count) {
-							// Case 2: Merged cell starts in a column to delete
-							cell.range.startColumn = fromIndex;
-							cell.range.endColumn -= count;
-						} else {
-							// Case 3: Merged cell starts without concern to the deleted area
+			this._forEachCellInRange(
+				{
+					startRow: 0,
+					endRow: this.getRowCount() - 1,
+					startColumn: fromIndex + count,
+					endColumn: this.getColumnCount() - 1,
+				},
+				(cell, row, column) => {
+					if (!!cell) {
+						if (CellRangeUtil.isSingleRowColumnRange(cell.range)) {
 							cell.range.startColumn -= count;
 							cell.range.endColumn -= count;
+						} else {
+							if (cell.range.startColumn < fromIndex) {
+								// Case 1: Merged cell starts in column before the columns to delete
+								cell.range.endColumn -= count;
+							} else if (
+								cell.range.startColumn <
+								fromIndex + count
+							) {
+								// Case 2: Merged cell starts in a column to delete
+								cell.range.startColumn = fromIndex;
+								cell.range.endColumn -= count;
+							} else {
+								// Case 3: Merged cell starts without concern to the deleted area
+								cell.range.startColumn -= count;
+								cell.range.endColumn -= count;
+							}
 						}
 					}
-				}
-			}, forEachOptions);
+				},
+				forEachOptions
+			);
 		}
 	}
 
@@ -1148,11 +1397,18 @@ export class CellModel implements ICellModel {
 	 * @param overRow whether to collect merged cells over rows or over columns
 	 * @param index (row/column) index to detect merged cells for that span over it (row index when overRow is true)
 	 */
-	private _collectMergedCellsRangingOverIndex(overRow: boolean, index: number): ICellRange[] {
+	private _collectMergedCellsRangingOverIndex(
+		overRow: boolean,
+		index: number
+	): ICellRange[] {
 		const result: ICellRange[] = [];
 
-		const maxIndex: number = overRow ? this.getRowCount() - 1 : this.getColumnCount() - 1;
-		const otherAxisMaxIndex: number = overRow ? this.getColumnCount() - 1 : this.getRowCount() - 1;
+		const maxIndex: number = overRow
+			? this.getRowCount() - 1
+			: this.getColumnCount() - 1;
+		const otherAxisMaxIndex: number = overRow
+			? this.getColumnCount() - 1
+			: this.getRowCount() - 1;
 
 		if (index >= maxIndex) {
 			return result; // Nothing to do here as there cannot be cells ranging over the max index
@@ -1197,7 +1453,11 @@ export class CellModel implements ICellModel {
 	public mergeCells(range: ICellRange): boolean {
 		// Check whether we can merge the cell range
 		for (let row = range.startRow; row <= range.endRow; row++) {
-			for (let column = range.startColumn; column <= range.endColumn; column++) {
+			for (
+				let column = range.startColumn;
+				column <= range.endColumn;
+				column++
+			) {
 				const cell = this.getCell(row, column);
 				if (!!cell) {
 					if (!CellRangeUtil.isSingleRowColumnRange(cell.range)) {
@@ -1207,7 +1467,10 @@ export class CellModel implements ICellModel {
 			}
 		}
 
-		const cell: ICell = this._getCellOrFill(range.startRow, range.startColumn);
+		const cell: ICell = this._getCellOrFill(
+			range.startRow,
+			range.startColumn
+		);
 
 		// Update cell range
 		cell.range.endRow = range.endRow;
@@ -1215,7 +1478,11 @@ export class CellModel implements ICellModel {
 
 		// Actually merge the cell by writing cell references in the cell lookup to the most upper left corner cell
 		for (let row = range.startRow; row <= range.endRow; row++) {
-			for (let column = range.startColumn; column <= range.endColumn; column++) {
+			for (
+				let column = range.startColumn;
+				column <= range.endColumn;
+				column++
+			) {
 				if (row === range.startRow && column === range.startColumn) {
 					continue;
 				}
@@ -1244,9 +1511,16 @@ export class CellModel implements ICellModel {
 
 		// Reset cell lookup to empty cell for all cells but the most upper left one (if no borders are set to the side).
 		for (let row = cell.range.startRow; row <= cell.range.endRow; row++) {
-			for (let column = cell.range.startColumn; column <= cell.range.endColumn; column++) {
+			for (
+				let column = cell.range.startColumn;
+				column <= cell.range.endColumn;
+				column++
+			) {
 				let toSet: ICell | null = null;
-				if (row === cell.range.startRow && column === cell.range.startColumn) {
+				if (
+					row === cell.range.startRow &&
+					column === cell.range.startColumn
+				) {
 					toSet = cell;
 					toSet.border = {};
 				}
@@ -1256,68 +1530,80 @@ export class CellModel implements ICellModel {
 						// Keep upper border
 						if (!toSet) {
 							toSet = {
-								range: CellRange.fromSingleRowColumn(row, column),
+								range: CellRange.fromSingleRowColumn(
+									row,
+									column
+								),
 								value: null,
 								rendererName: cell.rendererName,
-								border: {}
+								border: {},
 							};
 						}
 						toSet.border.top = {
 							size: border.top.size,
 							color: border.top.color,
 							style: border.top.style,
-							priority: border.top.priority
+							priority: border.top.priority,
 						};
 					}
 					if (row === cell.range.endRow && !!border.bottom) {
 						// Keep lower border
 						if (!toSet) {
 							toSet = {
-								range: CellRange.fromSingleRowColumn(row, column),
+								range: CellRange.fromSingleRowColumn(
+									row,
+									column
+								),
 								value: null,
 								rendererName: cell.rendererName,
-								border: {}
+								border: {},
 							};
 						}
 						toSet.border.bottom = {
 							size: border.bottom.size,
 							color: border.bottom.color,
 							style: border.bottom.style,
-							priority: border.bottom.priority
+							priority: border.bottom.priority,
 						};
 					}
 					if (column === cell.range.startColumn && !!border.left) {
 						// Keep left border
 						if (!toSet) {
 							toSet = {
-								range: CellRange.fromSingleRowColumn(row, column),
+								range: CellRange.fromSingleRowColumn(
+									row,
+									column
+								),
 								value: null,
 								rendererName: cell.rendererName,
-								border: {}
+								border: {},
 							};
 						}
 						toSet.border.left = {
 							size: border.left.size,
 							color: border.left.color,
 							style: border.left.style,
-							priority: border.left.priority
+							priority: border.left.priority,
 						};
 					}
 					if (column === cell.range.endColumn && !!border.right) {
 						// Keep right border
 						if (!toSet) {
 							toSet = {
-								range: CellRange.fromSingleRowColumn(row, column),
+								range: CellRange.fromSingleRowColumn(
+									row,
+									column
+								),
 								value: null,
 								rendererName: cell.rendererName,
-								border: {}
+								border: {},
 							};
 						}
 						toSet.border.right = {
 							size: border.right.size,
 							color: border.right.color,
 							style: border.right.style,
-							priority: border.right.priority
+							priority: border.right.priority,
 						};
 					}
 				}
@@ -1352,7 +1638,12 @@ export class CellModel implements ICellModel {
 	 * @param rowIndices indices to hide rows for
 	 */
 	public hideRows(rowIndices: number[]): void {
-		const hiddenIndices: number[] = CellModel._hide(rowIndices, this._rowOffsets, this._hiddenRows, this._rowSizes);
+		const hiddenIndices: number[] = CellModel._hide(
+			rowIndices,
+			this._rowOffsets,
+			this._hiddenRows,
+			this._rowSizes
+		);
 
 		if (hiddenIndices.length > 0) {
 			this._events.next(new HiddenEvent(hiddenIndices, true));
@@ -1364,7 +1655,12 @@ export class CellModel implements ICellModel {
 	 * @param columnIndices to hide columns for
 	 */
 	public hideColumns(columnIndices: number[]): void {
-		const hiddenIndices: number[] = CellModel._hide(columnIndices, this._columnOffsets, this._hiddenColumns, this._columnSizes);
+		const hiddenIndices: number[] = CellModel._hide(
+			columnIndices,
+			this._columnOffsets,
+			this._hiddenColumns,
+			this._columnSizes
+		);
 
 		if (hiddenIndices.length > 0) {
 			this._events.next(new HiddenEvent(hiddenIndices, false));
@@ -1379,7 +1675,12 @@ export class CellModel implements ICellModel {
 	 * @param sizes lookup for the indices
 	 * @returns consecutive sorted indices that have been hidden
 	 */
-	private static _hide(indices: number[], offsets: number[], hidden: Set<number>, sizes: number[]): number[] {
+	private static _hide(
+		indices: number[],
+		offsets: number[],
+		hidden: Set<number>,
+		sizes: number[]
+	): number[] {
 		// Add indices to the hidden collection first
 		const adjustOffsetsIndices: number[] = [];
 		for (const index of indices) {
@@ -1399,7 +1700,10 @@ export class CellModel implements ICellModel {
 			// Adjust offsets
 			let toDecrease = sizes[adjustOffsetsIndices[0]];
 			let alreadyHiddenCount = 1;
-			let nextHideIndex = adjustOffsetsIndices.length > alreadyHiddenCount ? adjustOffsetsIndices[alreadyHiddenCount] : -1;
+			let nextHideIndex =
+				adjustOffsetsIndices.length > alreadyHiddenCount
+					? adjustOffsetsIndices[alreadyHiddenCount]
+					: -1;
 			for (let i = adjustOffsetsIndices[0] + 1; i < offsets.length; i++) {
 				offsets[i] -= toDecrease;
 
@@ -1408,7 +1712,8 @@ export class CellModel implements ICellModel {
 					alreadyHiddenCount++;
 
 					if (adjustOffsetsIndices.length > alreadyHiddenCount) {
-						nextHideIndex = adjustOffsetsIndices[alreadyHiddenCount];
+						nextHideIndex =
+							adjustOffsetsIndices[alreadyHiddenCount];
 					} else {
 						nextHideIndex = -1;
 					}
@@ -1426,7 +1731,12 @@ export class CellModel implements ICellModel {
 	 * @param rowIndices indices of rows to show
 	 */
 	public showRows(rowIndices: number[]): void {
-		CellModel._show(rowIndices, this._rowOffsets, this._hiddenRows, this._rowSizes);
+		CellModel._show(
+			rowIndices,
+			this._rowOffsets,
+			this._hiddenRows,
+			this._rowSizes
+		);
 	}
 
 	/**
@@ -1434,7 +1744,12 @@ export class CellModel implements ICellModel {
 	 * @param columnIndices indices of columns to show
 	 */
 	public showColumns(columnIndices: number[]): void {
-		CellModel._show(columnIndices, this._columnOffsets, this._hiddenColumns, this._columnSizes);
+		CellModel._show(
+			columnIndices,
+			this._columnOffsets,
+			this._hiddenColumns,
+			this._columnSizes
+		);
 	}
 
 	/**
@@ -1444,7 +1759,12 @@ export class CellModel implements ICellModel {
 	 * @param hidden lookup of hidden rows or columns
 	 * @param sizes lookup for the indices
 	 */
-	private static _show(indices: number[], offsets: number[], hidden: Set<number>, sizes: number[]): void {
+	private static _show(
+		indices: number[],
+		offsets: number[],
+		hidden: Set<number>,
+		sizes: number[]
+	): void {
 		// Remove indices from the hidden collection first
 		const adjustOffsetsIndices: number[] = [];
 		for (const index of indices) {
@@ -1465,7 +1785,10 @@ export class CellModel implements ICellModel {
 			// Adjust offsets
 			let toIncrease = sizes[adjustOffsetsIndices[0]];
 			let alreadyShownCount = 1;
-			let nextShowIndex = adjustOffsetsIndices.length > alreadyShownCount ? adjustOffsetsIndices[alreadyShownCount] : -1;
+			let nextShowIndex =
+				adjustOffsetsIndices.length > alreadyShownCount
+					? adjustOffsetsIndices[alreadyShownCount]
+					: -1;
 			for (let i = adjustOffsetsIndices[0] + 1; i < offsets.length; i++) {
 				offsets[i] += toIncrease;
 
@@ -1491,7 +1814,6 @@ export class CellModel implements ICellModel {
 		this.showRows(Array.from(this._hiddenRows));
 		this.showColumns(Array.from(this._hiddenColumns));
 	}
-
 }
 
 /**

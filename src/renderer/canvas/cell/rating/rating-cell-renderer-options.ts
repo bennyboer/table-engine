@@ -1,21 +1,19 @@
-import {IColor} from "../../../../util/color";
-import {Colors} from "../../../../util/colors";
-import {ICell} from "../../../../cell/cell";
+import { Colors, IColor } from '../../../../util';
+import { ICell } from '../../../../cell';
 
-export const DEFAULT_STAR_COUNT: number = 5;
-export const DEFAULT_STAR_SPIKE_COUNT: number = 5;
-export const DEFAULT_COLOR: IColor = Colors.ORANGE;
-export const DEFAULT_INACTIVE_COLOR: IColor = Colors.LIGHTGRAY;
-export const DEFAULT_HOVER_BORDER_COLOR: IColor = Colors.ORANGE;
-export const DEFAULT_HOVER_BORDER_THICKNESS: number = 1;
-export const DEFAULT_SPACING: number = 2;
-export const DEFAULT_PADDING: number = 2;
+const DEFAULT_STAR_COUNT: number = 5;
+const DEFAULT_STAR_SPIKE_COUNT: number = 5;
+const DEFAULT_COLOR: IColor = Colors.ORANGE;
+const DEFAULT_INACTIVE_COLOR: IColor = Colors.LIGHTGRAY;
+const DEFAULT_HOVER_BORDER_COLOR: IColor = Colors.ORANGE;
+const DEFAULT_HOVER_BORDER_THICKNESS: number = 1;
+const DEFAULT_SPACING: number = 2;
+const DEFAULT_PADDING: number = 2;
 
 /**
  * Options for the rating cell renderer.
  */
 export interface IRatingCellRendererOptions {
-
 	/**
 	 * Callback to inform about a change of the rating value.
 	 * @param cell that contains the changed value
@@ -74,7 +72,6 @@ export interface IRatingCellRendererOptions {
 	 * Padding from the cells borders.
 	 */
 	padding?: number;
-
 }
 
 /**
@@ -114,7 +111,10 @@ export const fillOptions = (options?: IRatingCellRendererOptions) => {
 		options.hoverBorderColor = DEFAULT_HOVER_BORDER_COLOR;
 	}
 
-	if (options.hoverBorderThickness === undefined || options.hoverBorderThickness === null) {
+	if (
+		options.hoverBorderThickness === undefined ||
+		options.hoverBorderThickness === null
+	) {
 		options.hoverBorderThickness = DEFAULT_HOVER_BORDER_THICKNESS;
 	}
 
@@ -127,4 +127,4 @@ export const fillOptions = (options?: IRatingCellRendererOptions) => {
 	}
 
 	return options;
-}
+};

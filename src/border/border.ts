@@ -1,10 +1,9 @@
-import {IBorderSide} from "./border-side";
+import { IBorderSide } from './border-side';
 
 /**
  * Representation of a border in the table-engine.
  */
 export interface IBorder {
-
 	/**
 	 * Top border side.
 	 */
@@ -24,5 +23,4 @@ export interface IBorder {
 	 * Top border side.
 	 */
 	bottom?: IBorderSide;
-
 }

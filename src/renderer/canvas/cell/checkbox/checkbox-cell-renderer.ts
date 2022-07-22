@@ -1,31 +1,32 @@
-import {ICanvasCellRenderer} from "../canvas-cell-renderer";
-import {IRenderContext} from "../../canvas-renderer";
-import {ICell} from "../../../../cell/cell";
-import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-event-listener";
-import {TableEngine} from "../../../../table-engine";
-import {IRectangle} from "../../../../util/rect";
+import { ICanvasCellRenderer } from '../canvas-cell-renderer';
+import { IRenderContext } from '../../canvas-renderer';
+import { ICell } from '../../../../cell';
+import { ICellRendererEventListener } from '../../../cell';
+import { TableEngine } from '../../../../table-engine';
 import {
 	fillOptions as fillCheckboxCellRendererOptions,
-	ICheckboxCellRendererOptions
-} from "./checkbox-cell-renderer-options";
-import {HorizontalAlignment} from "../../../../util/alignment/horizontal-alignment";
-import {AlignmentUtil} from "../../../../util/alignment/alignment-util";
-import {VerticalAlignment} from "../../../../util/alignment/vertical-alignment";
-import {ICheckboxCellRendererValue} from "./checkbox-cell-renderer-value";
-import {IPoint} from "../../../../util/point";
-import {IColor} from "../../../../util/color";
-import {Colors} from "../../../../util/colors";
-import {CanvasUtil} from "../../../util/canvas";
+	ICheckboxCellRendererOptions,
+} from './checkbox-cell-renderer-options';
+import {
+	AlignmentUtil,
+	Colors,
+	HorizontalAlignment,
+	IColor,
+	IPoint,
+	IRectangle,
+	VerticalAlignment,
+} from '../../../../util';
+import { ICheckboxCellRendererValue } from './checkbox-cell-renderer-value';
+import { CanvasUtil } from '../../../util';
 
 /**
  * Cell renderer rendering a checkbox.
  */
 export class CheckboxCellRenderer implements ICanvasCellRenderer {
-
 	/**
 	 * Name of the renderer.
 	 */
-	public static readonly NAME: string = "checkbox";
+	public static readonly NAME: string = 'checkbox';
 
 	/**
 	 * Default checkbox cell renderer options.
@@ -37,13 +38,19 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 	 */
 	private readonly _eventListener: ICellRendererEventListener = {
 		onMouseMove: (event) => {
-			const cache: ICheckboxViewportCache = CheckboxCellRenderer._cache(event.cell);
+			const cache: ICheckboxViewportCache = CheckboxCellRenderer._cache(
+				event.cell
+			);
 			if (!!cache.checkboxBounds) {
 				// Check if mouse is inside checkbox bounds
-				const isHovered: boolean = event.offset.x >= cache.checkboxBounds.left
-					&& event.offset.x <= cache.checkboxBounds.left + cache.checkboxBounds.width
-					&& event.offset.y >= cache.checkboxBounds.top
-					&& event.offset.y <= cache.checkboxBounds.top + cache.checkboxBounds.height;
+				const isHovered: boolean =
+					event.offset.x >= cache.checkboxBounds.left &&
+					event.offset.x <=
+						cache.checkboxBounds.left +
+							cache.checkboxBounds.width &&
+					event.offset.y >= cache.checkboxBounds.top &&
+					event.offset.y <=
+						cache.checkboxBounds.top + cache.checkboxBounds.height;
 
 				if (isHovered !== cache.isHovered) {
 					cache.isHovered = isHovered;
@@ -52,14 +59,17 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 			}
 		},
 		onMouseOut: (event) => {
-			const cache: ICheckboxViewportCache = CheckboxCellRenderer._cache(event.cell);
+			const cache: ICheckboxViewportCache = CheckboxCellRenderer._cache(
+				event.cell
+			);
 			if (cache.isHovered) {
 				cache.isHovered = false;
 				this._engine.repaint();
 			}
 		},
 		onMouseUp: (event) => {
-			const value: ICheckboxCellRendererValue = CheckboxCellRenderer._value(event.cell);
+			const value: ICheckboxCellRendererValue =
+				CheckboxCellRenderer._value(event.cell);
 
 			value.checked = !value.checked;
 
@@ -70,7 +80,7 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 			}
 
 			this._engine.repaint();
-		}
+		},
 	};
 
 	/**
@@ -78,9 +88,7 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 	 */
 	private _engine: TableEngine;
 
-	constructor(
-		defaultOptions?: ICheckboxCellRendererOptions
-	) {
+	constructor(defaultOptions?: ICheckboxCellRendererOptions) {
 		this._defaultOptions = fillCheckboxCellRendererOptions(defaultOptions);
 	}
 
@@ -89,13 +97,16 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 	 * @param cell to get value from
 	 */
 	private static _value(cell: ICell): ICheckboxCellRendererValue {
-		const isSpecialValue: boolean = !!cell.value && typeof cell.value === "object" && "checked" in cell.value;
+		const isSpecialValue: boolean =
+			!!cell.value &&
+			typeof cell.value === 'object' &&
+			'checked' in cell.value;
 
 		if (isSpecialValue) {
 			return cell.value as ICheckboxCellRendererValue;
 		} else {
 			return {
-				checked: !!cell.value
+				checked: !!cell.value,
 			};
 		}
 	}
@@ -109,7 +120,7 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 			return cell.viewportCache as ICheckboxViewportCache;
 		} else {
 			const cache: ICheckboxViewportCache = {
-				isHovered: false
+				isHovered: false,
 			};
 
 			cell.viewportCache = cache;
@@ -122,9 +133,16 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 		// Nothing to do after rendering all cells
 	}
 
-	public before(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
-		ctx.textAlign = AlignmentUtil.horizontalAlignmentToStyleStr(HorizontalAlignment.LEFT) as CanvasTextAlign;
-		ctx.textBaseline = AlignmentUtil.verticalAlignmentToStyleStr(VerticalAlignment.MIDDLE) as CanvasTextBaseline;
+	public before(
+		ctx: CanvasRenderingContext2D,
+		context: IRenderContext
+	): void {
+		ctx.textAlign = AlignmentUtil.horizontalAlignmentToStyleStr(
+			HorizontalAlignment.LEFT
+		) as CanvasTextAlign;
+		ctx.textBaseline = AlignmentUtil.verticalAlignmentToStyleStr(
+			VerticalAlignment.MIDDLE
+		) as CanvasTextBaseline;
 		ctx.font = `${this._defaultOptions.labelFontSize}px ${this._defaultOptions.labelFontFamily}`;
 	}
 
@@ -133,9 +151,10 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 	}
 
 	public getCopyValue(cell: ICell): string {
-		const value: ICheckboxCellRendererValue = CheckboxCellRenderer._value(cell);
+		const value: ICheckboxCellRendererValue =
+			CheckboxCellRenderer._value(cell);
 
-		return value.checked ? "1" : "0";
+		return value.checked ? '1' : '0';
 	}
 
 	public getEventListener(): ICellRendererEventListener | null {
@@ -158,24 +177,39 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 		// Do nothing
 	}
 
-	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
+	public render(
+		ctx: CanvasRenderingContext2D,
+		cell: ICell,
+		bounds: IRectangle
+	): void {
 		let isContextSaved: boolean = false;
 
-		const value: ICheckboxCellRendererValue = CheckboxCellRenderer._value(cell);
+		const value: ICheckboxCellRendererValue =
+			CheckboxCellRenderer._value(cell);
 
 		// Derive options
 		let size: number = this._defaultOptions.size;
-		let labelCheckboxSpacing: number = this._defaultOptions.labelCheckboxSpacing;
+		let labelCheckboxSpacing: number =
+			this._defaultOptions.labelCheckboxSpacing;
 		let cellSpacing: number = this._defaultOptions.cellSpacing;
 		let labelColor: IColor = this._defaultOptions.labelTextColor;
 		if (!!value.options) {
-			if (value.options.size !== undefined && value.options.size !== null) {
+			if (
+				value.options.size !== undefined &&
+				value.options.size !== null
+			) {
 				size = value.options.size;
 			}
-			if (value.options.labelCheckboxSpacing !== undefined && value.options.labelCheckboxSpacing !== null) {
+			if (
+				value.options.labelCheckboxSpacing !== undefined &&
+				value.options.labelCheckboxSpacing !== null
+			) {
 				labelCheckboxSpacing = value.options.labelCheckboxSpacing;
 			}
-			if (value.options.cellSpacing !== undefined && value.options.cellSpacing !== null) {
+			if (
+				value.options.cellSpacing !== undefined &&
+				value.options.cellSpacing !== null
+			) {
 				cellSpacing = value.options.cellSpacing;
 			}
 
@@ -183,9 +217,19 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 				labelColor = value.options.labelTextColor;
 			}
 
-			if ((value.options.labelFontSize !== undefined && value.options.labelFontSize !== null) || !!value.options.labelFontFamily) {
-				const fontSize: number = value.options.labelFontSize !== undefined && value.options.labelFontSize !== null ? value.options.labelFontSize : this._defaultOptions.labelFontSize;
-				const fontFamily: string = !!value.options.labelFontFamily ? value.options.labelFontFamily : this._defaultOptions.labelFontFamily;
+			if (
+				(value.options.labelFontSize !== undefined &&
+					value.options.labelFontSize !== null) ||
+				!!value.options.labelFontFamily
+			) {
+				const fontSize: number =
+					value.options.labelFontSize !== undefined &&
+					value.options.labelFontSize !== null
+						? value.options.labelFontSize
+						: this._defaultOptions.labelFontSize;
+				const fontFamily: string = !!value.options.labelFontFamily
+					? value.options.labelFontFamily
+					: this._defaultOptions.labelFontFamily;
 
 				if (!isContextSaved) {
 					isContextSaved = true;
@@ -200,7 +244,8 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 			// Render label and checkbox
 			const labelWidth: number = ctx.measureText(value.label).width;
 
-			const totalWidth: number = cellSpacing + labelWidth + size + labelCheckboxSpacing;
+			const totalWidth: number =
+				cellSpacing + labelWidth + size + labelCheckboxSpacing;
 
 			let checkboxOffset: number;
 			if (totalWidth > bounds.width) {
@@ -208,14 +253,21 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 				checkboxOffset = Math.round(cellSpacing + size / 2);
 
 				const clippingRegion = new Path2D();
-				clippingRegion.rect(bounds.left, bounds.top, bounds.width, bounds.height);
+				clippingRegion.rect(
+					bounds.left,
+					bounds.top,
+					bounds.width,
+					bounds.height
+				);
 
 				ctx.save();
 				isContextSaved = true;
 
 				ctx.clip(clippingRegion);
 			} else {
-				checkboxOffset = Math.round((bounds.width - totalWidth) / 2 + cellSpacing + size / 2);
+				checkboxOffset = Math.round(
+					(bounds.width - totalWidth) / 2 + cellSpacing + size / 2
+				);
 			}
 
 			CheckboxCellRenderer._renderCheckbox(
@@ -232,7 +284,10 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 			ctx.fillStyle = Colors.toStyleStr(labelColor);
 			ctx.fillText(
 				value.label,
-				bounds.left + Math.round(checkboxOffset + size / 2 + labelCheckboxSpacing),
+				bounds.left +
+					Math.round(
+						checkboxOffset + size / 2 + labelCheckboxSpacing
+					),
 				bounds.top + Math.round(bounds.height / 2)
 			);
 		} else {
@@ -274,41 +329,52 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 	): void {
 		const center: IPoint = {
 			x: bounds.left + offset,
-			y: bounds.top + Math.round(bounds.height / 2)
+			y: bounds.top + Math.round(bounds.height / 2),
 		};
 		const halfSize: number = size / 2;
 		const rect: IRectangle = {
 			left: center.x - halfSize + 0.5,
 			top: center.y - halfSize + 0.5,
 			width: size,
-			height: size
+			height: size,
 		};
 
 		// Derive options
 		let borderRadius: number = defaultOptions.borderRadius;
 		let borderSize: number = defaultOptions.borderSize;
-		let uncheckedBackgroundColor: IColor = defaultOptions.uncheckedBackgroundColor;
-		let checkedBackgroundColor: IColor = defaultOptions.checkedBackgroundColor;
-		let checkedHoverBackgroundColor: IColor = defaultOptions.checkedHoverBackgroundColor;
+		let uncheckedBackgroundColor: IColor =
+			defaultOptions.uncheckedBackgroundColor;
+		let checkedBackgroundColor: IColor =
+			defaultOptions.checkedBackgroundColor;
+		let checkedHoverBackgroundColor: IColor =
+			defaultOptions.checkedHoverBackgroundColor;
 		let borderColor: IColor = defaultOptions.borderColor;
 		let hoverBorderColor: IColor = defaultOptions.hoverBorderColor;
 		let tickColor: IColor = defaultOptions.tickColor;
 		let tickThickness: number = defaultOptions.tickThickness;
 		if (!!value.options) {
-			if (value.options.borderRadius !== undefined && value.options.borderRadius !== null) {
+			if (
+				value.options.borderRadius !== undefined &&
+				value.options.borderRadius !== null
+			) {
 				borderRadius = value.options.borderRadius;
 			}
-			if (value.options.borderSize !== undefined && value.options.borderSize !== null) {
+			if (
+				value.options.borderSize !== undefined &&
+				value.options.borderSize !== null
+			) {
 				borderSize = value.options.borderSize;
 			}
 			if (!!value.options.uncheckedBackgroundColor) {
-				uncheckedBackgroundColor = value.options.uncheckedBackgroundColor;
+				uncheckedBackgroundColor =
+					value.options.uncheckedBackgroundColor;
 			}
 			if (!!value.options.checkedBackgroundColor) {
 				checkedBackgroundColor = value.options.checkedBackgroundColor;
 			}
 			if (!!value.options.checkedHoverBackgroundColor) {
-				checkedHoverBackgroundColor = value.options.checkedHoverBackgroundColor;
+				checkedHoverBackgroundColor =
+					value.options.checkedHoverBackgroundColor;
 			}
 			if (!!value.options.borderColor) {
 				borderColor = value.options.borderColor;
@@ -319,7 +385,10 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 			if (!!value.options.tickColor) {
 				tickColor = value.options.tickColor;
 			}
-			if (value.options.tickThickness !== undefined && value.options.tickThickness !== null) {
+			if (
+				value.options.tickThickness !== undefined &&
+				value.options.tickThickness !== null
+			) {
 				tickThickness = value.options.tickThickness;
 			}
 		}
@@ -328,7 +397,13 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 		const isHovered: boolean = cache.isHovered;
 
 		// Render background
-		ctx.fillStyle = Colors.toStyleStr(value.checked ? (isHovered ? checkedHoverBackgroundColor : checkedBackgroundColor) : uncheckedBackgroundColor);
+		ctx.fillStyle = Colors.toStyleStr(
+			value.checked
+				? isHovered
+					? checkedHoverBackgroundColor
+					: checkedBackgroundColor
+				: uncheckedBackgroundColor
+		);
 		if (borderRadius > 0) {
 			CanvasUtil.makeRoundRectPath(ctx, rect, borderRadius);
 			ctx.fill();
@@ -338,7 +413,9 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 
 		// Render border (if unchecked)
 		if (!value.checked) {
-			ctx.strokeStyle = Colors.toStyleStr(isHovered ? hoverBorderColor : borderColor);
+			ctx.strokeStyle = Colors.toStyleStr(
+				isHovered ? hoverBorderColor : borderColor
+			);
 			ctx.lineWidth = borderSize;
 
 			if (borderRadius > 0) {
@@ -352,15 +429,24 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 		// Render tick (if checked)
 		if (value.checked) {
 			ctx.strokeStyle = Colors.toStyleStr(tickColor);
-			ctx.lineCap = "round";
-			ctx.lineJoin = "round";
+			ctx.lineCap = 'round';
+			ctx.lineJoin = 'round';
 			ctx.lineWidth = tickThickness;
 
 			ctx.beginPath();
 
-			ctx.moveTo(rect.left + rect.width * 0.2, rect.top + rect.height * 0.6);
-			ctx.lineTo(rect.left + rect.width * 0.4, rect.top + rect.height * 0.8);
-			ctx.lineTo(rect.left + rect.width * 0.8, rect.top + rect.height * 0.2);
+			ctx.moveTo(
+				rect.left + rect.width * 0.2,
+				rect.top + rect.height * 0.6
+			);
+			ctx.lineTo(
+				rect.left + rect.width * 0.4,
+				rect.top + rect.height * 0.8
+			);
+			ctx.lineTo(
+				rect.left + rect.width * 0.8,
+				rect.top + rect.height * 0.2
+			);
 
 			ctx.stroke();
 		}
@@ -370,7 +456,6 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 }
 
 interface ICheckboxViewportCache {
-
 	/**
 	 * Whether the checkbox is currently hovered.
 	 */
@@ -380,5 +465,4 @@ interface ICheckboxViewportCache {
 	 * Bounds of the checkbox.
 	 */
 	checkboxBounds?: IRectangle;
-
 }

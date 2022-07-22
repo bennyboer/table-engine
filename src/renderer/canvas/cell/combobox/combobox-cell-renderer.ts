@@ -1,24 +1,27 @@
-import {ICanvasCellRenderer} from "../canvas-cell-renderer";
+import { ICanvasCellRenderer } from '../canvas-cell-renderer';
 import {
 	fillOptions,
-	IComboBoxCellRendererOptions, ILabelOptions,
+	IComboBoxCellRendererOptions,
+	ILabelOptions,
 	IPlaceholderOptions,
-	ISelectArrowOptions
-} from "./combobox-cell-renderer-options";
-import {TableEngine} from "../../../../table-engine";
-import {IRenderContext} from "../../canvas-renderer";
-import {ICell} from "../../../../cell/cell";
-import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-event-listener";
-import {IRectangle} from "../../../../util/rect";
-import {ICellRendererMouseEvent} from "../../../cell/event/cell-renderer-mouse-event";
-import {IComboBoxCellRendererValue, IComboBoxOption} from "./combobox-cell-renderer-value";
-import {Colors} from "../../../../util/colors";
-import {IOverlay} from "../../../../overlay/overlay";
-import {ICellRange} from "../../../../cell/range/cell-range";
+	ISelectArrowOptions,
+} from './combobox-cell-renderer-options';
+import { TableEngine } from '../../../../table-engine';
+import { IRenderContext } from '../../canvas-renderer';
+import { ICell } from '../../../../cell';
+import {
+	ICellRendererEventListener,
+	ICellRendererMouseEvent,
+} from '../../../cell';
+import { Colors, IRectangle } from '../../../../util';
+import {
+	IComboBoxCellRendererValue,
+	IComboBoxOption,
+} from './combobox-cell-renderer-value';
+import { IOverlay } from '../../../../overlay';
 
 export class ComboBoxCellRenderer implements ICanvasCellRenderer {
-
-	static readonly NAME: string = "combobox";
+	static readonly NAME: string = 'combobox';
 
 	private readonly _options: IComboBoxCellRendererOptions;
 
@@ -27,7 +30,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 	private _eventListener: ICellRendererEventListener = {
 		onMouseUp: (event) => this._onClick(event),
 		onMouseMove: (event) => this._onMouseMove(event),
-		onMouseOut: (event) => this._onMouseOut(event)
+		onMouseOut: (event) => this._onMouseOut(event),
 	};
 
 	constructor(options?: IComboBoxCellRendererOptions) {
@@ -37,7 +40,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 	private static _value(cell: ICell): IComboBoxCellRendererValue {
 		if (cell.value === undefined || cell.value === null) {
 			return {
-				select_options: {}
+				select_options: {},
 			} as IComboBoxCellRendererValue;
 		}
 
@@ -49,7 +52,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 			return cell.viewportCache as IViewportCache;
 		} else {
 			const cache: IViewportCache = {
-				hovered: false
+				hovered: false,
 			};
 			cell.viewportCache = cache;
 			return cache;
@@ -61,7 +64,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 	}
 
 	before(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
-		ctx.textAlign = "left";
+		ctx.textAlign = 'left';
 	}
 
 	cleanup(): void {
@@ -74,7 +77,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 			return value.select_options[value.selected_option_id].label;
 		}
 
-		return "";
+		return '';
 	}
 
 	getEventListener(): ICellRendererEventListener | null {
@@ -93,17 +96,35 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		// Nothing to do when a cell disappears from the viewport
 	}
 
-	render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
-		const value: IComboBoxCellRendererValue = ComboBoxCellRenderer._value(cell);
+	render(
+		ctx: CanvasRenderingContext2D,
+		cell: ICell,
+		bounds: IRectangle
+	): void {
+		const value: IComboBoxCellRendererValue =
+			ComboBoxCellRenderer._value(cell);
 		const cache: IViewportCache = ComboBoxCellRenderer._cache(cell);
 
-		const style: IRenderingStyle = this._determineRenderingStyle(value, cache);
+		const style: IRenderingStyle = this._determineRenderingStyle(
+			value,
+			cache
+		);
 
-		const selectArrowWidth: number = ComboBoxCellRenderer._renderSelectArrow(ctx, bounds, style);
-		ComboBoxCellRenderer._renderLabel(ctx, bounds, value, style, selectArrowWidth);
+		const selectArrowWidth: number =
+			ComboBoxCellRenderer._renderSelectArrow(ctx, bounds, style);
+		ComboBoxCellRenderer._renderLabel(
+			ctx,
+			bounds,
+			value,
+			style,
+			selectArrowWidth
+		);
 	}
 
-	private _determineRenderingStyle(value: IComboBoxCellRendererValue, cache: IViewportCache): IRenderingStyle {
+	private _determineRenderingStyle(
+		value: IComboBoxCellRendererValue,
+		cache: IViewportCache
+	): IRenderingStyle {
 		let editable: boolean = this._options.editable;
 		let hovered = cache.hovered;
 		let padding: number = this._options.padding;
@@ -112,10 +133,16 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		let selectArrowOptions: ISelectArrowOptions = this._options.selectArrow;
 
 		if (!!value.options) {
-			if (value.options.editable !== undefined && value.options.editable !== null) {
+			if (
+				value.options.editable !== undefined &&
+				value.options.editable !== null
+			) {
 				editable = value.options.editable;
 			}
-			if (value.options.padding !== undefined && value.options.padding !== null) {
+			if (
+				value.options.padding !== undefined &&
+				value.options.padding !== null
+			) {
 				padding = value.options.padding;
 			}
 			if (!!value.options.label) {
@@ -135,8 +162,8 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 			padding,
 			labelOptions,
 			placeholderOptions,
-			selectArrowOptions
-		}
+			selectArrowOptions,
+		};
 	}
 
 	private static _renderSelectArrow(
@@ -144,23 +171,37 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		bounds: IRectangle,
 		style: IRenderingStyle
 	): number {
-		const selectArrowPath: ISelectArrowPath = ComboBoxCellRenderer._makeSelectArrowPath();
+		const selectArrowPath: ISelectArrowPath =
+			ComboBoxCellRenderer._makeSelectArrowPath();
 
-		const selectArrowWidth: number = selectArrowPath.width * style.selectArrowOptions.size;
-		const selectArrowHeight: number = selectArrowPath.height * style.selectArrowOptions.size;
+		const selectArrowWidth: number =
+			selectArrowPath.width * style.selectArrowOptions.size;
+		const selectArrowHeight: number =
+			selectArrowPath.height * style.selectArrowOptions.size;
 
 		const transformedSelectArrowPath: Path2D = new Path2D();
 		transformedSelectArrowPath.addPath(
 			selectArrowPath.path,
 			new DOMMatrix()
 				.translateSelf(
-					bounds.left + bounds.width - selectArrowWidth - style.padding,
-					bounds.top + Math.round((bounds.height - selectArrowHeight) / 2)
+					bounds.left +
+						bounds.width -
+						selectArrowWidth -
+						style.padding,
+					bounds.top +
+						Math.round((bounds.height - selectArrowHeight) / 2)
 				)
-				.scaleSelf(style.selectArrowOptions.size, style.selectArrowOptions.size)
+				.scaleSelf(
+					style.selectArrowOptions.size,
+					style.selectArrowOptions.size
+				)
 		);
 
-		ctx.strokeStyle = Colors.toStyleStr(style.hovered ? style.selectArrowOptions.hoverColor : style.selectArrowOptions.color);
+		ctx.strokeStyle = Colors.toStyleStr(
+			style.hovered
+				? style.selectArrowOptions.hoverColor
+				: style.selectArrowOptions.color
+		);
 		ctx.lineWidth = style.selectArrowOptions.thickness;
 		ctx.lineCap = style.selectArrowOptions.lineCap;
 		ctx.lineJoin = style.selectArrowOptions.lineJoin;
@@ -185,7 +226,8 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 
 		const hasLabelSelected = !!value.selected_option_id;
 		if (hasLabelSelected) {
-			const selectedOption: IComboBoxOption = value.select_options[value.selected_option_id];
+			const selectedOption: IComboBoxOption =
+				value.select_options[value.selected_option_id];
 
 			labelText = selectedOption.label;
 			color = style.labelOptions.color;
@@ -199,12 +241,18 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		ctx.fillStyle = Colors.toStyleStr(color);
 
 		// Check if label fits into box
-		const maxLabelWidth: number = bounds.width - style.padding - selectArrowWidth;
+		const maxLabelWidth: number =
+			bounds.width - style.padding - selectArrowWidth;
 		const measuredWidth: number = ctx.measureText(labelText).width;
 		const overflow: boolean = measuredWidth > maxLabelWidth;
 		if (overflow) {
 			const clippingRegion = new Path2D();
-			clippingRegion.rect(bounds.left, bounds.top, bounds.width - selectArrowWidth, bounds.height);
+			clippingRegion.rect(
+				bounds.left,
+				bounds.top,
+				bounds.width - selectArrowWidth,
+				bounds.height
+			);
 
 			ctx.save();
 			ctx.clip(clippingRegion);
@@ -227,17 +275,22 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		return {
 			path,
 			width: 1.0,
-			height: 0.4
+			height: 0.4,
 		};
 	}
 
 	private _onClick(event: ICellRendererMouseEvent): void {
-		const value: IComboBoxCellRendererValue = ComboBoxCellRenderer._value(event.cell);
+		const value: IComboBoxCellRendererValue = ComboBoxCellRenderer._value(
+			event.cell
+		);
 
 		let editable: boolean = this._options.editable;
 		let onChanged: (cell: ICell) => void = this._options.onChanged;
 		if (!!value.options) {
-			if (value.options.editable !== undefined && value.options.editable !== null) {
+			if (
+				value.options.editable !== undefined &&
+				value.options.editable !== null
+			) {
 				editable = value.options.editable;
 			}
 			if (!!value.options.onChanged) {
@@ -250,32 +303,42 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		}
 	}
 
-	private _openDropdownOverlay(value: IComboBoxCellRendererValue, cell: ICell, onChanged: (cell: ICell) => void): void {
-		const cellBounds: IRectangle = this._engine.getCellModel().getBounds(cell.range);
+	private _openDropdownOverlay(
+		value: IComboBoxCellRendererValue,
+		cell: ICell,
+		onChanged: (cell: ICell) => void
+	): void {
+		const cellBounds: IRectangle = this._engine
+			.getCellModel()
+			.getBounds(cell.range);
 
 		// Determine height available to the top and bottom of the given cell range
 		const viewport = this._engine.getViewport();
 		const fixedRowsHeight: number = this._engine.getFixedRowsHeight();
-		const availableHeightToTheTop = cellBounds.top - (viewport.top + fixedRowsHeight);
-		const availableHeightToTheBottom = (viewport.top + viewport.height - cellBounds.height) - cellBounds.top;
+		const availableHeightToTheTop =
+			cellBounds.top - (viewport.top + fixedRowsHeight);
+		const availableHeightToTheBottom =
+			viewport.top + viewport.height - cellBounds.height - cellBounds.top;
 
-		const overlayElement: HTMLElement = document.createElement("div");
+		const overlayElement: HTMLElement = document.createElement('div');
 		overlayElement.className = this._options.dropdown.overlayClassName;
 		overlayElement.tabIndex = -1; // Div element must be focusable to enable the blur event
 
-		const listContainerElement: HTMLElement = document.createElement("div");
-		listContainerElement.style.height = "100%";
-		listContainerElement.style.overflow = "auto";
+		const listContainerElement: HTMLElement = document.createElement('div');
+		listContainerElement.style.height = '100%';
+		listContainerElement.style.overflow = 'auto';
 
-		const list: HTMLElement = document.createElement("ul");
+		const list: HTMLElement = document.createElement('ul');
 
 		for (const optionId in value.select_options) {
 			const label = value.select_options[optionId].label;
 
-			const listItem: HTMLElement = document.createElement("li");
+			const listItem: HTMLElement = document.createElement('li');
 			listItem.textContent = label;
 
-			const mouseDownListener: (MouseEvent) => void = (event: MouseEvent) => {
+			const mouseDownListener: (MouseEvent) => void = (
+				event: MouseEvent
+			) => {
 				event.stopPropagation(); // Prevent table selection
 			};
 			const clickListener: (MouseEvent) => void = (event: MouseEvent) => {
@@ -288,8 +351,8 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 
 				blurListener();
 			};
-			listItem.addEventListener("mousedown", mouseDownListener);
-			listItem.addEventListener("click", clickListener);
+			listItem.addEventListener('mousedown', mouseDownListener);
+			listItem.addEventListener('click', clickListener);
 
 			list.appendChild(listItem);
 		}
@@ -298,14 +361,15 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		overlayElement.appendChild(listContainerElement);
 
 		// Create render container to render overlay to measure the needed height
-		const renderContainer: HTMLElement = document.createElement("div");
-		renderContainer.style.position = "absolute";
-		renderContainer.style.left = "-9999px";
-		renderContainer.style.top = "-9999px";
-		renderContainer.style.visibility = "hidden";
+		const renderContainer: HTMLElement = document.createElement('div');
+		renderContainer.style.position = 'absolute';
+		renderContainer.style.left = '-9999px';
+		renderContainer.style.top = '-9999px';
+		renderContainer.style.visibility = 'hidden';
 		renderContainer.appendChild(overlayElement);
 		document.body.appendChild(renderContainer);
-		const neededOverlayHeight: number = renderContainer.getBoundingClientRect().height;
+		const neededOverlayHeight: number =
+			renderContainer.getBoundingClientRect().height;
 		document.body.removeChild(renderContainer);
 
 		const maxDropdownHeight: number = this._options.dropdown.maxHeight;
@@ -318,7 +382,8 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		let openToBottom: boolean = true;
 		if (availableHeightToTheBottom < dropdownHeight) {
 			if (availableHeightToTheTop < dropdownHeight) {
-				openToBottom = availableHeightToTheBottom > availableHeightToTheTop;
+				openToBottom =
+					availableHeightToTheBottom > availableHeightToTheTop;
 
 				// Cut dropdown height by the available space
 				if (openToBottom) {
@@ -335,7 +400,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 			left: cellBounds.left,
 			top: cellBounds.top + cellBounds.height,
 			width: cellBounds.width,
-			height: dropdownHeight
+			height: dropdownHeight,
 		};
 		if (!openToBottom) {
 			dropdownBounds.top = cellBounds.top - dropdownHeight;
@@ -343,7 +408,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 
 		const overlay: IOverlay = {
 			element: overlayElement,
-			bounds: dropdownBounds
+			bounds: dropdownBounds,
 		};
 		this._engine.getOverlayManager().addOverlay(overlay);
 
@@ -352,14 +417,14 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		};
 		const blurListener: () => void = () => {
 			// Remove all event listeners again
-			overlayElement.removeEventListener("wheel", scrollListener);
-			overlayElement.removeEventListener("blur", blurListener);
+			overlayElement.removeEventListener('wheel', scrollListener);
+			overlayElement.removeEventListener('blur', blurListener);
 
 			this._engine.getOverlayManager().removeOverlay(overlay); // Remove overlay
 			this._engine.requestFocus(); // Re-focus table
 		};
-		overlayElement.addEventListener("wheel", scrollListener);
-		overlayElement.addEventListener("blur", blurListener);
+		overlayElement.addEventListener('wheel', scrollListener);
+		overlayElement.addEventListener('blur', blurListener);
 
 		setTimeout(() => {
 			overlayElement.focus();
@@ -368,10 +433,16 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 
 	private _onMouseMove(event: ICellRendererMouseEvent): void {
 		const cache: IViewportCache = ComboBoxCellRenderer._cache(event.cell);
-		const value: IComboBoxCellRendererValue = ComboBoxCellRenderer._value(event.cell);
+		const value: IComboBoxCellRendererValue = ComboBoxCellRenderer._value(
+			event.cell
+		);
 
 		let editable: boolean = this._options.editable;
-		if (!!value.options && value.options.editable !== undefined && value.options.editable !== null) {
+		if (
+			!!value.options &&
+			value.options.editable !== undefined &&
+			value.options.editable !== null
+		) {
 			editable = value.options.editable;
 		}
 
@@ -388,13 +459,12 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 			this._engine.repaint();
 		}
 	}
-
 }
 
 interface ISelectArrowPath {
-	path: Path2D,
-	width: number,
-	height: number
+	path: Path2D;
+	width: number;
+	height: number;
 }
 
 interface IRenderingStyle {

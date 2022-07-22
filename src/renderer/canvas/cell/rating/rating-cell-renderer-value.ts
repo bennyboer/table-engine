@@ -1,4 +1,4 @@
-import {IRatingCellRendererOptions} from "./rating-cell-renderer-options";
+import { IRatingCellRendererOptions } from './rating-cell-renderer-options';
 
 /**
  * Value of the checkbox cell renderer value.
@@ -7,7 +7,6 @@ import {IRatingCellRendererOptions} from "./rating-cell-renderer-options";
  * will allow more control and unlock more options.
  */
 export interface IRatingCellRendererValue {
-
 	/**
 	 * The rating to render.
 	 */
@@ -18,5 +17,4 @@ export interface IRatingCellRendererValue {
 	 * If not set the default options of the rating cell renderer are applied.
 	 */
 	options?: IRatingCellRendererOptions;
-
 }

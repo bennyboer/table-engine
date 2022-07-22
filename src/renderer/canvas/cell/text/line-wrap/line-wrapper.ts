@@ -1,10 +1,9 @@
-import {IParagraph} from "./paragraph";
+import { IParagraph } from './paragraph';
 
 /**
  * Algorithm that will break a paragraph into lines.
  */
 export interface ILineWrapper {
-
 	/**
 	 * Wrap the given text to lines.
 	 * @param text to apply line wrapping to
@@ -18,5 +17,4 @@ export interface ILineWrapper {
 		lineHeight: number,
 		widthLookup: (str: string) => number
 	): IParagraph;
-
 }

@@ -1,16 +1,18 @@
-import {ICellRange} from "./cell-range";
+import { ICellRange } from './cell-range';
 
 /**
  * Utility methods that are cell range related.
  */
 export class CellRangeUtil {
-
 	/**
 	 * Whether the range only spans over one row and column.
 	 * @param range to check
 	 */
 	public static isSingleRowColumnRange(range: ICellRange): boolean {
-		return range.startRow === range.endRow && range.startColumn === range.endColumn;
+		return (
+			range.startRow === range.endRow &&
+			range.startColumn === range.endColumn
+		);
 	}
 
 	/**
@@ -18,11 +20,16 @@ export class CellRangeUtil {
 	 * @param range to check whether it is contained in the second range
 	 * @param containedIn range that contains the first range
 	 */
-	public static contains(range: ICellRange, containedIn: ICellRange): boolean {
-		return range.startRow >= containedIn.startRow
-			&& range.startColumn >= containedIn.startColumn
-			&& range.endRow <= containedIn.endRow
-			&& range.endColumn <= containedIn.endColumn;
+	public static contains(
+		range: ICellRange,
+		containedIn: ICellRange
+	): boolean {
+		return (
+			range.startRow >= containedIn.startRow &&
+			range.startColumn >= containedIn.startColumn &&
+			range.endRow <= containedIn.endRow &&
+			range.endColumn <= containedIn.endColumn
+		);
 	}
 
 	/**
@@ -31,12 +38,14 @@ export class CellRangeUtil {
 	 * @param b second cell range
 	 */
 	public static overlap(a: ICellRange, b: ICellRange): boolean {
-		const cantOverlapVertically: boolean = a.startRow > b.endRow || a.endRow < b.startRow;
+		const cantOverlapVertically: boolean =
+			a.startRow > b.endRow || a.endRow < b.startRow;
 		if (cantOverlapVertically) {
 			return false;
 		}
 
-		const cantOverlapHorizontally: boolean = a.startColumn > b.endColumn || a.endColumn < b.startColumn;
+		const cantOverlapHorizontally: boolean =
+			a.startColumn > b.endColumn || a.endColumn < b.startColumn;
 		return !cantOverlapHorizontally;
 	}
 
@@ -56,7 +65,7 @@ export class CellRangeUtil {
 			startRow: Math.max(a.startRow, b.startRow),
 			endRow: Math.min(a.endRow, b.endRow),
 			startColumn: Math.max(a.startColumn, b.startColumn),
-			endColumn: Math.min(a.endColumn, b.endColumn)
+			endColumn: Math.min(a.endColumn, b.endColumn),
 		};
 	}
 
@@ -74,7 +83,7 @@ export class CellRangeUtil {
 				startRow: Math.min(a.startRow, b.startRow),
 				endRow: Math.max(a.startRow, b.startRow) - 1, // Exclusive!
 				startColumn: Math.min(a.startColumn, b.startColumn),
-				endColumn: Math.max(a.endColumn, b.endColumn)
+				endColumn: Math.max(a.endColumn, b.endColumn),
 			});
 		}
 
@@ -84,7 +93,7 @@ export class CellRangeUtil {
 				startRow: Math.min(a.endRow, b.endRow) + 1, // Exclusive!
 				endRow: Math.max(a.endRow, b.endRow),
 				startColumn: Math.min(a.startColumn, b.startColumn),
-				endColumn: Math.max(a.endColumn, b.endColumn)
+				endColumn: Math.max(a.endColumn, b.endColumn),
 			});
 		}
 
@@ -94,7 +103,7 @@ export class CellRangeUtil {
 				startRow: Math.max(a.startRow, b.startRow),
 				endRow: Math.min(a.endRow, b.endRow),
 				startColumn: Math.min(a.startColumn, b.startColumn),
-				endColumn: Math.max(a.startColumn, b.startColumn) - 1 // Exclusive!
+				endColumn: Math.max(a.startColumn, b.startColumn) - 1, // Exclusive!
 			});
 		}
 
@@ -104,7 +113,7 @@ export class CellRangeUtil {
 				startRow: Math.max(a.startRow, b.startRow),
 				endRow: Math.min(a.endRow, b.endRow),
 				startColumn: Math.min(a.endColumn, b.endColumn) + 1, // Exclusive!
-				endColumn: Math.max(a.endColumn, b.endColumn)
+				endColumn: Math.max(a.endColumn, b.endColumn),
 			});
 		}
 
@@ -117,10 +126,12 @@ export class CellRangeUtil {
 	 * @param b second range to check for equality
 	 */
 	public static equals(a: ICellRange, b: ICellRange): boolean {
-		return a.startRow === b.startRow
-			&& a.startColumn === b.startColumn
-			&& a.endRow === b.endRow
-			&& a.endColumn === b.endColumn;
+		return (
+			a.startRow === b.startRow &&
+			a.startColumn === b.startColumn &&
+			a.endRow === b.endRow &&
+			a.endColumn === b.endColumn
+		);
 	}
 
 	/**
@@ -133,5 +144,4 @@ export class CellRangeUtil {
 
 		return width * height;
 	}
-
 }

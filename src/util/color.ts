@@ -2,7 +2,6 @@
  * Representation of a color.
  */
 export interface IColor {
-
 	/**
 	 * Red value in range [0; 255].
 	 */
@@ -22,5 +21,4 @@ export interface IColor {
 	 * Alpha value in range [0.0; 1.0].
 	 */
 	alpha: number;
-
 }

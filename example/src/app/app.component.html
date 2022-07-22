@@ -1,229 +1,292 @@
 <div class="content-wrapper">
+    <div class="controls-container">
+        <div class="headline">
+            <img src="assets/logo.svg" height="100" />
 
-  <div class="controls-container">
-    <div class="headline">
-      <img src="assets/logo.svg" height="100">
+            <span>Table Engine Demo</span>
 
-      <span>Table Engine Demo</span>
+            <span class="version-info">
+                {{ libraryVersion }}
+            </span>
+        </div>
 
-      <span class="version-info">
-        {{ libraryVersion }}
-      </span>
+        <div class="controls-content">
+            <div class="controls-group">
+                <label class="controls-label"> Borders </label>
+
+                <table class="border-table">
+                    <tr>
+                        <td>
+                            <mat-icon>palette</mat-icon>
+                        </td>
+                        <td>
+                            <mat-icon>line_weight</mat-icon>
+                        </td>
+                        <td>
+                            <mat-icon>line_style</mat-icon>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <mat-form-field
+                                class="small-form-field"
+                                floatLabel="always"
+                                style="width: 90px; text-align: center"
+                                appearance="outline"
+                            >
+                                <mat-label>Color</mat-label>
+                                <input
+                                    matInput
+                                    [(colorPicker)]="borderColor"
+                                    [style.background]="borderColor"
+                                    cpOutputFormat="rgba"
+                                    class="color-input"
+                                />
+                            </mat-form-field>
+                        </td>
+                        <td>
+                            <mat-form-field
+                                style="width: 90px; text-align: center"
+                                appearance="outline"
+                            >
+                                <mat-label>Size</mat-label>
+                                <input
+                                    matInput
+                                    style="width: 100%"
+                                    type="number"
+                                    name="borderSizeSpinner"
+                                    [(ngModel)]="borderSize"
+                                />
+                            </mat-form-field>
+                        </td>
+                        <td>
+                            <mat-form-field
+                                style="width: 90px; text-align: center"
+                                appearance="outline"
+                            >
+                                <mat-label>Style</mat-label>
+                                <mat-select [(value)]="borderStyle">
+                                    <mat-select-trigger>
+                                        {{ borderStyle }}
+                                    </mat-select-trigger>
+                                    <mat-option value="Solid">Solid</mat-option>
+                                    <mat-option value="Dashed"
+                                        >Dashed</mat-option
+                                    >
+                                    <mat-option value="Dotted"
+                                        >Dotted</mat-option
+                                    >
+                                </mat-select>
+                            </mat-form-field>
+                        </td>
+                    </tr>
+                </table>
+
+                <table class="border-cross-table">
+                    <tr>
+                        <td></td>
+                        <td>
+                            <button
+                                mat-stroked-button
+                                mat-icon-button
+                                matTooltip="Set border top"
+                                (click)="setBorderTop()"
+                            >
+                                <mat-icon>border_top</mat-icon>
+                            </button>
+                        </td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <button
+                                mat-stroked-button
+                                mat-icon-button
+                                matTooltip="Set border left"
+                                (click)="setBorderLeft()"
+                            >
+                                <mat-icon>border_left</mat-icon>
+                            </button>
+                        </td>
+                        <td></td>
+                        <td>
+                            <button
+                                mat-stroked-button
+                                mat-icon-button
+                                matTooltip="Set border right"
+                                (click)="setBorderRight()"
+                            >
+                                <mat-icon>border_right</mat-icon>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>
+                            <button
+                                mat-stroked-button
+                                mat-icon-button
+                                matTooltip="Set border bottom"
+                                (click)="setBorderBottom()"
+                            >
+                                <mat-icon>border_bottom</mat-icon>
+                            </button>
+                        </td>
+                        <td></td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="controls-group">
+                <label class="controls-label"> Merge/split selection </label>
+
+                <div style="text-align: center">
+                    <button mat-stroked-button (click)="mergeSelection()">
+                        Merge
+                    </button>
+                    &nbsp;
+                    <button mat-stroked-button (click)="splitSelection()">
+                        Split
+                    </button>
+                </div>
+            </div>
+
+            <div class="controls-group">
+                <label class="controls-label">
+                    Insert/delete rows/columns
+                </label>
+
+                <div style="text-align: center">
+                    <mat-form-field style="width: 90px" appearance="outline">
+                        <mat-label>Add count</mat-label>
+                        <input
+                            matInput
+                            style="width: 100%"
+                            type="number"
+                            name="addCount"
+                            [(ngModel)]="addCount"
+                        />
+                    </mat-form-field>
+                    &nbsp;
+                    <button mat-stroked-button (click)="insertRows(addCount)">
+                        Insert rows
+                    </button>
+                    &nbsp;
+                    <button
+                        mat-stroked-button
+                        (click)="insertColumns(addCount)"
+                    >
+                        Insert columns
+                    </button>
+                </div>
+                <div style="text-align: center">
+                    <button mat-stroked-button (click)="deleteRows()">
+                        Delete selected rows
+                    </button>
+                    &nbsp;
+                    <button mat-stroked-button (click)="deleteColumns()">
+                        Delete selected columns
+                    </button>
+                </div>
+            </div>
+
+            <div class="controls-group">
+                <label class="controls-label"> Fixing rows/columns </label>
+
+                <div style="text-align: center">
+                    <button
+                        mat-stroked-button
+                        mat-icon-button
+                        matTooltip="Add 1 fixed row/column"
+                        (click)="addOneFixedRowsColumns()"
+                    >
+                        <mat-icon>add</mat-icon>
+                    </button>
+                    &nbsp;
+                    <button
+                        mat-stroked-button
+                        mat-icon-button
+                        matTooltip="Remove 1 fixed row/column"
+                        (click)="removeOneFixedRowsColumns()"
+                    >
+                        <mat-icon>remove</mat-icon>
+                    </button>
+                </div>
+            </div>
+
+            <div class="controls-group">
+                <label class="controls-label"> Hide/Show rows/columns </label>
+
+                <div style="text-align: center">
+                    <button mat-stroked-button (click)="hideRows()">
+                        Hide rows
+                    </button>
+                    &nbsp;
+                    <button mat-stroked-button (click)="hideColumns()">
+                        Hide columns
+                    </button>
+                </div>
+                <div style="text-align: center">
+                    <button mat-stroked-button (click)="showHidden()">
+                        Show all hidden
+                    </button>
+                </div>
+            </div>
+
+            <div class="controls-group">
+                <label class="controls-label"> Row/column size </label>
+
+                <div style="text-align: center; margin: 20px 0 5px 0">
+                    <input
+                        type="number"
+                        #sizeInput
+                        min="10"
+                        max="500"
+                        value="100"
+                    />
+                </div>
+
+                <div style="text-align: center">
+                    <button
+                        mat-stroked-button
+                        (click)="setRowHeight(sizeInput.valueAsNumber)"
+                    >
+                        Set row height
+                    </button>
+                    <button
+                        mat-stroked-button
+                        (click)="setColumnWidth(sizeInput.valueAsNumber)"
+                    >
+                        Set column width
+                    </button>
+                </div>
+            </div>
+
+            <div class="controls-group">
+                <label class="controls-label"> Miscellaneous </label>
+
+                <div style="text-align: center">
+                    <button mat-stroked-button (click)="focusTable()">
+                        Focus table
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <button mat-stroked-button mat-icon-button (click)="zoomIn()">
+                <mat-icon>add</mat-icon>
+            </button>
+            <span class="zoom-label">{{ getCurrentZoom() * 100 }}%</span>
+            <button mat-stroked-button mat-icon-button (click)="zoomOut()">
+                <mat-icon>remove</mat-icon>
+            </button>
+        </div>
     </div>
 
-    <div class="controls-content">
-
-      <div class="controls-group">
-        <label class="controls-label">
-          Borders
-        </label>
-
-        <table class="border-table">
-          <tr>
-            <td>
-              <mat-icon>palette</mat-icon>
-            </td>
-            <td>
-              <mat-icon>line_weight</mat-icon>
-            </td>
-            <td>
-              <mat-icon>line_style</mat-icon>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <mat-form-field class="small-form-field" floatLabel="always" style="width: 90px; text-align: center"
-                              appearance="outline">
-                <mat-label>Color</mat-label>
-                <input matInput [(colorPicker)]="borderColor" [style.background]="borderColor"
-                       cpOutputFormat="rgba"
-                       class="color-input">
-              </mat-form-field>
-            </td>
-            <td>
-              <mat-form-field style="width: 90px; text-align: center" appearance="outline">
-                <mat-label>Size</mat-label>
-                <input matInput style="width: 100%" type="number" name="borderSizeSpinner" [(ngModel)]="borderSize">
-              </mat-form-field>
-            </td>
-            <td>
-              <mat-form-field style="width: 90px; text-align: center" appearance="outline">
-                <mat-label>Style</mat-label>
-                <mat-select [(value)]="borderStyle">
-                  <mat-select-trigger>
-                    {{ borderStyle }}
-                  </mat-select-trigger>
-                  <mat-option value="Solid">Solid</mat-option>
-                  <mat-option value="Dashed">Dashed</mat-option>
-                  <mat-option value="Dotted">Dotted</mat-option>
-                </mat-select>
-              </mat-form-field>
-            </td>
-          </tr>
-        </table>
-
-        <table class="border-cross-table">
-          <tr>
-            <td></td>
-            <td>
-              <button mat-stroked-button mat-icon-button matTooltip="Set border top" (click)="setBorderTop()">
-                <mat-icon>border_top</mat-icon>
-              </button>
-            </td>
-            <td></td>
-          </tr>
-          <tr>
-            <td>
-              <button mat-stroked-button mat-icon-button matTooltip="Set border left" (click)="setBorderLeft()">
-                <mat-icon>border_left</mat-icon>
-              </button>
-            </td>
-            <td></td>
-            <td>
-              <button mat-stroked-button mat-icon-button matTooltip="Set border right" (click)="setBorderRight()">
-                <mat-icon>border_right</mat-icon>
-              </button>
-            </td>
-          </tr>
-          <tr>
-            <td></td>
-            <td>
-              <button mat-stroked-button mat-icon-button matTooltip="Set border bottom" (click)="setBorderBottom()">
-                <mat-icon>border_bottom</mat-icon>
-              </button>
-            </td>
-            <td></td>
-          </tr>
-        </table>
-      </div>
-
-      <div class="controls-group">
-        <label class="controls-label">
-          Merge/split selection
-        </label>
-
-        <div style="text-align: center">
-          <button mat-stroked-button
-                  (click)="mergeSelection()">
-            Merge
-          </button>
-          &nbsp;
-          <button mat-stroked-button
-                  (click)="splitSelection()">
-            Split
-          </button>
+    <div class="table-container-wrapper">
+        <div #tableContainer class="table-container">
+            <!-- Will be filled later with the table -->
         </div>
-      </div>
-
-      <div class="controls-group">
-        <label class="controls-label">
-          Insert/delete rows/columns
-        </label>
-
-        <div style="text-align: center">
-          <mat-form-field style="width: 90px" appearance="outline">
-            <mat-label>Add count</mat-label>
-            <input matInput style="width: 100%" type="number" name="addCount" [(ngModel)]="addCount">
-          </mat-form-field>
-          &nbsp;
-          <button mat-stroked-button
-                  (click)="insertRows(addCount)">
-            Insert rows
-          </button>
-          &nbsp;
-          <button mat-stroked-button
-                  (click)="insertColumns(addCount)">
-            Insert columns
-          </button>
-        </div>
-        <div style="text-align: center">
-          <button mat-stroked-button
-                  (click)="deleteRows()">
-            Delete selected rows
-          </button>
-          &nbsp;
-          <button mat-stroked-button
-                  (click)="deleteColumns()">
-            Delete selected columns
-          </button>
-        </div>
-      </div>
-
-      <div class="controls-group">
-        <label class="controls-label">
-          Fixing rows/columns
-        </label>
-
-        <div style="text-align: center">
-          <button mat-stroked-button mat-icon-button matTooltip="Add 1 fixed row/column"
-                  (click)="addOneFixedRowsColumns()">
-            <mat-icon>add</mat-icon>
-          </button>
-          &nbsp;
-          <button mat-stroked-button mat-icon-button matTooltip="Remove 1 fixed row/column"
-                  (click)="removeOneFixedRowsColumns()">
-            <mat-icon>remove</mat-icon>
-          </button>
-        </div>
-      </div>
-
-      <div class="controls-group">
-        <label class="controls-label">
-          Hide/Show rows/columns
-        </label>
-
-        <div style="text-align: center">
-          <button mat-stroked-button (click)="hideRows()">Hide rows</button>
-          &nbsp;
-          <button mat-stroked-button (click)="hideColumns()">Hide columns</button>
-        </div>
-        <div style="text-align: center">
-          <button mat-stroked-button (click)="showHidden()">Show all hidden</button>
-        </div>
-      </div>
-
-      <div class="controls-group">
-        <label class="controls-label">
-          Row/column size
-        </label>
-
-        <div style="text-align: center; margin: 20px 0 5px 0">
-          <input type="number" #sizeInput min="10" max="500" value="100">
-        </div>
-
-        <div style="text-align: center">
-          <button mat-stroked-button (click)="setRowHeight(sizeInput.valueAsNumber)">Set row height</button>
-          <button mat-stroked-button (click)="setColumnWidth(sizeInput.valueAsNumber)">Set column width</button>
-        </div>
-      </div>
-
-      <div class="controls-group">
-        <label class="controls-label">
-          Miscellaneous
-        </label>
-
-        <div style="text-align: center">
-          <button mat-stroked-button (click)="focusTable()">Focus table</button>
-        </div>
-      </div>
-
     </div>
-
-    <div class="footer">
-      <button mat-stroked-button mat-icon-button (click)="zoomIn()">
-        <mat-icon>add</mat-icon>
-      </button>
-      <span class="zoom-label">{{ getCurrentZoom() * 100 }}%</span>
-      <button mat-stroked-button mat-icon-button (click)="zoomOut()">
-        <mat-icon>remove</mat-icon>
-      </button>
-    </div>
-  </div>
-
-  <div class="table-container-wrapper">
-    <div #tableContainer class="table-container">
-      <!-- Will be filled later with the table -->
-    </div>
-  </div>
-
 </div>

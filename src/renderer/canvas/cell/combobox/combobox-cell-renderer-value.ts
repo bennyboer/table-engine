@@ -1,4 +1,4 @@
-import {IComboBoxCellRendererOptions} from "./combobox-cell-renderer-options";
+import { IComboBoxCellRendererOptions } from './combobox-cell-renderer-options';
 
 export interface IComboBoxCellRendererValue {
 	selected_option_id?: string;

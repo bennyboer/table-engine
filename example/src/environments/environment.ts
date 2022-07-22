@@ -5,8 +5,8 @@ import PackageJson from '../../../package.json';
 // The list of file replacements can be found in `angular.json`.
 
 export const environment = {
-  production: false,
-  tableEngineVersion: PackageJson.version
+	production: false,
+	tableEngineVersion: PackageJson.version,
 };
 
 /*

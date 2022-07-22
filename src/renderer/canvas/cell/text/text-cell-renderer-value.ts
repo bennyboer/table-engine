@@ -1,4 +1,4 @@
-import {ITextCellRendererOptions} from "./text-cell-renderer-options";
+import { ITextCellRendererOptions } from './text-cell-renderer-options';
 
 /**
  * Value of a cell to be rendered by the text cell renderer.
@@ -8,7 +8,6 @@ import {ITextCellRendererOptions} from "./text-cell-renderer-options";
  * you can just pass a string as value for the cell and do not really need to use this interface.
  */
 export interface ITextCellRendererValue {
-
 	/**
 	 * Text to render.
 	 */
@@ -19,5 +18,4 @@ export interface ITextCellRendererValue {
 	 * If not set the default options of the text cell renderer are applied.
 	 */
 	options?: ITextCellRendererOptions;
-
 }

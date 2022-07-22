@@ -1,20 +1,19 @@
-import {ICanvasCellRenderer} from "../canvas-cell-renderer";
-import {IRectangle} from "../../../../util/rect";
-import {ICell} from "../../../../cell/cell";
-import {TableEngine} from "../../../../table-engine";
-import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-event-listener";
-import {IRenderContext} from "../../canvas-renderer";
-import {IOverlay} from "../../../../overlay/overlay";
+import { ICanvasCellRenderer } from '../canvas-cell-renderer';
+import { IRectangle } from '../../../../util';
+import { ICell } from '../../../../cell';
+import { TableEngine } from '../../../../table-engine';
+import { ICellRendererEventListener } from '../../../cell';
+import { IRenderContext } from '../../canvas-renderer';
+import { IOverlay } from '../../../../overlay';
 
 /**
  * Cell renderer for rendering HTML/DOM inside a cell.
  */
 export class DOMCellRenderer implements ICanvasCellRenderer {
-
 	/**
 	 * Name of the cell renderer.
 	 */
-	public static readonly NAME: string = "dom";
+	public static readonly NAME: string = 'dom';
 
 	/**
 	 * Reference to the table engine.
@@ -25,7 +24,10 @@ export class DOMCellRenderer implements ICanvasCellRenderer {
 		// Nothing to do after rendering cells with this renderer
 	}
 
-	public before(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
+	public before(
+		ctx: CanvasRenderingContext2D,
+		context: IRenderContext
+	): void {
 		// Nothing to do before rendering cells with this renderer
 	}
 
@@ -34,9 +36,10 @@ export class DOMCellRenderer implements ICanvasCellRenderer {
 	}
 
 	public getCopyValue(cell: ICell): string {
-		const cache: IDOMCellRendererViewportCache = DOMCellRenderer._cache(cell);
+		const cache: IDOMCellRendererViewportCache =
+			DOMCellRenderer._cache(cell);
 
-		return !!cache.overlay ? cache.overlay.element.innerHTML : "";
+		return !!cache.overlay ? cache.overlay.element.innerHTML : '';
 	}
 
 	public getEventListener(): ICellRendererEventListener | null {
@@ -53,28 +56,34 @@ export class DOMCellRenderer implements ICanvasCellRenderer {
 
 	public onDisappearing(cell: ICell): void {
 		// Remove DOM element (overlay) again
-		const cache: IDOMCellRendererViewportCache = DOMCellRenderer._cache(cell);
+		const cache: IDOMCellRendererViewportCache =
+			DOMCellRenderer._cache(cell);
 		if (!!cache.overlay) {
 			this._engine.getOverlayManager().removeOverlay(cache.overlay);
 		}
 	}
 
-	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
+	public render(
+		ctx: CanvasRenderingContext2D,
+		cell: ICell,
+		bounds: IRectangle
+	): void {
 		// Render nothing on the canvas, instead use an overlay to display the DOM element
-		const cache: IDOMCellRendererViewportCache = DOMCellRenderer._cache(cell);
+		const cache: IDOMCellRendererViewportCache =
+			DOMCellRenderer._cache(cell);
 		if (!cache.overlay) {
 			// Create overlay
 			let domElement: HTMLElement;
 			if (cell.value instanceof HTMLElement) {
 				domElement = cell.value as HTMLElement;
 			} else {
-				domElement = document.createElement("div");
+				domElement = document.createElement('div');
 				domElement.innerHTML = `${cell.value}`;
 			}
 
 			const overlay: IOverlay = {
 				element: domElement,
-				bounds: this._engine.getCellModel().getBounds(cell.range)
+				bounds: this._engine.getCellModel().getBounds(cell.range),
 			};
 			this._engine.getOverlayManager().addOverlay(overlay);
 
@@ -83,12 +92,15 @@ export class DOMCellRenderer implements ICanvasCellRenderer {
 		} else {
 			// Check whether cell dimensions changed -> Overlay update is needed
 			const oldBounds: IRectangle = cache.overlay.bounds;
-			const newBounds: IRectangle = this._engine.getCellModel().getBounds(cell.range);
+			const newBounds: IRectangle = this._engine
+				.getCellModel()
+				.getBounds(cell.range);
 
-			const boundsChanged: boolean = newBounds.left !== oldBounds.left
-				|| newBounds.top !== oldBounds.top
-				|| newBounds.width !== oldBounds.width
-				|| newBounds.height !== oldBounds.height;
+			const boundsChanged: boolean =
+				newBounds.left !== oldBounds.left ||
+				newBounds.top !== oldBounds.top ||
+				newBounds.width !== oldBounds.width ||
+				newBounds.height !== oldBounds.height;
 			if (boundsChanged) {
 				cache.overlay.bounds = newBounds;
 				this._engine.getOverlayManager().updateOverlay(cache.overlay);
@@ -110,17 +122,14 @@ export class DOMCellRenderer implements ICanvasCellRenderer {
 			return cache;
 		}
 	}
-
 }
 
 /**
  * Viewport cache of the DOM cell renderer.
  */
 interface IDOMCellRendererViewportCache {
-
 	/**
 	 * The overlay showing the DOM element for a cell.
 	 */
 	overlay?: IOverlay;
-
 }

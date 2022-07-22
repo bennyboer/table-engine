@@ -1,7 +1,19 @@
-import {fillOptions as fillScrollBarOptions, IScrollBarOptions} from "../options/scrollbar";
-import {fillOptions as fillSelectionOptions, ISelectionRenderingOptions} from "../options/selection";
-import {fillOptions as fillScrollingOptions, IScrollingOptions} from "../options/scrolling";
-import {fillOptions as fillRowColumnResizingOptions, IRowColumnResizingOptions} from "../options/row-column-resizing";
+import {
+	fillOptions as fillScrollBarOptions,
+	IScrollBarOptions,
+} from '../options/scrollbar';
+import {
+	fillOptions as fillSelectionOptions,
+	ISelectionRenderingOptions,
+} from '../options/selection';
+import {
+	fillOptions as fillScrollingOptions,
+	IScrollingOptions,
+} from '../options/scrolling';
+import {
+	fillOptions as fillRowColumnResizingOptions,
+	IRowColumnResizingOptions,
+} from '../options/row-column-resizing';
 
 /**
  * Duration in milliseconds used to throttle high-rate events
@@ -13,7 +25,6 @@ const DEFAULT_LAZY_RENDERING_THROTTLE_DURATION: number = 10;
  * Options for the HTML5 canvas renderer.
  */
 export interface ICanvasRendererOptions {
-
 	/**
 	 * Lazy rendering throttle duration in milliseconds.
 	 * This is used to throttle events that occur in high-rate, such as scrolling
@@ -42,7 +53,6 @@ export interface ICanvasRendererOptions {
 	 * Options for resizing rows and columns.
 	 */
 	rowColumnResizing?: IRowColumnResizingOptions;
-
 }
 
 /**
@@ -54,8 +64,12 @@ export const fillOptions = (options?: ICanvasRendererOptions) => {
 		options = {};
 	}
 
-	if (options.lazyRenderingThrottleDuration === undefined || options.lazyRenderingThrottleDuration === null) {
-		options.lazyRenderingThrottleDuration = DEFAULT_LAZY_RENDERING_THROTTLE_DURATION;
+	if (
+		options.lazyRenderingThrottleDuration === undefined ||
+		options.lazyRenderingThrottleDuration === null
+	) {
+		options.lazyRenderingThrottleDuration =
+			DEFAULT_LAZY_RENDERING_THROTTLE_DURATION;
 	}
 
 	if (!options.scrollBar) {

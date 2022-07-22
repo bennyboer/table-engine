@@ -1,24 +1,21 @@
-import {ICellModel} from "./cell/model/cell-model.interface";
-import {fillOptions, ITableEngineOptions} from "./options";
-import {ITableEngineRenderer} from "./renderer/renderer";
-import {RendererFactory} from "./renderer/renderer-factory";
-import {Observable, Subject} from "rxjs";
-import {ITableEngineEvent} from "./event/event";
-import {TableEngineEventType} from "./event/event-type";
-import {ICellRenderer} from "./renderer/cell/cell-renderer";
-import {ISelectionModel} from "./selection/model/selection-model.interface";
-import {SelectionModel} from "./selection/model/selection-model";
-import {IBorderModel} from "./border/model/border-model.interface";
-import {BorderModel} from "./border/model/border-model";
-import {IOverlayManager} from "./overlay/overlay-manager";
-import {IPoint} from "./util/point";
-import {IRectangle} from "./util/rect";
+import { ICellModel } from './cell';
+import { fillOptions, ITableEngineOptions } from './options';
+import {
+	ICellRenderer,
+	ITableEngineRenderer,
+	RendererFactory,
+} from './renderer';
+import { Observable, Subject } from 'rxjs';
+import { ITableEngineEvent, TableEngineEventType } from './event';
+import { ISelectionModel, SelectionModel } from './selection';
+import { BorderModel, IBorderModel } from './border';
+import { IOverlayManager } from './overlay';
+import { IPoint, IRectangle } from './util';
 
 /**
  * Entry point of the table engine library.
  */
 export class TableEngine {
-
 	/**
 	 * HTML element used as container to the table engine.
 	 */
@@ -52,7 +49,8 @@ export class TableEngine {
 	/**
 	 * Subject that will emit events when something meaningful happens in the table engine.
 	 */
-	private readonly _events: Subject<ITableEngineEvent> = new Subject<ITableEngineEvent>();
+	private readonly _events: Subject<ITableEngineEvent> =
+		new Subject<ITableEngineEvent>();
 
 	/**
 	 * Whether the engine is already initialized.
@@ -66,7 +64,11 @@ export class TableEngine {
 	 * @param cellModel to use as cell model for the table engine
 	 * @param options used to modify the default behavior of the table engine
 	 */
-	constructor(container: HTMLElement, cellModel: ICellModel, options?: ITableEngineOptions) {
+	constructor(
+		container: HTMLElement,
+		cellModel: ICellModel,
+		options?: ITableEngineOptions
+	) {
 		this._container = container;
 		this._cellModel = cellModel;
 
@@ -74,13 +76,18 @@ export class TableEngine {
 		this._options = fillOptions(options);
 
 		// Initialize selection model
-		this._selectionModel = new SelectionModel(this._cellModel, this._options);
+		this._selectionModel = new SelectionModel(
+			this._cellModel,
+			this._options
+		);
 
 		// Initialize border model
 		this._borderModel = new BorderModel(this._cellModel, this._options);
 
 		// Initialize renderer
-		this._renderer = RendererFactory.getRendererInstance(this._options.renderer.type);
+		this._renderer = RendererFactory.getRendererInstance(
+			this._options.renderer.type
+		);
 	}
 
 	/**
@@ -93,7 +100,7 @@ export class TableEngine {
 		this._isInitialized = true;
 
 		this._events.next({
-			type: TableEngineEventType.RENDERER_READY
+			type: TableEngineEventType.RENDERER_READY,
 		});
 
 		this.repaint();
@@ -209,7 +216,9 @@ export class TableEngine {
 	 */
 	public registerCellRenderer(renderer: ICellRenderer<any>): void {
 		if (this._isInitialized) {
-			throw new Error("Cannot register renderers when table-engine is already initialized");
+			throw new Error(
+				'Cannot register renderers when table-engine is already initialized'
+			);
 		}
 
 		this._renderer.registerCellRenderer(renderer);
@@ -224,5 +233,4 @@ export class TableEngine {
 
 		this._events.complete();
 	}
-
 }

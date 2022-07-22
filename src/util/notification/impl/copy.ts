@@ -1,12 +1,11 @@
-import {INotification} from "../notification";
-import {NotificationType} from "../notification-type";
-import {NotificationIDs} from "../notification-ids";
+import { INotification } from '../notification';
+import { NotificationType } from '../notification-type';
+import { NotificationIDs } from '../notification-ids';
 
 /**
  * Copy notification signaling a successful copy operation.
  */
 export class CopyNotification implements INotification {
-
 	get id(): string {
 		return NotificationIDs.COPY;
 	}
@@ -16,7 +15,6 @@ export class CopyNotification implements INotification {
 	}
 
 	get message(): string {
-		return "Copied selected cells.";
+		return 'Copied selected cells.';
 	}
-
 }

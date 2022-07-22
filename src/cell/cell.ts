@@ -1,5 +1,5 @@
-import {ICellRange} from "./range/cell-range";
-import {IBorder} from "../border/border";
+import { ICellRange } from './range';
+import { IBorder } from '../border';
 
 /**
  * Cell representation of the table engine.

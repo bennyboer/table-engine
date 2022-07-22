@@ -1,24 +1,22 @@
-import {ICellRange} from "../../cell/range/cell-range";
-import {ICellModel} from "../../cell/model/cell-model.interface";
-import {ICell} from "../../cell/cell";
+import { ICell, ICellModel, ICellRange } from '../../cell';
 
 /**
  * Utility methods for dealing with the clipboard.
  */
 export class ClipboardUtil {
-
 	/**
 	 * Set the clipboard to the passed content.
 	 * Content may be HTML formatted.
 	 * @param content to set to the clipboard
 	 */
 	public static setClipboardContent(content: string): void {
-		const clipboardDummyElement: HTMLElement = document.createElement("div");
+		const clipboardDummyElement: HTMLElement =
+			document.createElement('div');
 
 		// Hide the dummy element from the user
 		clipboardDummyElement.style.position = 'absolute';
 		clipboardDummyElement.style.left = '-9999px';
-		clipboardDummyElement.style.userSelect = "text";
+		clipboardDummyElement.style.userSelect = 'text';
 
 		// Add to DOM
 		document.body.appendChild(clipboardDummyElement);
@@ -30,7 +28,7 @@ export class ClipboardUtil {
 		window.getSelection().selectAllChildren(clipboardDummyElement);
 
 		// Copy the selected content to the clipboard
-		document.execCommand("copy");
+		document.execCommand('copy');
 
 		// Remove dummy element again from DOM
 		document.body.removeChild(clipboardDummyElement);
@@ -47,7 +45,7 @@ export class ClipboardUtil {
 		cellModel: ICellModel,
 		copyValueMapper: (cell: ICell) => string
 	): string {
-		let result: string = "<table>";
+		let result: string = '<table>';
 		const alreadySeenCells: Set<ICell> = new Set<ICell>(); // Set to prevent from including merged cells multiple times
 
 		for (let row = range.startRow; row <= range.endRow; row++) {
@@ -56,16 +54,21 @@ export class ClipboardUtil {
 				continue;
 			}
 
-			result += "<tr>";
+			result += '<tr>';
 
-			for (let column = range.startColumn; column <= range.endColumn; column++) {
-				const isColumnHidden: boolean = cellModel.isColumnHidden(column);
+			for (
+				let column = range.startColumn;
+				column <= range.endColumn;
+				column++
+			) {
+				const isColumnHidden: boolean =
+					cellModel.isColumnHidden(column);
 				if (isColumnHidden) {
 					continue;
 				}
 
 				const cell: ICell | null = cellModel.getCell(row, column);
-				let copyValue: string = "";
+				let copyValue: string = '';
 				let rowSpan: number = 1;
 				let columnSpan: number = 1;
 				let ignore: boolean = false;
@@ -76,7 +79,8 @@ export class ClipboardUtil {
 						copyValue = copyValueMapper(cell);
 
 						rowSpan = cell.range.endRow - cell.range.startRow + 1;
-						columnSpan = cell.range.endColumn - cell.range.startColumn + 1;
+						columnSpan =
+							cell.range.endColumn - cell.range.startColumn + 1;
 					} else {
 						ignore = true;
 					}
@@ -84,7 +88,7 @@ export class ClipboardUtil {
 
 				// Add to table string
 				if (!ignore) {
-					result += "<td";
+					result += '<td';
 					if (rowSpan > 1) {
 						result += ` rowspan="${rowSpan}"`;
 					}
@@ -95,12 +99,11 @@ export class ClipboardUtil {
 				}
 			}
 
-			result += "</tr>";
+			result += '</tr>';
 		}
 
-		result += "</table>";
+		result += '</table>';
 
 		return result;
 	}
-
 }

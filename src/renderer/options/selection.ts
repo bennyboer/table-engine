@@ -1,44 +1,84 @@
-import {IColor} from "../../util/color";
+import { IColor } from '../../util';
 
 /**
  * Default primary selection border color.
  */
-const DEFAULT_PRIMARY_SELECTION_BORDER_COLOR: IColor = {red: 255, green: 51, blue: 102, alpha: 1.0};
+const DEFAULT_PRIMARY_SELECTION_BORDER_COLOR: IColor = {
+	red: 255,
+	green: 51,
+	blue: 102,
+	alpha: 1.0,
+};
 
 /**
  * Default primary selection background color.
  */
-const DEFAULT_PRIMARY_SELECTION_BACKGROUND_COLOR: IColor = {red: 204, green: 0, blue: 51, alpha: 0.1};
+const DEFAULT_PRIMARY_SELECTION_BACKGROUND_COLOR: IColor = {
+	red: 204,
+	green: 0,
+	blue: 51,
+	alpha: 0.1,
+};
 
 /**
  * Default primary selection border color when table is not focused.
  */
-const DEFAULT_PRIMARY_SELECTION_BORDER_COLOR_UNFOCUSED: IColor = {red: 255, green: 102, blue: 140, alpha: 0.5};
+const DEFAULT_PRIMARY_SELECTION_BORDER_COLOR_UNFOCUSED: IColor = {
+	red: 255,
+	green: 102,
+	blue: 140,
+	alpha: 0.5,
+};
 
 /**
  * Default primary selection background color when table is not focused.
  */
-const DEFAULT_PRIMARY_SELECTION_BACKGROUND_COLOR_UNFOCUSED: IColor = {red: 150, green: 150, blue: 150, alpha: 0.1};
+const DEFAULT_PRIMARY_SELECTION_BACKGROUND_COLOR_UNFOCUSED: IColor = {
+	red: 150,
+	green: 150,
+	blue: 150,
+	alpha: 0.1,
+};
 
 /**
  * Default secondary selection border color.
  */
-const DEFAULT_SECONDARY_SELECTION_BORDER_COLOR: IColor = {red: 150, green: 150, blue: 150, alpha: 0.75};
+const DEFAULT_SECONDARY_SELECTION_BORDER_COLOR: IColor = {
+	red: 150,
+	green: 150,
+	blue: 150,
+	alpha: 0.75,
+};
 
 /**
  * Default secondary selection background color.
  */
-const DEFAULT_SECONDARY_SELECTION_BACKGROUND_COLOR: IColor = {red: 50, green: 50, blue: 50, alpha: 0.1};
+const DEFAULT_SECONDARY_SELECTION_BACKGROUND_COLOR: IColor = {
+	red: 50,
+	green: 50,
+	blue: 50,
+	alpha: 0.1,
+};
 
 /**
  * Default secondary selection border color when table is not focused.
  */
-const DEFAULT_SECONDARY_SELECTION_BORDER_COLOR_UNFOCUSED: IColor = {red: 200, green: 200, blue: 200, alpha: 0.75};
+const DEFAULT_SECONDARY_SELECTION_BORDER_COLOR_UNFOCUSED: IColor = {
+	red: 200,
+	green: 200,
+	blue: 200,
+	alpha: 0.75,
+};
 
 /**
  * Default secondary selection background color when table is not focused.
  */
-const DEFAULT_SECONDARY_SELECTION_BACKGROUND_COLOR_UNFOCUSED: IColor = {red: 150, green: 150, blue: 150, alpha: 0.1};
+const DEFAULT_SECONDARY_SELECTION_BACKGROUND_COLOR_UNFOCUSED: IColor = {
+	red: 150,
+	green: 150,
+	blue: 150,
+	alpha: 0.1,
+};
 
 /**
  * Default selection border size.
@@ -69,7 +109,6 @@ const DEFAULT_COPY_HANDLE_PADDING: number = 2;
  * Options regarding the selection to display.
  */
 export interface ISelectionRenderingOptions {
-
 	/**
 	 * Size of the selection border.
 	 */
@@ -102,14 +141,12 @@ export interface ISelectionRenderingOptions {
 	 * Rendering options for the copy-handle (if enabled).
 	 */
 	copyHandle?: ICopyHandleRenderingOptions;
-
 }
 
 /**
  * Rendering options for the copy-handle.
  */
 export interface ICopyHandleRenderingOptions {
-
 	/**
 	 * Size of the copy-handle (width and height).
 	 */
@@ -119,14 +156,12 @@ export interface ICopyHandleRenderingOptions {
 	 * Padding from the selection rectangle border.
 	 */
 	padding?: number;
-
 }
 
 /**
  * Colors of a selection.
  */
 export interface ISelectionColors {
-
 	/**
 	 * Background color of the selection rectangle.
 	 */
@@ -146,7 +181,6 @@ export interface ISelectionColors {
 	 * Color of the border when the table is not focused.
 	 */
 	borderColorUnfocused?: IColor;
-
 }
 
 /**
@@ -175,7 +209,8 @@ export const fillOptions = (options?: ISelectionRenderingOptions) => {
 	}
 
 	if (!options.primary.backgroundColor) {
-		options.primary.backgroundColor = DEFAULT_PRIMARY_SELECTION_BACKGROUND_COLOR;
+		options.primary.backgroundColor =
+			DEFAULT_PRIMARY_SELECTION_BACKGROUND_COLOR;
 	}
 
 	if (!options.primary.borderColor) {
@@ -183,30 +218,39 @@ export const fillOptions = (options?: ISelectionRenderingOptions) => {
 	}
 
 	if (!options.primary.backgroundColorUnfocused) {
-		options.primary.backgroundColorUnfocused = DEFAULT_PRIMARY_SELECTION_BACKGROUND_COLOR_UNFOCUSED;
+		options.primary.backgroundColorUnfocused =
+			DEFAULT_PRIMARY_SELECTION_BACKGROUND_COLOR_UNFOCUSED;
 	}
 
 	if (!options.primary.borderColorUnfocused) {
-		options.primary.borderColorUnfocused = DEFAULT_PRIMARY_SELECTION_BORDER_COLOR_UNFOCUSED;
+		options.primary.borderColorUnfocused =
+			DEFAULT_PRIMARY_SELECTION_BORDER_COLOR_UNFOCUSED;
 	}
 
 	if (!options.secondary.backgroundColor) {
-		options.secondary.backgroundColor = DEFAULT_SECONDARY_SELECTION_BACKGROUND_COLOR;
+		options.secondary.backgroundColor =
+			DEFAULT_SECONDARY_SELECTION_BACKGROUND_COLOR;
 	}
 
 	if (!options.secondary.borderColor) {
-		options.secondary.borderColor = DEFAULT_SECONDARY_SELECTION_BORDER_COLOR;
+		options.secondary.borderColor =
+			DEFAULT_SECONDARY_SELECTION_BORDER_COLOR;
 	}
 
 	if (!options.secondary.backgroundColorUnfocused) {
-		options.secondary.backgroundColorUnfocused = DEFAULT_SECONDARY_SELECTION_BACKGROUND_COLOR_UNFOCUSED;
+		options.secondary.backgroundColorUnfocused =
+			DEFAULT_SECONDARY_SELECTION_BACKGROUND_COLOR_UNFOCUSED;
 	}
 
 	if (!options.secondary.borderColorUnfocused) {
-		options.secondary.borderColorUnfocused = DEFAULT_SECONDARY_SELECTION_BORDER_COLOR_UNFOCUSED;
+		options.secondary.borderColorUnfocused =
+			DEFAULT_SECONDARY_SELECTION_BORDER_COLOR_UNFOCUSED;
 	}
 
-	if (options.autoScrollingSpeed === undefined || options.autoScrollingSpeed === null) {
+	if (
+		options.autoScrollingSpeed === undefined ||
+		options.autoScrollingSpeed === null
+	) {
 		options.autoScrollingSpeed = DEFAULT_AUTO_SCROLL_SPEED;
 	}
 
@@ -214,14 +258,19 @@ export const fillOptions = (options?: ISelectionRenderingOptions) => {
 		options.copyHandle = {};
 	}
 
-	if (options.copyHandle.size === null || options.copyHandle.size === undefined) {
+	if (
+		options.copyHandle.size === null ||
+		options.copyHandle.size === undefined
+	) {
 		options.copyHandle.size = DEFAULT_COPY_HANDLE_SIZE;
 	}
 
-	if (options.copyHandle.padding === null || options.copyHandle.padding === undefined) {
+	if (
+		options.copyHandle.padding === null ||
+		options.copyHandle.padding === undefined
+	) {
 		options.copyHandle.padding = DEFAULT_COPY_HANDLE_PADDING;
 	}
 
 	return options;
 };
-

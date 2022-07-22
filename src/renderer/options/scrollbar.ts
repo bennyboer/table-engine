@@ -1,4 +1,4 @@
-import {IColor} from "../../util/color";
+import { IColor } from '../../util';
 
 /**
  * Default size of the scrollbar.
@@ -23,13 +23,17 @@ const DEFAULT_SCROLLBAR_RADIUS: number = 5;
 /**
  * Default scrollbar color.
  */
-const DEFAULT_SCROLLBAR_COLOR: IColor = {red: 0, green: 0, blue: 0, alpha: 0.6};
+const DEFAULT_SCROLLBAR_COLOR: IColor = {
+	red: 0,
+	green: 0,
+	blue: 0,
+	alpha: 0.6,
+};
 
 /**
  * Options regarding the scrollbar to display.
  */
 export interface IScrollBarOptions {
-
 	/**
 	 * RGBA color of the scrollbar using floating point
 	 * numbers.
@@ -56,7 +60,6 @@ export interface IScrollBarOptions {
 	 * Radius of the scrollbars rounded corners.
 	 */
 	cornerRadius?: number;
-
 }
 
 /**
@@ -88,7 +91,5 @@ export const fillOptions = (options?: IScrollBarOptions) => {
 		options.cornerRadius = DEFAULT_SCROLLBAR_RADIUS;
 	}
 
-
 	return options;
 };
-

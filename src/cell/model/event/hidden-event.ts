@@ -1,11 +1,10 @@
-import {ICellModelEvent} from "./cell-model-change";
-import {CellModelEventType} from "./cell-model-event-type";
+import { ICellModelEvent } from './cell-model-change';
+import { CellModelEventType } from './cell-model-event-type';
 
 /**
  * Event when rows/columns have been hidden.
  */
 export class HiddenEvent implements ICellModelEvent {
-
 	public readonly type: CellModelEventType = CellModelEventType.HIDDEN;
 
 	/**
@@ -30,5 +29,4 @@ export class HiddenEvent implements ICellModelEvent {
 	get isRow(): boolean {
 		return this._isRow;
 	}
-
 }

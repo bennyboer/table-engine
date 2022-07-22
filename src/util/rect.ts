@@ -2,7 +2,6 @@
  * Representation of a rectangle.
  */
 export interface IRectangle {
-
 	/**
 	 * Left offset of the rectangle.
 	 */
@@ -22,5 +21,4 @@ export interface IRectangle {
 	 * Height of the rectangle.
 	 */
 	height: number;
-
 }

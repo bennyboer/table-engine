@@ -1,33 +1,33 @@
-import {ICell} from "../../../../cell/cell";
-import {IColor} from "../../../../util/color";
-import {Colors} from "../../../../util/colors";
+import { ICell } from '../../../../cell';
+import { Colors, IColor } from '../../../../util';
 
-export const DEFAULT_PLACEHOLDER_TEXT: string = "Select...";
-export const DEFAULT_LABEL_COLOR: IColor = Colors.BLACK;
-export const DEFAULT_LABEL_COLOR_HOVERED: IColor = Colors.CORAL;
-export const DEFAULT_LABEL_COLOR_DISABLED: IColor = Colors.GRAY;
-export const DEFAULT_LABEL_FONT_SIZE: number = 12;
-export const DEFAULT_LABEL_FONT_FAMILY: string = "sans-serif";
-export const DEFAULT_PLACEHOLDER_COLOR: IColor = Colors.GRAY;
-export const DEFAULT_PADDING: number = 8;
-export const DEFAULT_SELECT_ARROW_COLOR: IColor = Colors.GRAY;
-export const DEFAULT_SELECT_ARROW_COLOR_DISABLED: IColor = Colors.LIGHTGRAY;
-export const DEFAULT_SELECT_ARROW_HOVER_COLOR: IColor = Colors.CORAL;
-export const DEFAULT_SELECT_ARROW_SIZE: number = 10;
-export const DEFAULT_SELECT_ARROW_THICKNESS: number = 2;
-export const DEFAULT_SELECT_ARROW_LINE_JOIN: "bevel" | "miter" | "round" = "round";
-export const DEFAULT_SELECT_ARROW_LINE_CAP: "butt" | "round" | "square" = "round";
-export const DEFAULT_DROPDOWN_OVERLAY_CLASS_NAME = "table-engine-combobox-dropdown-list";
-export const DEFAULT_DROPDOWN_MAX_HEIGHT = 200;
+const DEFAULT_PLACEHOLDER_TEXT: string = 'Select...';
+const DEFAULT_LABEL_COLOR: IColor = Colors.BLACK;
+const DEFAULT_LABEL_COLOR_HOVERED: IColor = Colors.CORAL;
+const DEFAULT_LABEL_COLOR_DISABLED: IColor = Colors.GRAY;
+const DEFAULT_LABEL_FONT_SIZE: number = 12;
+const DEFAULT_LABEL_FONT_FAMILY: string = 'sans-serif';
+const DEFAULT_PLACEHOLDER_COLOR: IColor = Colors.GRAY;
+const DEFAULT_PADDING: number = 8;
+const DEFAULT_SELECT_ARROW_COLOR: IColor = Colors.GRAY;
+const DEFAULT_SELECT_ARROW_COLOR_DISABLED: IColor = Colors.LIGHTGRAY;
+const DEFAULT_SELECT_ARROW_HOVER_COLOR: IColor = Colors.CORAL;
+const DEFAULT_SELECT_ARROW_SIZE: number = 10;
+const DEFAULT_SELECT_ARROW_THICKNESS: number = 2;
+const DEFAULT_SELECT_ARROW_LINE_JOIN: 'bevel' | 'miter' | 'round' = 'round';
+const DEFAULT_SELECT_ARROW_LINE_CAP: 'butt' | 'round' | 'square' = 'round';
+const DEFAULT_DROPDOWN_OVERLAY_CLASS_NAME =
+	'table-engine-combobox-dropdown-list';
+const DEFAULT_DROPDOWN_MAX_HEIGHT = 200;
 
 export interface IComboBoxCellRendererOptions {
 	onChanged?: (cell: ICell) => void;
 	editable?: boolean;
 	padding?: number;
 	label?: ILabelOptions;
-	placeholder?: IPlaceholderOptions,
-	selectArrow?: ISelectArrowOptions,
-	dropdown?: IDropdownOptions
+	placeholder?: IPlaceholderOptions;
+	selectArrow?: ISelectArrowOptions;
+	dropdown?: IDropdownOptions;
 }
 
 export interface ILabelOptions {
@@ -49,8 +49,8 @@ export interface ISelectArrowOptions {
 	disabledColor?: IColor;
 	size?: number;
 	thickness?: number;
-	lineJoin?: "bevel" | "miter" | "round";
-	lineCap?: "butt" | "round" | "square";
+	lineJoin?: 'bevel' | 'miter' | 'round';
+	lineCap?: 'butt' | 'round' | 'square';
 }
 
 export interface IDropdownOptions {
@@ -77,7 +77,7 @@ export const fillOptions = (options?: IComboBoxCellRendererOptions) => {
 	options.dropdown = fillDropdownOptions(options.dropdown);
 
 	return options;
-}
+};
 
 const fillLabelOptions = (options?: ILabelOptions) => {
 	if (!options) {
@@ -105,7 +105,7 @@ const fillLabelOptions = (options?: ILabelOptions) => {
 	}
 
 	return options;
-}
+};
 
 const fillPlaceholderOptions = (options?: IPlaceholderOptions) => {
 	if (!options) {
@@ -121,7 +121,7 @@ const fillPlaceholderOptions = (options?: IPlaceholderOptions) => {
 	}
 
 	return options;
-}
+};
 
 const fillSelectArrowOptions = (options?: ISelectArrowOptions) => {
 	if (!options) {
@@ -157,7 +157,7 @@ const fillSelectArrowOptions = (options?: ISelectArrowOptions) => {
 	}
 
 	return options;
-}
+};
 
 const fillDropdownOptions = (options?: IDropdownOptions) => {
 	if (!options) {
@@ -173,4 +173,4 @@ const fillDropdownOptions = (options?: IDropdownOptions) => {
 	}
 
 	return options;
-}
+};

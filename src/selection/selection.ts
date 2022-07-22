@@ -1,10 +1,9 @@
-import {ICellRange} from "../cell/range/cell-range";
+import { ICellRange } from '../cell';
 
 /**
  * Representation of a selection.
  */
 export interface ISelection {
-
 	/**
 	 * Range of the selection.
 	 */
@@ -14,7 +13,6 @@ export interface ISelection {
 	 * Initial position of the selection (if primary selection).
 	 */
 	initial?: IInitialPosition;
-
 }
 
 /**
@@ -23,7 +21,6 @@ export interface ISelection {
  * when navigating over merged cells.
  */
 export interface IInitialPosition {
-
 	/**
 	 * Initial selected row.
 	 */
@@ -33,5 +30,4 @@ export interface IInitialPosition {
 	 * Initial selected column.
 	 */
 	column: number;
-
 }

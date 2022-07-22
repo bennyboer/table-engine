@@ -1,29 +1,27 @@
-import {IColor} from "../../../../util/color";
-import {Colors} from "../../../../util/colors";
-import {ICell} from "../../../../cell/cell";
+import { Colors, IColor } from '../../../../util';
+import { ICell } from '../../../../cell';
 
-export const DEFAULT_LABEL_FONT_FAMILY: string = "sans-serif";
-export const DEFAULT_LABEL_FONT_SIZE: number = 12;
-export const DEFAULT_LABEL_TEXT_COLOR: IColor = Colors.BLACK;
-export const DEFAULT_CHECKBOX_SIZE: number = 14;
-export const DEFAULT_BORDER_SIZE: number = 1;
-export const DEFAULT_BORDER_RADIUS: number = 2;
-export const DEFAULT_BORDER_COLOR: IColor = Colors.GRAY;
-export const DEFAULT_HOVER_BORDER_COLOR: IColor = Colors.DARKGRAY;
-export const DEFAULT_UNCHECKED_BACKGROUND_COLOR: IColor = Colors.WHITE;
-export const DEFAULT_CHECKED_BACKGROUND_COLOR: IColor = Colors.CORAL;
-export const DEFAULT_CHECKED_HOVER_BACKGROUND_COLOR: IColor = Colors.DARKCORAL;
-export const DEFAULT_TICK_COLOR: IColor = Colors.WHITE;
-export const DEFAULT_DISABLED_OPACITY: number = 0.4;
-export const DEFAULT_LABEL_CHECKBOX_SPACING: number = 4;
-export const DEFAULT_CHECKBOX_CELL_SPACING: number = 4;
-export const DEFAULT_TICK_THICKNESS: number = 2;
+const DEFAULT_LABEL_FONT_FAMILY: string = 'sans-serif';
+const DEFAULT_LABEL_FONT_SIZE: number = 12;
+const DEFAULT_LABEL_TEXT_COLOR: IColor = Colors.BLACK;
+const DEFAULT_CHECKBOX_SIZE: number = 14;
+const DEFAULT_BORDER_SIZE: number = 1;
+const DEFAULT_BORDER_RADIUS: number = 2;
+const DEFAULT_BORDER_COLOR: IColor = Colors.GRAY;
+const DEFAULT_HOVER_BORDER_COLOR: IColor = Colors.DARKGRAY;
+const DEFAULT_UNCHECKED_BACKGROUND_COLOR: IColor = Colors.WHITE;
+const DEFAULT_CHECKED_BACKGROUND_COLOR: IColor = Colors.CORAL;
+const DEFAULT_CHECKED_HOVER_BACKGROUND_COLOR: IColor = Colors.DARKCORAL;
+const DEFAULT_TICK_COLOR: IColor = Colors.WHITE;
+const DEFAULT_DISABLED_OPACITY: number = 0.4;
+const DEFAULT_LABEL_CHECKBOX_SPACING: number = 4;
+const DEFAULT_CHECKBOX_CELL_SPACING: number = 4;
+const DEFAULT_TICK_THICKNESS: number = 2;
 
 /**
  * Options for the checkbox cell renderer.
  */
 export interface ICheckboxCellRendererOptions {
-
 	/**
 	 * Callback to inform about a change of the checked status of the passed cells value.
 	 * @param cell that contains the changed value
@@ -114,7 +112,6 @@ export interface ICheckboxCellRendererOptions {
 	 * Minimum distance of the checkbox to the left border of the cell.
 	 */
 	cellSpacing?: number;
-
 }
 
 /**
@@ -171,10 +168,14 @@ export const fillOptions = (options?: ICheckboxCellRendererOptions) => {
 	}
 
 	if (!options.checkedHoverBackgroundColor) {
-		options.checkedHoverBackgroundColor = DEFAULT_CHECKED_HOVER_BACKGROUND_COLOR;
+		options.checkedHoverBackgroundColor =
+			DEFAULT_CHECKED_HOVER_BACKGROUND_COLOR;
 	}
 
-	if (options.disabledOpacity === undefined || options.disabledOpacity === null) {
+	if (
+		options.disabledOpacity === undefined ||
+		options.disabledOpacity === null
+	) {
 		options.disabledOpacity = DEFAULT_DISABLED_OPACITY;
 	}
 
@@ -186,7 +187,10 @@ export const fillOptions = (options?: ICheckboxCellRendererOptions) => {
 		options.tickThickness = DEFAULT_TICK_THICKNESS;
 	}
 
-	if (options.labelCheckboxSpacing === undefined || options.labelCheckboxSpacing === null) {
+	if (
+		options.labelCheckboxSpacing === undefined ||
+		options.labelCheckboxSpacing === null
+	) {
 		options.labelCheckboxSpacing = DEFAULT_LABEL_CHECKBOX_SPACING;
 	}
 
@@ -195,4 +199,4 @@ export const fillOptions = (options?: ICheckboxCellRendererOptions) => {
 	}
 
 	return options;
-}
+};

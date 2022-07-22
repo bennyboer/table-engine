@@ -1,9 +1,8 @@
-import {INotification} from "../notification";
-import {NotificationType} from "../notification-type";
-import {NotificationIDs} from "../notification-ids";
+import { INotification } from '../notification';
+import { NotificationType } from '../notification-type';
+import { NotificationIDs } from '../notification-ids';
 
 export class CopyPerformanceWarningNotification implements INotification {
-
 	/**
 	 * Limit of cells to copy.
 	 */
@@ -43,5 +42,4 @@ export class CopyPerformanceWarningNotification implements INotification {
 	set callback(value: (copyAnyway: boolean) => void) {
 		this._callback = value;
 	}
-
 }

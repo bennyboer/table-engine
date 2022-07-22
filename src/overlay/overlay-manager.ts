@@ -1,10 +1,9 @@
-import {IOverlay} from "./overlay";
+import { IOverlay } from './overlay';
 
 /**
  * Manager for overlays.
  */
 export interface IOverlayManager {
-
 	/**
 	 * Add an overlay.
 	 * @param overlay to add
@@ -27,5 +26,4 @@ export interface IOverlayManager {
 	 * @param overlay to update
 	 */
 	updateOverlay(overlay: IOverlay): void;
-
 }

@@ -1,4 +1,4 @@
-import {IRectangle} from "../util/rect";
+import { IRectangle } from '../util';
 
 /**
  * Representation of something that is displayed over the table
@@ -7,7 +7,6 @@ import {IRectangle} from "../util/rect";
  * displayed over them.
  */
 export interface IOverlay {
-
 	/**
 	 * HTML element of the overlay.
 	 */
@@ -17,5 +16,4 @@ export interface IOverlay {
 	 * Bounds of the overlay.
 	 */
 	bounds: IRectangle;
-
 }

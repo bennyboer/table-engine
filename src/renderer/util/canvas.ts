@@ -1,11 +1,9 @@
-import {IRectangle} from "../../util/rect";
-import {IColor} from "../../util/color";
+import { IRectangle } from '../../util';
 
 /**
  * Utility methods regarding HTML5 canvas.
  */
 export class CanvasUtil {
-
 	/**
 	 * Set the given width and height to the passed canvas HTML element.
 	 * @param element the canvas element to set the size to
@@ -13,7 +11,12 @@ export class CanvasUtil {
 	 * @param height new height of the element to set
 	 * @param devicePixelRatio to use (optional) if not specified the browser default is used
 	 */
-	public static setCanvasSize(element: HTMLCanvasElement, width: number, height: number, devicePixelRatio?: number): void {
+	public static setCanvasSize(
+		element: HTMLCanvasElement,
+		width: number,
+		height: number,
+		devicePixelRatio?: number
+	): void {
 		/*
 		We honor window.devicePixelRatio here to support high-DPI screens.
 		To support High-DPI screens we will set the canvas element size twice:
@@ -41,7 +44,11 @@ export class CanvasUtil {
 	 * @param rect to draw
 	 * @param radius of the corners
 	 */
-	public static makeRoundRectPath(ctx: CanvasRenderingContext2D, rect: IRectangle, radius: number): void {
+	public static makeRoundRectPath(
+		ctx: CanvasRenderingContext2D,
+		rect: IRectangle,
+		radius: number
+	): void {
 		ctx.beginPath();
 
 		// Start with top side (without corners)
@@ -49,19 +56,34 @@ export class CanvasUtil {
 		ctx.lineTo(rect.left + rect.width - radius, rect.top);
 
 		// Make top-right corner
-		ctx.quadraticCurveTo(rect.left + rect.width, rect.top, rect.left + rect.width, rect.top + radius);
+		ctx.quadraticCurveTo(
+			rect.left + rect.width,
+			rect.top,
+			rect.left + rect.width,
+			rect.top + radius
+		);
 
 		// Make right side (without corners)
 		ctx.lineTo(rect.left + rect.width, rect.top + rect.height - radius);
 
 		// Make bottom-right corner
-		ctx.quadraticCurveTo(rect.left + rect.width, rect.top + rect.height, rect.left + rect.width - radius, rect.top + rect.height);
+		ctx.quadraticCurveTo(
+			rect.left + rect.width,
+			rect.top + rect.height,
+			rect.left + rect.width - radius,
+			rect.top + rect.height
+		);
 
 		// Make bottom side (without corners)
 		ctx.lineTo(rect.left + radius, rect.top + rect.height);
 
 		// Make bottom-left corner
-		ctx.quadraticCurveTo(rect.left, rect.top + rect.height, rect.left, rect.top + rect.height - radius);
+		ctx.quadraticCurveTo(
+			rect.left,
+			rect.top + rect.height,
+			rect.left,
+			rect.top + rect.height - radius
+		);
 
 		// Make left side (without corners)
 		ctx.lineTo(rect.left, rect.top + radius);
@@ -71,5 +93,4 @@ export class CanvasUtil {
 
 		ctx.closePath();
 	}
-
 }

@@ -1,13 +1,15 @@
-import {IColor} from "../../../../util/color";
-import {HorizontalAlignment} from "../../../../util/alignment/horizontal-alignment";
-import {VerticalAlignment} from "../../../../util/alignment/vertical-alignment";
-import {Colors} from "../../../../util/colors";
-import {ICell} from "../../../../cell/cell";
+import {
+	Colors,
+	HorizontalAlignment,
+	IColor,
+	VerticalAlignment,
+} from '../../../../util';
+import { ICell } from '../../../../cell';
 
 /**
  * The default font family in use.
  */
-export const DEFAULT_FONT_FAMILY: string = "sans-serif";
+export const DEFAULT_FONT_FAMILY: string = 'sans-serif';
 
 /**
  * The default font size in use (in pixel).
@@ -22,12 +24,14 @@ export const DEFAULT_TEXT_COLOR: IColor = Colors.BLACK;
 /**
  * Default horizontal alignment in use.
  */
-export const DEFAULT_HORIZONTAL_ALIGNMENT: HorizontalAlignment = HorizontalAlignment.LEFT;
+export const DEFAULT_HORIZONTAL_ALIGNMENT: HorizontalAlignment =
+	HorizontalAlignment.LEFT;
 
 /**
  * Default vertical alignment in use.
  */
-export const DEFAULT_VERTICAL_ALIGNMENT: VerticalAlignment = VerticalAlignment.MIDDLE;
+export const DEFAULT_VERTICAL_ALIGNMENT: VerticalAlignment =
+	VerticalAlignment.MIDDLE;
 
 /**
  * Default line height in use.
@@ -38,7 +42,6 @@ export const DEFAULT_LINE_HEIGHT: number = 16;
  * Options of the text cell renderer.
  */
 export interface ITextCellRendererOptions {
-
 	/**
 	 * Callback called when the value of the text cell renderer has been edited.
 	 * @param cell that contains the changed value
@@ -86,7 +89,6 @@ export interface ITextCellRendererOptions {
 	 * Whether the cell is editable.
 	 */
 	editable?: boolean;
-
 }
 
 /**
@@ -110,15 +112,24 @@ export const fillOptions = (options?: ITextCellRendererOptions) => {
 		options.color = DEFAULT_TEXT_COLOR;
 	}
 
-	if (options.horizontalAlignment === null || options.horizontalAlignment === undefined) {
+	if (
+		options.horizontalAlignment === null ||
+		options.horizontalAlignment === undefined
+	) {
 		options.horizontalAlignment = DEFAULT_HORIZONTAL_ALIGNMENT;
 	}
 
-	if (options.verticalAlignment === null || options.verticalAlignment === undefined) {
+	if (
+		options.verticalAlignment === null ||
+		options.verticalAlignment === undefined
+	) {
 		options.verticalAlignment = DEFAULT_VERTICAL_ALIGNMENT;
 	}
 
-	if (options.useLineWrapping === null || options.useLineWrapping === undefined) {
+	if (
+		options.useLineWrapping === null ||
+		options.useLineWrapping === undefined
+	) {
 		options.useLineWrapping = false;
 	}
 
@@ -131,4 +142,4 @@ export const fillOptions = (options?: ITextCellRendererOptions) => {
 	}
 
 	return options;
-}
+};
