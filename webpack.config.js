@@ -4,7 +4,7 @@ const CircularDependencyPlugin = require('circular-dependency-plugin');
 
 module.exports = {
 	mode: 'production',
-	entry: './src/table-engine.ts',
+	entry: './src/index.ts',
 	module: {
 		rules: [
 			{
