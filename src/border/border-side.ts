@@ -1,11 +1,10 @@
-import {BorderStyle} from "./border-style";
-import {IColor} from "../util/color";
+import { BorderStyle } from './border-style';
+import { IColor } from '../util';
 
 /**
  * A single side of a border.
  */
 export interface IBorderSide {
-
 	/**
 	 * Priority of the border side.
 	 * This can be used to resolve border collision conflicts when
@@ -38,5 +37,4 @@ export interface IBorderSide {
 	 * Color of the line.
 	 */
 	color: IColor;
-
 }

@@ -1,22 +1,24 @@
-import {RendererType} from "./renderers";
-import {fillOptions as fillCanvasRendererOptions, ICanvasRendererOptions} from "./canvas/options";
-import {INotificationService} from "../util/notification/notification-service";
+import { RendererType } from './renderers';
+import {
+	fillOptions as fillCanvasRendererOptions,
+	ICanvasRendererOptions,
+} from './canvas/options';
+import { INotificationService } from '../util';
 
 /**
  * The default renderer type.
  */
-export const DEFAULT_RENDERER_TYPE: RendererType = RendererType.CANVAS;
+const DEFAULT_RENDERER_TYPE: RendererType = RendererType.CANVAS;
 
 /**
  * Default limit when copying cells.
  */
-export const DEFAULT_MAX_CELL_COUNT_TO_COPY: number = 10000;
+const DEFAULT_MAX_CELL_COUNT_TO_COPY: number = 10000;
 
 /**
  * Options for the renderer to use.
  */
 export interface IRendererOptions {
-
 	/**
 	 * Type of renderer to use.
 	 */
@@ -41,14 +43,12 @@ export interface IRendererOptions {
 	 * Notification service to publish infos, warnings or error over.
 	 */
 	notificationService?: INotificationService;
-
 }
 
 /**
  * Options customizing the table view.
  */
 export interface IViewOptions {
-
 	/**
 	 * Number of fixed rows.
 	 */
@@ -64,7 +64,6 @@ export interface IViewOptions {
 	 * or negative if no limit.
 	 */
 	maxCellCountToCopy?: number;
-
 }
 
 /**
@@ -80,15 +79,24 @@ export const fillOptions = (options?: IRendererOptions) => {
 		options.view = {};
 	}
 
-	if (options.view.fixedRows === undefined || options.view.fixedRows === null) {
+	if (
+		options.view.fixedRows === undefined ||
+		options.view.fixedRows === null
+	) {
 		options.view.fixedRows = 0;
 	}
 
-	if (options.view.fixedColumns === undefined || options.view.fixedColumns === null) {
+	if (
+		options.view.fixedColumns === undefined ||
+		options.view.fixedColumns === null
+	) {
 		options.view.fixedColumns = 0;
 	}
 
-	if (options.view.maxCellCountToCopy === undefined || options.view.maxCellCountToCopy === null) {
+	if (
+		options.view.maxCellCountToCopy === undefined ||
+		options.view.maxCellCountToCopy === null
+	) {
 		options.view.maxCellCountToCopy = DEFAULT_MAX_CELL_COUNT_TO_COPY;
 	}
 

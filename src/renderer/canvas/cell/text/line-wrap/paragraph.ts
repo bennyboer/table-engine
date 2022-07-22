@@ -1,10 +1,9 @@
-import {ILine} from "./line";
+import { ILine } from './line';
 
 /**
  * Representation of a paragraph.
  */
 export interface IParagraph {
-
 	/**
 	 * Lines in the paragraph.
 	 */
@@ -19,5 +18,4 @@ export interface IParagraph {
 	 * Width of the paragraph.
 	 */
 	width: number;
-
 }

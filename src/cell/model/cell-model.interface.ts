@@ -1,21 +1,24 @@
-import {ICell} from "../cell";
-import {ICellRange} from "../range/cell-range";
-import {IRectangle} from "../../util/rect";
-import {Observable} from "rxjs";
-import {ICellModelEvent} from "./event/cell-model-change";
+import { ICell } from '../cell';
+import { ICellRange } from '../range';
+import { IRectangle } from '../../util';
+import { Observable } from 'rxjs';
+import { ICellModelEvent } from './event';
 
 /**
  * Representation of a cell model.
  */
 export interface ICellModel {
-
 	/**
 	 * Get a cell at the given coordinates.
 	 * @param rowIndex to get cell at
 	 * @param columnIndex to get cell at
 	 * @param fill whether to fill the cell lookup with a new cell instance, if it is currently null (Default: false)
 	 */
-	getCell(rowIndex: number, columnIndex: number, fill?: boolean): ICell | null;
+	getCell(
+		rowIndex: number,
+		columnIndex: number,
+		fill?: boolean
+	): ICell | null;
 
 	/**
 	 * Set a value to the cell at the given row and column.
@@ -31,7 +34,11 @@ export interface ICellModel {
 	 * @param columnIndex index of the column
 	 * @param rendererName name of the renderer to set
 	 */
-	setRenderer(rowIndex: number, columnIndex: number, rendererName: string): void;
+	setRenderer(
+		rowIndex: number,
+		columnIndex: number,
+		rendererName: string
+	): void;
 
 	/**
 	 * Get all cells in the provided range.
@@ -176,7 +183,11 @@ export interface ICellModel {
 	 * @param count of rows to insert
 	 * @param cellInitializer initializer for the new cells
 	 */
-	insertRows(insertBeforeIndex: number, count: number, cellInitializer?: (row: number, column: number) => ICell): void;
+	insertRows(
+		insertBeforeIndex: number,
+		count: number,
+		cellInitializer?: (row: number, column: number) => ICell
+	): void;
 
 	/**
 	 * Insert columns before the given index.
@@ -184,7 +195,11 @@ export interface ICellModel {
 	 * @param count of columns to insert
 	 * @param cellInitializer initializer for the new cells
 	 */
-	insertColumns(insertBeforeIndex: number, count: number, cellInitializer?: (row: number, column: number) => ICell): void;
+	insertColumns(
+		insertBeforeIndex: number,
+		count: number,
+		cellInitializer?: (row: number, column: number) => ICell
+	): void;
 
 	/**
 	 * Delete rows starting with the given index.
@@ -267,17 +282,14 @@ export interface ICellModel {
 	 * Cleanup when the cell model is no more needed.
 	 */
 	cleanup(): void;
-
 }
 
 /**
  * Options for the getCells method.
  */
 export interface IGetCellsOptions {
-
 	/**
 	 * Whether to include hidden cells in the result.
 	 */
 	includeHidden?: boolean;
-
 }

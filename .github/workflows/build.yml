@@ -20,7 +20,7 @@ jobs:
           yarn install --frozen-lockfile
       - name: Build library
         run: |
-          npm run build
+          yarn build
       - name: Test library
         run: |
-          npm run test
+          yarn test

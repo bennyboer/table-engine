@@ -1,19 +1,19 @@
-import {CellModel} from "./cell-model";
-import {CellRange} from "../range/cell-range";
-import {ICell} from "../cell";
-import {IRectangle} from "../../util/rect";
+import { CellModel } from './cell-model';
+import { CellRange } from '../range';
+import { ICell } from '../cell';
+import { IRectangle } from '../../util';
 
-test("[CellModel.generate] Validate row/column sizes - I", () => {
+test('[CellModel.generate] Validate row/column sizes - I', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => row * 2 + 10,
 		(column) => column * 4 + 20,
 		new Set<number>(),
@@ -30,17 +30,17 @@ test("[CellModel.generate] Validate row/column sizes - I", () => {
 	}
 });
 
-test("[CellModel.generate] Validate row/column sizes - II", () => {
+test('[CellModel.generate] Validate row/column sizes - II', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -58,17 +58,17 @@ test("[CellModel.generate] Validate row/column sizes - II", () => {
 	expect(model.getHeight()).toBe(30 * 6);
 });
 
-test("[CellModel.generate] Validate row/column offsets", () => {
+test('[CellModel.generate] Validate row/column offsets', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -82,7 +82,7 @@ test("[CellModel.generate] Validate row/column offsets", () => {
 	expect(model.getColumnOffset(3)).toBe(100 * 3);
 });
 
-test("[CellModel.generate] Validate row/column offsets and hidden rows/columns", () => {
+test('[CellModel.generate] Validate row/column offsets and hidden rows/columns', () => {
 	const hiddenRows = new Set<number>();
 	hiddenRows.add(1);
 	hiddenRows.add(3);
@@ -94,12 +94,12 @@ test("[CellModel.generate] Validate row/column offsets and hidden rows/columns",
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		hiddenRows,
@@ -113,17 +113,17 @@ test("[CellModel.generate] Validate row/column offsets and hidden rows/columns",
 	expect(model.getColumnOffset(5)).toBe(100 * 4);
 });
 
-test("[CellModel.generate] Validate cell values and ranges", () => {
+test('[CellModel.generate] Validate cell values and ranges', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -135,7 +135,7 @@ test("[CellModel.generate] Validate cell values and ranges", () => {
 			const cell: ICell = model.getCell(row, column);
 
 			if (row === 5 && column === 5) {
-				expect(cell.value).toBe("Last cell");
+				expect(cell.value).toBe('Last cell');
 			} else {
 				expect(cell.value).toBe(row * column);
 			}
@@ -148,17 +148,17 @@ test("[CellModel.generate] Validate cell values and ranges", () => {
 	}
 });
 
-test("[CellModel.resize] Resize a single row and column", () => {
+test('[CellModel.resize] Resize a single row and column', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -183,17 +183,17 @@ test("[CellModel.resize] Resize a single row and column", () => {
 	expect(model.getHeight()).toBe(30 * 5 + 100);
 });
 
-test("[CellModel.resize] Resize multiple rows and columns", () => {
+test('[CellModel.resize] Resize multiple rows and columns', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -220,7 +220,7 @@ test("[CellModel.resize] Resize multiple rows and columns", () => {
 	expect(model.getHeight()).toBe(30 * 3 + 3 * 100);
 });
 
-test("[CellModel.resize] Resize rows and columns with hidden rows/columns", () => {
+test('[CellModel.resize] Resize rows and columns with hidden rows/columns', () => {
 	const hiddenRows = new Set<number>();
 	hiddenRows.add(1);
 	hiddenRows.add(3);
@@ -232,12 +232,12 @@ test("[CellModel.resize] Resize rows and columns with hidden rows/columns", () =
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		hiddenRows,
@@ -259,17 +259,17 @@ test("[CellModel.resize] Resize rows and columns with hidden rows/columns", () =
 	expect(model.getHeight()).toBe(30 * 4 + 60);
 });
 
-test("[CellModel.hide] Hide rows and columns", () => {
+test('[CellModel.hide] Hide rows and columns', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -304,7 +304,7 @@ test("[CellModel.hide] Hide rows and columns", () => {
 	expect(model.getColumnOffset(1)).toBe(100);
 });
 
-test("[CellModel.hide] Hide rows and columns - with already hidden rows/columns", () => {
+test('[CellModel.hide] Hide rows and columns - with already hidden rows/columns', () => {
 	const hiddenRows = new Set<number>();
 	hiddenRows.add(1);
 	hiddenRows.add(3);
@@ -316,12 +316,12 @@ test("[CellModel.hide] Hide rows and columns - with already hidden rows/columns"
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		hiddenRows,
@@ -342,7 +342,7 @@ test("[CellModel.hide] Hide rows and columns - with already hidden rows/columns"
 	expect(model.getWidth()).toBe(300);
 });
 
-test("[CellModel.show] Show single row and column", () => {
+test('[CellModel.show] Show single row and column', () => {
 	const hiddenRows = new Set<number>();
 	hiddenRows.add(1);
 	hiddenRows.add(3);
@@ -354,12 +354,12 @@ test("[CellModel.show] Show single row and column", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		hiddenRows,
@@ -381,17 +381,17 @@ test("[CellModel.show] Show single row and column", () => {
 	expect(model.getColumnOffset(1)).toBe(100);
 });
 
-test("[CellModel.hide] Hide all", () => {
+test('[CellModel.hide] Hide all', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -405,17 +405,17 @@ test("[CellModel.hide] Hide all", () => {
 	expect(model.getHeight()).toBe(0);
 });
 
-test("[CellModel.hide] Hide all and show all again", () => {
+test('[CellModel.hide] Hide all and show all again', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -435,17 +435,17 @@ test("[CellModel.hide] Hide all and show all again", () => {
 	expect(model.getHeight()).toBe(180);
 });
 
-test("[CellModel.show] Show multiple rows and columns", () => {
+test('[CellModel.show] Show multiple rows and columns', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -492,17 +492,17 @@ test("[CellModel.show] Show multiple rows and columns", () => {
 	expect(model.getColumnOffset(5)).toBe(300);
 });
 
-test("[CellModel.getCell] Get a cell", () => {
+test('[CellModel.getCell] Get a cell', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -515,7 +515,7 @@ test("[CellModel.getCell] Get a cell", () => {
 	expect(lastCell.range.endRow).toBe(5);
 	expect(lastCell.range.startColumn).toBe(5);
 	expect(lastCell.range.endColumn).toBe(5);
-	expect(lastCell.value).toBe("Last cell");
+	expect(lastCell.value).toBe('Last cell');
 
 	const anotherCell = model.getCell(2, 3);
 
@@ -526,17 +526,17 @@ test("[CellModel.getCell] Get a cell", () => {
 	expect(anotherCell.value).toBe(2 * 3);
 });
 
-test("[CellModel.merge] Merge a cell range", () => {
+test('[CellModel.merge] Merge a cell range', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -547,7 +547,7 @@ test("[CellModel.merge] Merge a cell range", () => {
 		startRow: 2,
 		endRow: 4,
 		startColumn: 2,
-		endColumn: 4
+		endColumn: 4,
 	});
 
 	expect(success).toBe(true);
@@ -559,17 +559,17 @@ test("[CellModel.merge] Merge a cell range", () => {
 	expect(cell.range.endColumn).toBe(4);
 });
 
-test("[CellModel.merge] Merge a cell range - impossible", () => {
+test('[CellModel.merge] Merge a cell range - impossible', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -580,14 +580,14 @@ test("[CellModel.merge] Merge a cell range - impossible", () => {
 		startRow: 2,
 		endRow: 4,
 		startColumn: 2,
-		endColumn: 4
+		endColumn: 4,
 	});
 
 	const success = model.mergeCells({
 		startRow: 1,
 		endRow: 4,
 		startColumn: 2,
-		endColumn: 4
+		endColumn: 4,
 	});
 
 	expect(success).toBe(false);
@@ -599,17 +599,17 @@ test("[CellModel.merge] Merge a cell range - impossible", () => {
 	expect(cell.range.endColumn).toBe(4);
 });
 
-test("[CellModel.split] Split a cell range", () => {
+test('[CellModel.split] Split a cell range', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -620,7 +620,7 @@ test("[CellModel.split] Split a cell range", () => {
 		startRow: 2,
 		endRow: 4,
 		startColumn: 2,
-		endColumn: 4
+		endColumn: 4,
 	});
 
 	model.splitCell(3, 4); // The indices do not really matter and just need to be in the merged cell range
@@ -641,17 +641,17 @@ test("[CellModel.split] Split a cell range", () => {
 	}
 });
 
-test("[CellModel.split] Try to split a single row column cell", () => {
+test('[CellModel.split] Try to split a single row column cell', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -668,17 +668,17 @@ test("[CellModel.split] Try to split a single row column cell", () => {
 	expect(cell.range.endColumn).toBe(2);
 });
 
-test("[CellModel.insert] Insert rows/columns at the beginning", () => {
+test('[CellModel.insert] Insert rows/columns at the beginning', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -740,17 +740,17 @@ test("[CellModel.insert] Insert rows/columns at the beginning", () => {
 	expect(model.getColumnOffset(7)).toBe(700);
 });
 
-test("[CellModel.insert] Insert rows/columns at the end", () => {
+test('[CellModel.insert] Insert rows/columns at the end', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -778,31 +778,35 @@ test("[CellModel.insert] Insert rows/columns at the end", () => {
 
 	// Check whether the last 5 columns are empty cells (null)
 	for (let row = 0; row < model.getRowCount(); row++) {
-		for (let column = model.getColumnCount() - 5; column < model.getColumnCount(); column++) {
+		for (
+			let column = model.getColumnCount() - 5;
+			column < model.getColumnCount();
+			column++
+		) {
 			expect(model.getCell(row, column)).toBe(null);
 		}
 	}
 
 	// Check the state of the cell with content "Last cell"
 	const lastCell: ICell = model.getCell(5, 5);
-	expect(lastCell.value).toBe("Last cell");
+	expect(lastCell.value).toBe('Last cell');
 	expect(lastCell.range.startRow).toBe(5);
 	expect(lastCell.range.endRow).toBe(5);
 	expect(lastCell.range.startColumn).toBe(5);
 	expect(lastCell.range.endColumn).toBe(5);
 });
 
-test("[CellModel.insert] Insert rows/columns somewhere in between", () => {
+test('[CellModel.insert] Insert rows/columns somewhere in between', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -836,7 +840,7 @@ test("[CellModel.insert] Insert rows/columns somewhere in between", () => {
 	}
 });
 
-test("[CellModel.insert] Insert rows/columns with hidden rows/columns", () => {
+test('[CellModel.insert] Insert rows/columns with hidden rows/columns', () => {
 	const hiddenRows: Set<number> = new Set<number>();
 	const hiddenColumns: Set<number> = new Set<number>();
 
@@ -850,12 +854,12 @@ test("[CellModel.insert] Insert rows/columns with hidden rows/columns", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		hiddenRows,
@@ -875,7 +879,7 @@ test("[CellModel.insert] Insert rows/columns with hidden rows/columns", () => {
 	expect(model.getHeight()).toBe(210);
 });
 
-test("[CellModel.insert] Insert rows/columns with merged cells and hidden rows/columns", () => {
+test('[CellModel.insert] Insert rows/columns with merged cells and hidden rows/columns', () => {
 	const hiddenRows: Set<number> = new Set<number>();
 	const hiddenColumns: Set<number> = new Set<number>();
 
@@ -889,12 +893,12 @@ test("[CellModel.insert] Insert rows/columns with merged cells and hidden rows/c
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		hiddenRows,
@@ -906,7 +910,7 @@ test("[CellModel.insert] Insert rows/columns with merged cells and hidden rows/c
 		startRow: 1,
 		endRow: 4,
 		startColumn: 1,
-		endColumn: 4
+		endColumn: 4,
 	});
 
 	// Insert some rows
@@ -934,17 +938,17 @@ test("[CellModel.insert] Insert rows/columns with merged cells and hidden rows/c
 	expect(model.getRowOffset(4 + 4)).toBe(180);
 });
 
-test("[CellModel.delete] Delete rows/columns from the beginning", () => {
+test('[CellModel.delete] Delete rows/columns from the beginning', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -970,8 +974,11 @@ test("[CellModel.delete] Delete rows/columns from the beginning", () => {
 
 			const cell: ICell = model.getCell(row, column);
 
-			if (row === model.getRowCount() - 1 && column === model.getColumnCount() - 1) {
-				expect(cell.value).toBe("Last cell");
+			if (
+				row === model.getRowCount() - 1 &&
+				column === model.getColumnCount() - 1
+			) {
+				expect(cell.value).toBe('Last cell');
 			} else {
 				expect(cell.value).toBe((row + 2) * (column + 2));
 			}
@@ -983,17 +990,17 @@ test("[CellModel.delete] Delete rows/columns from the beginning", () => {
 	}
 });
 
-test("[CellModel.delete] Delete rows/columns at the end", () => {
+test('[CellModel.delete] Delete rows/columns at the end', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1027,17 +1034,17 @@ test("[CellModel.delete] Delete rows/columns at the end", () => {
 	}
 });
 
-test("[CellModel.delete] Delete rows/columns in between", () => {
+test('[CellModel.delete] Delete rows/columns in between', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1066,8 +1073,11 @@ test("[CellModel.delete] Delete rows/columns in between", () => {
 			const columnValue: number = column < 2 ? column : column + 2;
 
 			const cell: ICell = model.getCell(row, column);
-			if (row === model.getRowCount() - 1 && column === model.getColumnCount() - 1) {
-				expect(cell.value).toBe("Last cell");
+			if (
+				row === model.getRowCount() - 1 &&
+				column === model.getColumnCount() - 1
+			) {
+				expect(cell.value).toBe('Last cell');
 			} else {
 				expect(cell.value).toBe(rowValue * columnValue);
 			}
@@ -1079,7 +1089,7 @@ test("[CellModel.delete] Delete rows/columns in between", () => {
 	}
 });
 
-test("[CellModel.delete] Delete rows/columns with hidden rows/columns", () => {
+test('[CellModel.delete] Delete rows/columns with hidden rows/columns', () => {
 	const hiddenRows: Set<number> = new Set<number>();
 	const hiddenColumns: Set<number> = new Set<number>();
 
@@ -1091,12 +1101,12 @@ test("[CellModel.delete] Delete rows/columns with hidden rows/columns", () => {
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		hiddenRows,
@@ -1120,15 +1130,22 @@ test("[CellModel.delete] Delete rows/columns with hidden rows/columns", () => {
 		const rowValue: number = row < 2 ? row : row + 2;
 
 		for (let column = 0; column < model.getColumnCount(); column++) {
-			expect(model.getColumnOffset(column)).toBe(column * 100 - (column > 1 ? 100 : 0));
+			expect(model.getColumnOffset(column)).toBe(
+				column * 100 - (column > 1 ? 100 : 0)
+			);
 			expect(model.getColumnSize(column)).toBe(100);
-			expect(model.isColumnHidden(column)).toBe(column === 1 || column === 3);
+			expect(model.isColumnHidden(column)).toBe(
+				column === 1 || column === 3
+			);
 
 			const columnValue: number = column < 2 ? column : column + 2;
 
 			const cell: ICell = model.getCell(row, column);
-			if (row === model.getRowCount() - 1 && column === model.getColumnCount() - 1) {
-				expect(cell.value).toBe("Last cell");
+			if (
+				row === model.getRowCount() - 1 &&
+				column === model.getColumnCount() - 1
+			) {
+				expect(cell.value).toBe('Last cell');
 			} else {
 				expect(cell.value).toBe(rowValue * columnValue);
 			}
@@ -1140,17 +1157,17 @@ test("[CellModel.delete] Delete rows/columns with hidden rows/columns", () => {
 	}
 });
 
-test("[CellModel.delete] Delete rows/columns with merged cells - I", () => {
+test('[CellModel.delete] Delete rows/columns with merged cells - I', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1161,7 +1178,7 @@ test("[CellModel.delete] Delete rows/columns with merged cells - I", () => {
 		startRow: 0,
 		endRow: model.getRowCount() - 1,
 		startColumn: 0,
-		endColumn: 0
+		endColumn: 0,
 	});
 	model.mergeCells({
 		startRow: 1,
@@ -1183,7 +1200,7 @@ test("[CellModel.delete] Delete rows/columns with merged cells - I", () => {
 		[0, 0, 0, 0],
 		[0, 1, 1, 5],
 		[0, 4, 16, 20],
-		[0, 5, 20, "Last cell"]
+		[0, 5, 20, 'Last cell'],
 	];
 	for (let row = 0; row < model.getRowCount(); row++) {
 		for (let column = 0; column < model.getColumnCount(); column++) {
@@ -1206,17 +1223,17 @@ test("[CellModel.delete] Delete rows/columns with merged cells - I", () => {
 	expect(cell.range.endColumn).toBe(2);
 });
 
-test("[CellModel.delete] Delete rows/columns with merged cells - II", () => {
+test('[CellModel.delete] Delete rows/columns with merged cells - II', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1228,28 +1245,28 @@ test("[CellModel.delete] Delete rows/columns with merged cells - II", () => {
 		startRow: 2,
 		endRow: model.getRowCount() - 1,
 		startColumn: 1,
-		endColumn: 1
+		endColumn: 1,
 	});
 	// Merge cell starting under the in the row to delete
 	model.mergeCells({
 		startRow: 4,
 		endRow: model.getRowCount() - 1,
 		startColumn: 2,
-		endColumn: 2
+		endColumn: 2,
 	});
 	// Merge cell ranging over the row to delete
 	model.mergeCells({
 		startRow: 0,
 		endRow: model.getRowCount() - 1,
 		startColumn: 3,
-		endColumn: 3
+		endColumn: 3,
 	});
 	// Merge cell ranging only to the first row to delete
 	model.mergeCells({
 		startRow: 0,
 		endRow: 2,
 		startColumn: 4,
-		endColumn: 4
+		endColumn: 4,
 	});
 
 	// Delete some rows/columns from the beginning
@@ -1264,7 +1281,7 @@ test("[CellModel.delete] Delete rows/columns with merged cells - II", () => {
 		[0, 1, 2, 0, 0, 5],
 		[0, 2, 6, 0, 12, 15],
 		[0, 2, 8, 0, 16, 20],
-		[0, 2, 8, 0, 20, "Last cell"]
+		[0, 2, 8, 0, 20, 'Last cell'],
 	];
 	for (let row = 0; row < model.getRowCount(); row++) {
 		for (let column = 0; column < model.getColumnCount(); column++) {
@@ -1299,17 +1316,17 @@ test("[CellModel.delete] Delete rows/columns with merged cells - II", () => {
 	expect(cell.range.endColumn).toBe(4);
 });
 
-test("[CellModel.delete] Delete rows/columns with merged cells - III", () => {
+test('[CellModel.delete] Delete rows/columns with merged cells - III', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1321,28 +1338,28 @@ test("[CellModel.delete] Delete rows/columns with merged cells - III", () => {
 		startRow: 1,
 		endRow: 1,
 		startColumn: 2,
-		endColumn: model.getColumnCount() - 1
+		endColumn: model.getColumnCount() - 1,
 	});
 	// Merge cell starting next to the column to delete
 	model.mergeCells({
 		startRow: 2,
 		endRow: 2,
 		startColumn: 4,
-		endColumn: model.getColumnCount() - 1
+		endColumn: model.getColumnCount() - 1,
 	});
 	// Merge cell ranging over the column to delete
 	model.mergeCells({
 		startRow: 3,
 		endRow: 3,
 		startColumn: 0,
-		endColumn: model.getColumnCount() - 1
+		endColumn: model.getColumnCount() - 1,
 	});
 	// Merge cell ranging only to the first column to delete
 	model.mergeCells({
 		startRow: 4,
 		endRow: 4,
 		startColumn: 0,
-		endColumn: 2
+		endColumn: 2,
 	});
 
 	// Delete some rows/columns from the beginning
@@ -1358,7 +1375,7 @@ test("[CellModel.delete] Delete rows/columns with merged cells - III", () => {
 		[0, 2, 6, 8, 8],
 		[0, 0, 0, 0, 0],
 		[0, 0, 12, 16, 20],
-		[0, 5, 15, 20, "Last cell"]
+		[0, 5, 15, 20, 'Last cell'],
 	];
 	for (let row = 0; row < model.getRowCount(); row++) {
 		for (let column = 0; column < model.getColumnCount(); column++) {
@@ -1393,17 +1410,17 @@ test("[CellModel.delete] Delete rows/columns with merged cells - III", () => {
 	expect(cell.range.endColumn).toBe(1);
 });
 
-test("[CellModel.get] Get cell at offset", () => {
+test('[CellModel.get] Get cell at offset', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1432,17 +1449,17 @@ test("[CellModel.get] Get cell at offset", () => {
 	expect(cell.range.startColumn).toBe(0);
 });
 
-test("[CellModel.get] Get cells for rectangle", () => {
+test('[CellModel.get] Get cells for rectangle', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1453,7 +1470,7 @@ test("[CellModel.get] Get cells for rectangle", () => {
 		left: 150,
 		top: 130,
 		width: 200,
-		height: 100
+		height: 100,
 	});
 
 	const expectedValues: Set<any> = new Set<any>();
@@ -1472,17 +1489,17 @@ test("[CellModel.get] Get cells for rectangle", () => {
 	expect(expectedValues.size).toBe(0);
 });
 
-test("[CellModel.getBounds] Get bounds of a cell", () => {
+test('[CellModel.getBounds] Get bounds of a cell', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1493,7 +1510,7 @@ test("[CellModel.getBounds] Get bounds of a cell", () => {
 		startRow: 1,
 		endRow: 4,
 		startColumn: 1,
-		endColumn: 3
+		endColumn: 3,
 	});
 
 	let bounds: IRectangle = model.getBounds(model.getCell(0, 0).range);
@@ -1527,17 +1544,17 @@ test("[CellModel.getBounds] Get bounds of a cell", () => {
 	expect(bounds.width).toBe(200);
 });
 
-test("[CellModel.getRange] Get cell range for rectangle", () => {
+test('[CellModel.getRange] Get cell range for rectangle', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1548,7 +1565,7 @@ test("[CellModel.getRange] Get cell range for rectangle", () => {
 		left: 100,
 		top: 100,
 		width: 300,
-		height: 50
+		height: 50,
 	});
 
 	expect(range.startRow).toBe(3);
@@ -1557,70 +1574,78 @@ test("[CellModel.getRange] Get cell range for rectangle", () => {
 	expect(range.endColumn).toBe(4);
 });
 
-test("[CellModel.isRangeVisible] Check whether a range is visible", () => {
+test('[CellModel.isRangeVisible] Check whether a range is visible', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
 		new Set<number>()
 	);
 
-	expect(model.isRangeVisible({
-		startRow: 2,
-		endRow: 4,
-		startColumn: 2,
-		endColumn: 4
-	})).toBe(true);
+	expect(
+		model.isRangeVisible({
+			startRow: 2,
+			endRow: 4,
+			startColumn: 2,
+			endColumn: 4,
+		})
+	).toBe(true);
 
 	model.hideRows([2, 4]);
 	model.hideColumns([2, 3]);
 
-	expect(model.isRangeVisible({
-		startRow: 2,
-		endRow: 4,
-		startColumn: 2,
-		endColumn: 4
-	})).toBe(true);
+	expect(
+		model.isRangeVisible({
+			startRow: 2,
+			endRow: 4,
+			startColumn: 2,
+			endColumn: 4,
+		})
+	).toBe(true);
 
 	model.hideColumns([4]);
 
-	expect(model.isRangeVisible({
-		startRow: 2,
-		endRow: 4,
-		startColumn: 2,
-		endColumn: 4
-	})).toBe(false);
+	expect(
+		model.isRangeVisible({
+			startRow: 2,
+			endRow: 4,
+			startColumn: 2,
+			endColumn: 4,
+		})
+	).toBe(false);
 
 	model.hideRows([3]);
 
-	expect(model.isRangeVisible({
-		startRow: 2,
-		endRow: 4,
-		startColumn: 2,
-		endColumn: 4
-	})).toBe(false);
+	expect(
+		model.isRangeVisible({
+			startRow: 2,
+			endRow: 4,
+			startColumn: 2,
+			endColumn: 4,
+		})
+	).toBe(false);
 });
 
-test("[CellModel.find] Find next/previous visible row/column", () => {
+test('[CellModel.find] Find next/previous visible row/column', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => row * column,
-		(row, column) => "text",
+		(row, column) => 'text',
 		(row) => 30,
 		(column) => 100,
 		new Set<number>(),
@@ -1662,14 +1687,14 @@ test("[CellModel.find] Find next/previous visible row/column", () => {
 	expect(model.findPreviousVisibleColumn(5)).toBe(5);
 });
 
-test("[CellModel.generate] Test generating null cells and filling", () => {
+test('[CellModel.generate] Test generating null cells and filling', () => {
 	const model = CellModel.generate(
 		[
 			{
 				range: CellRange.fromSingleRowColumn(5, 5),
-				rendererName: "text",
-				value: "Last cell"
-			}
+				rendererName: 'text',
+				value: 'Last cell',
+			},
 		],
 		(row, column) => null,
 		(row, column) => null,
@@ -1684,23 +1709,23 @@ test("[CellModel.generate] Test generating null cells and filling", () => {
 		startRow: 1,
 		endRow: 2,
 		startColumn: 1,
-		endColumn: 2
+		endColumn: 2,
 	});
 
-	expect(model.getCell(1, 1).rendererName).toBe("text");
-	expect(model.getCell(1, 2).rendererName).toBe("text");
-	expect(model.getCell(2, 1).rendererName).toBe("text");
-	expect(model.getCell(2, 2).rendererName).toBe("text");
+	expect(model.getCell(1, 1).rendererName).toBe('text');
+	expect(model.getCell(1, 2).rendererName).toBe('text');
+	expect(model.getCell(2, 1).rendererName).toBe('text');
+	expect(model.getCell(2, 2).rendererName).toBe('text');
 
 	expect(model.getCell(0, 0)).toBe(null);
 	expect(model.getCell(3, 3)).toBe(null);
 
 	// Fill a cell value and/or renderer name
-	model.setRenderer(0, 0, "hello");
-	expect(model.getCell(0, 0).rendererName).toBe("hello");
+	model.setRenderer(0, 0, 'hello');
+	expect(model.getCell(0, 0).rendererName).toBe('hello');
 	expect(model.getCell(0, 0).value).toBe(null);
 
-	model.setValue(3, 3, "Hello world!");
-	expect(model.getCell(3, 3).value).toBe("Hello world!");
-	expect(model.getCell(3, 3).rendererName).toBe("text");
+	model.setValue(3, 3, 'Hello world!');
+	expect(model.getCell(3, 3).value).toBe('Hello world!');
+	expect(model.getCell(3, 3).rendererName).toBe('text');
 });

@@ -46,6 +46,10 @@ We aim to provide a high-performance table library that may display nearly infin
 really noticing. Normal HTML table elements get pretty laggy when getting large and are thus not always an option. This
 library builds around HTML5 canvas to draw the table from scratch, thus achieving a smooth user experience.
 
+## Installation and usage
+
+Checkout the usage and installation file [here](docs/usage.md).
+
 ## Getting started
 
 First and foremost install NodeJS (Check one of the workflow files under `.github/workflows` for the current version we use).

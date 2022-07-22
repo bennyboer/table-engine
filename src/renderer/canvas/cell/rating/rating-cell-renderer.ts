@@ -1,24 +1,23 @@
-import {ICanvasCellRenderer} from "../canvas-cell-renderer";
-import {IRenderContext} from "../../canvas-renderer";
-import {ICell} from "../../../../cell/cell";
-import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-event-listener";
-import {TableEngine} from "../../../../table-engine";
-import {IRectangle} from "../../../../util/rect";
-import {fillOptions, IRatingCellRendererOptions} from "./rating-cell-renderer-options";
-import {IRatingCellRendererValue} from "./rating-cell-renderer-value";
-import {IPoint} from "../../../../util/point";
-import {Colors} from "../../../../util/colors";
-import {IColor} from "../../../../util/color";
+import { ICanvasCellRenderer } from '../canvas-cell-renderer';
+import { IRenderContext } from '../../canvas-renderer';
+import { ICell } from '../../../../cell';
+import { ICellRendererEventListener } from '../../../cell';
+import { TableEngine } from '../../../../table-engine';
+import { Colors, IColor, IPoint, IRectangle } from '../../../../util';
+import {
+	fillOptions,
+	IRatingCellRendererOptions,
+} from './rating-cell-renderer-options';
+import { IRatingCellRendererValue } from './rating-cell-renderer-value';
 
 /**
  * Cell renderer rendering a rating visualization using a row of stars.
  */
 export class RatingCellRenderer implements ICanvasCellRenderer {
-
 	/**
 	 * Name of the cell renderer.
 	 */
-	public static readonly NAME: string = "rating";
+	public static readonly NAME: string = 'rating';
 
 	/**
 	 * Options of the cell renderer.
@@ -30,17 +29,27 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 	 */
 	private readonly _eventListener: ICellRendererEventListener = {
 		onMouseMove: (event) => {
-			const cache: IRatingCellRendererViewportCache = RatingCellRenderer._cache(event.cell);
-			const value: IRatingCellRendererValue = RatingCellRenderer._value(event.cell);
+			const cache: IRatingCellRendererViewportCache =
+				RatingCellRenderer._cache(event.cell);
+			const value: IRatingCellRendererValue = RatingCellRenderer._value(
+				event.cell
+			);
 
 			let editable: boolean = this._options.editable;
-			if (!!value.options && value.options.editable !== undefined && value.options.editable !== null) {
+			if (
+				!!value.options &&
+				value.options.editable !== undefined &&
+				value.options.editable !== null
+			) {
 				editable = value.options.editable;
 			}
 
 			if (editable) {
 				// Check whether a star is hovered
-				let hoveredStar: number = this._getHoveredStar(event.offset, event.cell);
+				let hoveredStar: number = this._getHoveredStar(
+					event.offset,
+					event.cell
+				);
 				if (hoveredStar !== cache.hoveredStar) {
 					cache.hoveredStar = hoveredStar;
 					this._engine.repaint();
@@ -48,26 +57,38 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 			}
 		},
 		onMouseOut: (event) => {
-			const cache: IRatingCellRendererViewportCache = RatingCellRenderer._cache(event.cell);
+			const cache: IRatingCellRendererViewportCache =
+				RatingCellRenderer._cache(event.cell);
 			if (cache.hoveredStar !== undefined && cache.hoveredStar > -1) {
 				this._engine.repaint();
 			}
 		},
 		onMouseUp: (event) => {
-			const value: IRatingCellRendererValue = RatingCellRenderer._value(event.cell);
+			const value: IRatingCellRendererValue = RatingCellRenderer._value(
+				event.cell
+			);
 
 			let editable: boolean = this._options.editable;
 			let maxValue: number = this._options.maxValue;
 			let starCount: number = this._options.starCount;
 			let onChanged: (cell: ICell) => void = this._options.onChanged;
 			if (!!value.options) {
-				if (value.options.editable !== undefined && value.options.editable !== null) {
+				if (
+					value.options.editable !== undefined &&
+					value.options.editable !== null
+				) {
 					editable = value.options.editable;
 				}
-				if (value.options.maxValue !== undefined && value.options.maxValue !== null) {
+				if (
+					value.options.maxValue !== undefined &&
+					value.options.maxValue !== null
+				) {
 					maxValue = value.options.maxValue;
 				}
-				if (value.options.starCount !== undefined && value.options.starCount !== null) {
+				if (
+					value.options.starCount !== undefined &&
+					value.options.starCount !== null
+				) {
 					starCount = value.options.starCount;
 				}
 				if (!!value.options.onChanged) {
@@ -76,9 +97,12 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 			}
 
 			if (editable) {
-				let hoveredStar: number = this._getHoveredStar(event.offset, event.cell);
+				let hoveredStar: number = this._getHoveredStar(
+					event.offset,
+					event.cell
+				);
 
-				value.rating = (hoveredStar + 1) / starCount * maxValue;
+				value.rating = ((hoveredStar + 1) / starCount) * maxValue;
 
 				if (!!onChanged) {
 					onChanged(event.cell);
@@ -86,7 +110,7 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 
 				this._engine.repaint();
 			}
-		}
+		},
 	};
 
 	/**
@@ -109,7 +133,8 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 	 * @param cell to check for
 	 */
 	private _getHoveredStar(offset: IPoint, cell: ICell): number {
-		const cache: IRatingCellRendererViewportCache = RatingCellRenderer._cache(cell);
+		const cache: IRatingCellRendererViewportCache =
+			RatingCellRenderer._cache(cell);
 
 		if (!cache.starPaths) {
 			return -1;
@@ -134,14 +159,20 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 	 * @param cell to get cell renderer value for
 	 */
 	private static _value(cell: ICell): IRatingCellRendererValue {
-		const isSpecialValue: boolean = !!cell.value && typeof cell.value === "object" && "rating" in cell.value;
+		const isSpecialValue: boolean =
+			!!cell.value &&
+			typeof cell.value === 'object' &&
+			'rating' in cell.value;
 
 		if (isSpecialValue) {
 			return cell.value as IRatingCellRendererValue;
 		} else {
-			const rating: number = cell.value !== undefined && cell.value !== null ? cell.value : 0;
+			const rating: number =
+				cell.value !== undefined && cell.value !== null
+					? cell.value
+					: 0;
 
-			const value: IRatingCellRendererValue = {rating};
+			const value: IRatingCellRendererValue = { rating };
 			cell.value = value;
 			return value;
 		}
@@ -165,9 +196,12 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 		// Nothing to do after rendering all cells with this renderer
 	}
 
-	public before(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
+	public before(
+		ctx: CanvasRenderingContext2D,
+		context: IRenderContext
+	): void {
 		ctx.lineDashOffset = 0.0;
-		ctx.lineJoin = "round";
+		ctx.lineJoin = 'round';
 	}
 
 	public cleanup(): void {
@@ -194,7 +228,11 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 		// Nothing to do when a cell disappears from the viewport
 	}
 
-	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
+	public render(
+		ctx: CanvasRenderingContext2D,
+		cell: ICell,
+		bounds: IRectangle
+	): void {
 		this._ctx = ctx;
 
 		const value: IRatingCellRendererValue = RatingCellRenderer._value(cell);
@@ -203,7 +241,8 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 			return;
 		}
 
-		const cache: IRatingCellRendererViewportCache = RatingCellRenderer._cache(cell);
+		const cache: IRatingCellRendererViewportCache =
+			RatingCellRenderer._cache(cell);
 
 		let starCount: number = this._options.starCount;
 		let spikeCount: number = this._options.spikeCount;
@@ -215,19 +254,34 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 		let hoverBorderColor: IColor = this._options.hoverBorderColor;
 		let hoverBorderThickness: number = this._options.hoverBorderThickness;
 		if (!!value.options) {
-			if (value.options.starCount !== undefined && value.options.starCount !== null) {
+			if (
+				value.options.starCount !== undefined &&
+				value.options.starCount !== null
+			) {
 				starCount = value.options.starCount;
 			}
-			if (value.options.spikeCount !== undefined && value.options.spikeCount !== null) {
+			if (
+				value.options.spikeCount !== undefined &&
+				value.options.spikeCount !== null
+			) {
 				spikeCount = value.options.spikeCount;
 			}
-			if (value.options.maxValue !== undefined && value.options.maxValue !== null) {
+			if (
+				value.options.maxValue !== undefined &&
+				value.options.maxValue !== null
+			) {
 				maxValue = value.options.maxValue;
 			}
-			if (value.options.spacing !== undefined && value.options.spacing !== null) {
+			if (
+				value.options.spacing !== undefined &&
+				value.options.spacing !== null
+			) {
 				spacing = value.options.spacing;
 			}
-			if (value.options.padding !== undefined && value.options.padding !== null) {
+			if (
+				value.options.padding !== undefined &&
+				value.options.padding !== null
+			) {
 				padding = value.options.padding;
 			}
 			if (!!value.options.color) {
@@ -239,29 +293,38 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 			if (!!value.options.hoverBorderColor) {
 				hoverBorderColor = value.options.hoverBorderColor;
 			}
-			if (value.options.hoverBorderThickness !== undefined && value.options.hoverBorderThickness !== null) {
+			if (
+				value.options.hoverBorderThickness !== undefined &&
+				value.options.hoverBorderThickness !== null
+			) {
 				hoverBorderThickness = value.options.hoverBorderThickness;
 			}
 		}
 
-		const boundsChanged: boolean = !cache.oldBounds
-			|| (cache.oldBounds.top !== bounds.top
-				|| cache.oldBounds.left !== bounds.left
-				|| cache.oldBounds.width !== bounds.width
-				|| cache.oldBounds.height !== bounds.height);
+		const boundsChanged: boolean =
+			!cache.oldBounds ||
+			cache.oldBounds.top !== bounds.top ||
+			cache.oldBounds.left !== bounds.left ||
+			cache.oldBounds.width !== bounds.width ||
+			cache.oldBounds.height !== bounds.height;
 
-		const sizePerStar: number = Math.min((bounds.width - padding * 2) / starCount, bounds.height - padding * 2);
+		const sizePerStar: number = Math.min(
+			(bounds.width - padding * 2) / starCount,
+			bounds.height - padding * 2
+		);
 		const totalWidth: number = sizePerStar * starCount;
 
-		const xOffset: number = bounds.left + Math.round((bounds.width - totalWidth) / 2);
-		const yOffset: number = bounds.top + Math.round((bounds.height - sizePerStar) / 2);
+		const xOffset: number =
+			bounds.left + Math.round((bounds.width - totalWidth) / 2);
+		const yOffset: number =
+			bounds.top + Math.round((bounds.height - sizePerStar) / 2);
 
 		// Create rating path
 		if (boundsChanged) {
 			const outerRadius: number = (sizePerStar - spacing) / 2;
 			const innerRadius: number = outerRadius / 2;
 			const starPath: Path2D = RatingCellRenderer._makeStarPath(
-				{x: 0, y: 0},
+				{ x: 0, y: 0 },
 				outerRadius,
 				innerRadius,
 				spikeCount
@@ -272,7 +335,10 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 				const translatedStarPath: Path2D = new Path2D();
 				translatedStarPath.addPath(
 					starPath,
-					new DOMMatrix().translateSelf(xOffset + sizePerStar * i, yOffset)
+					new DOMMatrix().translateSelf(
+						xOffset + sizePerStar * i,
+						yOffset
+					)
 				);
 
 				paths.push(translatedStarPath);
@@ -291,7 +357,8 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 
 		let normalizedValue: number = value.rating / maxValue;
 
-		const isHovered: boolean = cache.hoveredStar !== undefined && cache.hoveredStar > -1;
+		const isHovered: boolean =
+			cache.hoveredStar !== undefined && cache.hoveredStar > -1;
 		if (isHovered) {
 			// A star is hovered -> visualize how clicking on the star would look like
 			normalizedValue = (cache.hoveredStar + 1) / maxValue;
@@ -307,8 +374,10 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 			const starCountValue: number = normalizedValue * starCount;
 			const filledStarCount: number = Math.floor(starCountValue);
 
-			const partlyFilledStarFraction: number = starCountValue - filledStarCount;
-			const partlyFilledStarIndex: number = (partlyFilledStarFraction > 0) ? filledStarCount : -1;
+			const partlyFilledStarFraction: number =
+				starCountValue - filledStarCount;
+			const partlyFilledStarIndex: number =
+				partlyFilledStarFraction > 0 ? filledStarCount : -1;
 
 			for (let i = 0; i < starCount; i++) {
 				const starPath: Path2D = cache.starPaths[i];
@@ -318,11 +387,19 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 				} else if (i === partlyFilledStarIndex) {
 					// Draw star partly filled
 					const starXOffset: number = xOffset + sizePerStar * i;
-					const gradient: CanvasGradient = ctx.createLinearGradient(starXOffset, 0, starXOffset + (sizePerStar - spacing), 0);
+					const gradient: CanvasGradient = ctx.createLinearGradient(
+						starXOffset,
+						0,
+						starXOffset + (sizePerStar - spacing),
+						0
+					);
 
 					gradient.addColorStop(0, colorStr);
 					gradient.addColorStop(partlyFilledStarFraction, colorStr);
-					gradient.addColorStop(partlyFilledStarFraction, inactiveColorStr);
+					gradient.addColorStop(
+						partlyFilledStarFraction,
+						inactiveColorStr
+					);
 					gradient.addColorStop(1, inactiveColorStr);
 
 					ctx.fillStyle = gradient;
@@ -363,7 +440,7 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 	): Path2D {
 		const center: IPoint = {
 			x: offset.x + outerRadius,
-			y: offset.y + outerRadius
+			y: offset.y + outerRadius,
 		};
 
 		const path: Path2D = new Path2D();
@@ -371,7 +448,7 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 		// Move beginning of path to first spike on top
 		path.moveTo(center.x, center.y - outerRadius);
 
-		const startRotation: number = Math.PI / 2 * 3;
+		const startRotation: number = (Math.PI / 2) * 3;
 		const anglePerSpike: number = Math.PI / spikeCount;
 		for (let i = 0; i < spikeCount; i++) {
 			const nextAngle: number = startRotation + 2 * i * anglePerSpike;
@@ -393,14 +470,12 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 
 		return path;
 	}
-
 }
 
 /**
  * Viewport cache for the rating cell renderer.
  */
 interface IRatingCellRendererViewportCache {
-
 	/**
 	 * Paths of the rendered stars.
 	 */
@@ -420,5 +495,4 @@ interface IRatingCellRendererViewportCache {
 	 * The currently hovered star (if any).
 	 */
 	hoveredStar?: number;
-
 }

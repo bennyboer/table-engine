@@ -1,19 +1,18 @@
-import {ICanvasCellRenderer} from "../canvas-cell-renderer";
-import {ICell} from "../../../../cell/cell";
-import {IRectangle} from "../../../../util/rect";
-import {TableEngine} from "../../../../table-engine";
-import {IRenderContext} from "../../canvas-renderer";
-import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-event-listener";
+import { ICanvasCellRenderer } from '../canvas-cell-renderer';
+import { ICell } from '../../../../cell';
+import { IRectangle } from '../../../../util';
+import { TableEngine } from '../../../../table-engine';
+import { IRenderContext } from '../../canvas-renderer';
+import { ICellRendererEventListener } from '../../../cell';
 
 /**
  * Cell renderer for displaying a loading animation.
  */
 export class LoadingCellRenderer implements ICanvasCellRenderer {
-
 	/**
 	 * Name of the cell renderer.
 	 */
-	public static readonly NAME: string = "loading";
+	public static readonly NAME: string = 'loading';
 
 	/**
 	 * Duration of one full animation in milliseconds.
@@ -93,7 +92,10 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	 * @param ctx to render with
 	 * @param context of the current rendering cycle
 	 */
-	public before(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
+	public before(
+		ctx: CanvasRenderingContext2D,
+		context: IRenderContext
+	): void {
 		this._ctx = ctx;
 		this._context = context;
 
@@ -106,7 +108,9 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 				this._progress = 0.0;
 			}
 
-			this._transformedProgress = LoadingCellRenderer._easeInOut(this._progress);
+			this._transformedProgress = LoadingCellRenderer._easeInOut(
+				this._progress
+			);
 		}
 		this._lastTimestamp = timestamp;
 
@@ -137,8 +141,8 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	 */
 	private static _easeInOut(progress: number): number {
 		return progress < 0.5
-			? (4 * progress * progress * progress)
-			: ((progress - 1) * (2 * progress - 2) * (2 * progress - 2) + 1);
+			? 4 * progress * progress * progress
+			: (progress - 1) * (2 * progress - 2) * (2 * progress - 2) + 1;
 	}
 
 	/**
@@ -154,7 +158,10 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	 * @param ctx to apply style to
 	 * @param progress to use
 	 */
-	private static _prepareFillStyle(ctx: CanvasRenderingContext2D, progress: number): void {
+	private static _prepareFillStyle(
+		ctx: CanvasRenderingContext2D,
+		progress: number
+	): void {
 		const p = Math.abs(progress - 0.5);
 		const colorVal: number = 170 + 60 * (1.0 - p);
 		ctx.fillStyle = `rgb(${colorVal}, ${colorVal}, ${colorVal})`;
@@ -166,9 +173,25 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	 * @param cell to render
 	 * @param bounds to render cell in
 	 */
-	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
-		const width: number = Math.max(Math.min(bounds.width - LoadingCellRenderer.HORIZONTAL_PADDING * 2, LoadingCellRenderer.MAX_WIDTH), 2);
-		const height: number = Math.max(Math.min(bounds.height - LoadingCellRenderer.VERTICAL_PADDING * 2, LoadingCellRenderer.MAX_HEIGHT), 2);
+	public render(
+		ctx: CanvasRenderingContext2D,
+		cell: ICell,
+		bounds: IRectangle
+	): void {
+		const width: number = Math.max(
+			Math.min(
+				bounds.width - LoadingCellRenderer.HORIZONTAL_PADDING * 2,
+				LoadingCellRenderer.MAX_WIDTH
+			),
+			2
+		);
+		const height: number = Math.max(
+			Math.min(
+				bounds.height - LoadingCellRenderer.VERTICAL_PADDING * 2,
+				LoadingCellRenderer.MAX_HEIGHT
+			),
+			2
+		);
 
 		let rect: IRectangle = {
 			top: bounds.top + (bounds.height - height) / 2,
@@ -177,7 +200,8 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 			height,
 		};
 
-		const value: ILoadingCellRendererValue = cell.value as ILoadingCellRendererValue;
+		const value: ILoadingCellRendererValue =
+			cell.value as ILoadingCellRendererValue;
 		if (value.promiseSupplier !== undefined && !value.isLoading) {
 			value.isLoading = true;
 
@@ -200,7 +224,7 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	 * This may be a HTML representation of the value (for example for copying formatting, lists, ...).
 	 */
 	public getCopyValue(cell: ICell): string {
-		return "";
+		return '';
 	}
 
 	/**
@@ -210,14 +234,12 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	public onDisappearing(cell: ICell): void {
 		// Do nothing
 	}
-
 }
 
 /**
  * Value for the loading cell renderer.
  */
 export interface ILoadingCellRendererValue {
-
 	/**
 	 * Supplier for the loading promise.
 	 */
@@ -237,5 +259,4 @@ export interface ILoadingCellRendererValue {
 	 * Name of the cell renderer to display when loading finished.
 	 */
 	cellRenderer: string;
-
 }

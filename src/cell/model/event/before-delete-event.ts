@@ -1,12 +1,11 @@
-import {ICellModelEvent} from "./cell-model-change";
-import {CellModelEventType} from "./cell-model-event-type";
+import { ICellModelEvent } from './cell-model-change';
+import { CellModelEventType } from './cell-model-event-type';
 
 /**
  * Deletion change in the cell model.
  * Rows or columns have been deleted.
  */
 export class BeforeDeleteEvent implements ICellModelEvent {
-
 	public readonly type: CellModelEventType = CellModelEventType.BEFORE_DELETE;
 
 	/**
@@ -41,5 +40,4 @@ export class BeforeDeleteEvent implements ICellModelEvent {
 	get isRow(): boolean {
 		return this._isRow;
 	}
-
 }

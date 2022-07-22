@@ -1,11 +1,10 @@
-import {IInitialPosition, ISelection} from "../selection";
-import {ICellRange} from "../../cell/range/cell-range";
+import { IInitialPosition, ISelection } from '../selection';
+import { ICellRange } from '../../cell';
 
 /**
  * Representation of the table-engines selection model.
  */
 export interface ISelectionModel {
-
 	/**
 	 * Get the primary selection (if any).
 	 */
@@ -36,7 +35,11 @@ export interface ISelectionModel {
 	 * @param validate whether to validate the passed selection first
 	 * @param subtract whether to subtract from existing selections when needed
 	 */
-	addSelection(selection: ISelection, validate: boolean, subtract: boolean): void;
+	addSelection(
+		selection: ISelection,
+		validate: boolean,
+		subtract: boolean
+	): void;
 
 	/**
 	 * Modify the passed selection, that is already in the selection model.
@@ -47,7 +50,13 @@ export interface ISelectionModel {
 	 * @param subtract whether to subtract from existing selections when needed
 	 * @returns whether the selection model changed
 	 */
-	modifySelection(selection: ISelection, newRange: ICellRange, newInitial: IInitialPosition, validate: boolean, subtract: boolean): boolean;
+	modifySelection(
+		selection: ISelection,
+		newRange: ICellRange,
+		newInitial: IInitialPosition,
+		validate: boolean,
+		subtract: boolean
+	): boolean;
 
 	/**
 	 * Remove a selection already existing in the model.
@@ -68,7 +77,12 @@ export interface ISelectionModel {
 	 * @param jump whether to jump to the very end in the specified direction
 	 * @returns whether the selection changed
 	 */
-	extendSelection(selection: ISelection, xDiff: number, yDiff: number, jump: boolean): boolean;
+	extendSelection(
+		selection: ISelection,
+		xDiff: number,
+		yDiff: number,
+		jump: boolean
+	): boolean;
 
 	/**
 	 * Move the passed selection in the given direction.
@@ -78,7 +92,12 @@ export interface ISelectionModel {
 	 * @param jump whether to jump to the very end in the specified direction
 	 * @returns whether the selection changed
 	 */
-	moveSelection(selection: ISelection, xDiff: number, yDiff: number, jump: boolean): boolean;
+	moveSelection(
+		selection: ISelection,
+		xDiff: number,
+		yDiff: number,
+		jump: boolean
+	): boolean;
 
 	/**
 	 * Move the initial in the current primary selection (if any)
@@ -87,5 +106,4 @@ export interface ISelectionModel {
 	 * @param yDiff vertical offset to move by
 	 */
 	moveInitial(xDiff: number, yDiff: number): void;
-
 }

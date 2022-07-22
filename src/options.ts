@@ -1,12 +1,11 @@
-import {fillOptions as fillRendererOptions, IRendererOptions} from "./renderer/options";
-import {fillOptions as fillSelectionOptions, ISelectionOptions} from "./selection/options";
-import {fillOptions as fillBorderOptions, IBorderOptions} from "./border/options";
+import { fillRendererOptions, IRendererOptions } from './renderer';
+import { fillSelectionOptions, ISelectionOptions } from './selection';
+import { fillBorderOptions, IBorderOptions } from './border';
 
 /**
  * Options used to modify the table engine behavior.
  */
 export interface ITableEngineOptions {
-
 	/**
 	 * Options regarding the table-engine renderer.
 	 */
@@ -26,20 +25,17 @@ export interface ITableEngineOptions {
 	 * Other options.
 	 */
 	misc?: IMiscOptions;
-
 }
 
 /**
  * Other options regarding the table-engine.
  */
 export interface IMiscOptions {
-
 	/**
 	 * Whether debugging mode is enabled.
 	 * This will enable for example debugging logs.
 	 */
 	debug?: boolean;
-
 }
 
 /**

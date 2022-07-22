@@ -1,11 +1,11 @@
-import {ICellRenderer} from "../../cell/cell-renderer";
-import {IRenderContext} from "../canvas-renderer";
+import { ICellRenderer } from '../../cell';
+import { IRenderContext } from '../canvas-renderer';
 
 /**
  * Cell renderer for the HTML5 canvas renderer.
  */
-export interface ICanvasCellRenderer extends ICellRenderer<CanvasRenderingContext2D> {
-
+export interface ICanvasCellRenderer
+	extends ICellRenderer<CanvasRenderingContext2D> {
 	/**
 	 * Called before rendering ALL cells to render for this renderer
 	 * in the current rendering cycle.
@@ -26,5 +26,4 @@ export interface ICanvasCellRenderer extends ICellRenderer<CanvasRenderingContex
 	 * the current viewport.
 	 */
 	cleanup(): void;
-
 }

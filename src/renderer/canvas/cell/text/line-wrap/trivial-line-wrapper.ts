@@ -1,12 +1,11 @@
-import {ILineWrapper} from "./line-wrapper";
-import {IParagraph} from "./paragraph";
-import {ILine} from "./line";
+import { ILineWrapper } from './line-wrapper';
+import { IParagraph } from './paragraph';
+import { ILine } from './line';
 
 /**
  * A trivial line wrapping algorithm.
  */
 export class TrivialLineWrapper implements ILineWrapper {
-
 	public wrap(
 		text: string,
 		maxWidth: number,
@@ -19,31 +18,35 @@ export class TrivialLineWrapper implements ILineWrapper {
 		const totalWidth: number = widthLookup(text);
 		if (totalWidth <= maxWidth) {
 			return {
-				lines: [{
-					text,
-					width: totalWidth
-				}],
+				lines: [
+					{
+						text,
+						width: totalWidth,
+					},
+				],
 				lineHeight,
-				width: totalWidth
+				width: totalWidth,
 			};
 		}
 
 		// Split text into words
-		const words: string[] = text.split(" ");
+		const words: string[] = text.split(' ');
 		if (words.length === 0) {
 			// Only having one word -> cannot break into lines
 			return {
-				lines: [{
-					text,
-					width: totalWidth
-				}],
+				lines: [
+					{
+						text,
+						width: totalWidth,
+					},
+				],
 				lineHeight,
-				width: totalWidth
+				width: totalWidth,
 			};
 		}
 
 		const wordWidths: number[] = words.map((word) => widthLookup(word));
-		const whiteSpaceWidth: number = widthLookup(" ");
+		const whiteSpaceWidth: number = widthLookup(' ');
 
 		let curLine: string[] = [];
 		let curWidth: number = 0;
@@ -52,12 +55,13 @@ export class TrivialLineWrapper implements ILineWrapper {
 			const word: string = words[i];
 			const wordWidth: number = wordWidths[i];
 
-			const newWidth: number = curWidth + (curWidth > 0 ? whiteSpaceWidth : 0) + wordWidth;
+			const newWidth: number =
+				curWidth + (curWidth > 0 ? whiteSpaceWidth : 0) + wordWidth;
 			if (newWidth > maxWidth) {
 				// Do a line break before appending the word
 				lines.push({
-					text: curLine.join(" "),
-					width: curWidth
+					text: curLine.join(' '),
+					width: curWidth,
 				});
 
 				curWidth = wordWidth;
@@ -70,16 +74,15 @@ export class TrivialLineWrapper implements ILineWrapper {
 
 		if (curLine.length > 0) {
 			lines.push({
-				text: curLine.join(" "),
-				width: curWidth
+				text: curLine.join(' '),
+				width: curWidth,
 			});
 		}
 
 		return {
 			lines,
 			lineHeight,
-			width: maxWidth
+			width: maxWidth,
 		};
 	}
-
 }

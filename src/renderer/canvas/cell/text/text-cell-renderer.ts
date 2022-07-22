@@ -1,30 +1,31 @@
-import {ICanvasCellRenderer} from "../canvas-cell-renderer";
-import {ICell} from "../../../../cell/cell";
-import {TableEngine} from "../../../../table-engine";
-import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-event-listener";
-import {ICellRendererEvent} from "../../../cell/event/cell-renderer-event";
-import {IOverlay} from "../../../../overlay/overlay";
-import {IRenderContext} from "../../canvas-renderer";
-import {IRectangle} from "../../../../util/rect";
-import {ILineWrapper} from "./line-wrap/line-wrapper";
-import {TrivialLineWrapper} from "./line-wrap/trivial-line-wrapper";
-import {IParagraph} from "./line-wrap/paragraph";
-import {fillOptions as fillTextCellRendererOptions, ITextCellRendererOptions} from "./text-cell-renderer-options";
-import {Colors} from "../../../../util/colors";
-import {AlignmentUtil} from "../../../../util/alignment/alignment-util";
-import {ITextCellRendererValue} from "./text-cell-renderer-value";
-import {VerticalAlignment} from "../../../../util/alignment/vertical-alignment";
-import {HorizontalAlignment} from "../../../../util/alignment/horizontal-alignment";
+import { ICanvasCellRenderer } from '../canvas-cell-renderer';
+import { ICell } from '../../../../cell';
+import { TableEngine } from '../../../../table-engine';
+import { ICellRendererEvent, ICellRendererEventListener } from '../../../cell';
+import { IOverlay } from '../../../../overlay';
+import { IRenderContext } from '../../canvas-renderer';
+import {
+	AlignmentUtil,
+	Colors,
+	HorizontalAlignment,
+	IRectangle,
+	VerticalAlignment,
+} from '../../../../util';
+import { ILineWrapper, IParagraph, TrivialLineWrapper } from './line-wrap';
+import {
+	fillOptions as fillTextCellRendererOptions,
+	ITextCellRendererOptions,
+} from './text-cell-renderer-options';
+import { ITextCellRendererValue } from './text-cell-renderer-value';
 
 /**
  * Cell renderer rendering every value as string.
  */
 export class TextCellRenderer implements ICanvasCellRenderer {
-
 	/**
 	 * Name of the cell renderer.
 	 */
-	public static readonly NAME: string = "text";
+	public static readonly NAME: string = 'text';
 
 	/**
 	 * Max duration of two mouse up events to be detected as double click (in milliseconds).
@@ -34,7 +35,8 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 	/**
 	 * Line wrapping algorithm to use.
 	 */
-	private static readonly LINE_WRAPPER: ILineWrapper = new TrivialLineWrapper();
+	private static readonly LINE_WRAPPER: ILineWrapper =
+		new TrivialLineWrapper();
 
 	/**
 	 * Cell of the last mouse up.
@@ -62,9 +64,13 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 	private _eventListener: ICellRendererEventListener = {
 		onMouseUp: (event) => {
 			const currentTimestamp: number = window.performance.now();
-			if (!!this._lastCellMouseUp && this._lastCellMouseUp === event.cell) {
+			if (
+				!!this._lastCellMouseUp &&
+				this._lastCellMouseUp === event.cell
+			) {
 				// Check if is double click
-				const diff: number = currentTimestamp - this._lastMouseUpTimestamp;
+				const diff: number =
+					currentTimestamp - this._lastMouseUpTimestamp;
 				if (diff <= TextCellRenderer.MAX_DOUBLE_CLICK_DURATION) {
 					this._onDoubleClick(event);
 				}
@@ -72,12 +78,10 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 
 			this._lastCellMouseUp = event.cell;
 			this._lastMouseUpTimestamp = currentTimestamp;
-		}
+		},
 	};
 
-	constructor(
-		defaultOptions?: ITextCellRendererOptions
-	) {
+	constructor(defaultOptions?: ITextCellRendererOptions) {
 		this._defaultOptions = fillTextCellRendererOptions(defaultOptions);
 	}
 
@@ -89,14 +93,23 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 		// Check if cell is editable
 		let isEditable: boolean = this._defaultOptions.editable;
 		let editValue: string;
-		const specialValue: ITextCellRendererValue | null = !!event.cell.value && typeof event.cell.value === "object" && "text" in event.cell.value ? event.cell.value as ITextCellRendererValue : null;
+		const specialValue: ITextCellRendererValue | null =
+			!!event.cell.value &&
+			typeof event.cell.value === 'object' &&
+			'text' in event.cell.value
+				? (event.cell.value as ITextCellRendererValue)
+				: null;
 		if (!!specialValue) {
-			if (!!specialValue.options && specialValue.options.editable !== undefined && specialValue.options.editable !== null) {
+			if (
+				!!specialValue.options &&
+				specialValue.options.editable !== undefined &&
+				specialValue.options.editable !== null
+			) {
 				isEditable = specialValue.options.editable;
 			}
 			editValue = specialValue.text;
 		} else {
-			editValue = !!event.cell.value ? `${event.cell.value}` : "";
+			editValue = !!event.cell.value ? `${event.cell.value}` : '';
 		}
 
 		if (!isEditable) {
@@ -104,18 +117,18 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 		}
 
 		// Create editor overlay
-		const editorOverlayElement: HTMLElement = document.createElement("div");
-		const editor: HTMLInputElement = document.createElement("input");
-		editor.style.width = "100%";
-		editor.style.height = "100%";
-		editor.style.boxSizing = "border-box";
+		const editorOverlayElement: HTMLElement = document.createElement('div');
+		const editor: HTMLInputElement = document.createElement('input');
+		editor.style.width = '100%';
+		editor.style.height = '100%';
+		editor.style.boxSizing = 'border-box';
 		editor.value = editValue;
 
 		editorOverlayElement.appendChild(editor);
 
 		const overlay: IOverlay = {
 			element: editorOverlayElement,
-			bounds: this._engine.getCellModel().getBounds(event.cell.range)
+			bounds: this._engine.getCellModel().getBounds(event.cell.range),
 		};
 		this._engine.getOverlayManager().addOverlay(overlay);
 
@@ -123,20 +136,25 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 		const keyDownListener: (KeyboardEvent) => void = (e: KeyboardEvent) => {
 			e.stopPropagation(); // Do not give control to the table
 
-			if (e.code === "Enter") {
+			if (e.code === 'Enter') {
 				blurListener();
 			}
 		};
-		editor.addEventListener("keydown", keyDownListener);
+		editor.addEventListener('keydown', keyDownListener);
 
 		const blurListener: () => void = () => {
 			// Remove all event listeners again
-			editor.removeEventListener("blur", blurListener);
-			editor.removeEventListener("keydown", keyDownListener);
+			editor.removeEventListener('blur', blurListener);
+			editor.removeEventListener('keydown', keyDownListener);
 
 			// Save changes
-			const callback = !!specialValue && !!specialValue.options.onChange ? specialValue.options.onChange : this._defaultOptions.onChange;
-			const acceptChange: boolean = !!callback ? callback(event.cell, editValue, editor.value) : true;
+			const callback =
+				!!specialValue && !!specialValue.options.onChange
+					? specialValue.options.onChange
+					: this._defaultOptions.onChange;
+			const acceptChange: boolean = !!callback
+				? callback(event.cell, editValue, editor.value)
+				: true;
 			if (acceptChange) {
 				if (!!specialValue) {
 					specialValue.text = editor.value;
@@ -154,7 +172,7 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 			// Re-focus table
 			this._engine.requestFocus();
 		};
-		editor.addEventListener("blur", blurListener);
+		editor.addEventListener('blur', blurListener);
 
 		setTimeout(() => {
 			editor.focus();
@@ -184,11 +202,18 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 	 * @param ctx to render with
 	 * @param context of the current rendering cycle
 	 */
-	public before(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
+	public before(
+		ctx: CanvasRenderingContext2D,
+		context: IRenderContext
+	): void {
 		ctx.font = `${this._defaultOptions.fontSize}px ${this._defaultOptions.fontFamily}`;
 		ctx.fillStyle = Colors.toStyleStr(this._defaultOptions.color);
-		ctx.textBaseline = AlignmentUtil.verticalAlignmentToStyleStr(this._defaultOptions.verticalAlignment) as CanvasTextBaseline;
-		ctx.textAlign = AlignmentUtil.horizontalAlignmentToStyleStr(this._defaultOptions.horizontalAlignment) as CanvasTextAlign;
+		ctx.textBaseline = AlignmentUtil.verticalAlignmentToStyleStr(
+			this._defaultOptions.verticalAlignment
+		) as CanvasTextBaseline;
+		ctx.textAlign = AlignmentUtil.horizontalAlignmentToStyleStr(
+			this._defaultOptions.horizontalAlignment
+		) as CanvasTextAlign;
 	}
 
 	/**
@@ -221,44 +246,70 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 	 * @param cell to render
 	 * @param bounds to render cell in
 	 */
-	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
+	public render(
+		ctx: CanvasRenderingContext2D,
+		cell: ICell,
+		bounds: IRectangle
+	): void {
 		if (cell.value === undefined || cell.value === null) {
 			return;
 		}
 
 		// Check if the value is of the special text cell renderer interface for more customization
-		const isSpecialCellRendererValue: boolean = typeof cell.value === "object" && "text" in cell.value;
-		const specialValue: ITextCellRendererValue | null = isSpecialCellRendererValue ? cell.value as ITextCellRendererValue : null;
+		const isSpecialCellRendererValue: boolean =
+			typeof cell.value === 'object' && 'text' in cell.value;
+		const specialValue: ITextCellRendererValue | null =
+			isSpecialCellRendererValue
+				? (cell.value as ITextCellRendererValue)
+				: null;
 
-		const text: string = isSpecialCellRendererValue ? specialValue.text : `${cell.value}`;
+		const text: string = isSpecialCellRendererValue
+			? specialValue.text
+			: `${cell.value}`;
 
 		let lineWrap: boolean = this._defaultOptions.useLineWrapping;
 		let lineHeight: number = this._defaultOptions.lineHeight;
-		let verticalAlignment: VerticalAlignment = this._defaultOptions.verticalAlignment;
-		let horizontalAlignment: HorizontalAlignment = this._defaultOptions.horizontalAlignment;
+		let verticalAlignment: VerticalAlignment =
+			this._defaultOptions.verticalAlignment;
+		let horizontalAlignment: HorizontalAlignment =
+			this._defaultOptions.horizontalAlignment;
 
 		// Override options if necessary
 		let savedContext: boolean = false;
 		if (isSpecialCellRendererValue && !!specialValue.options) {
 			// Paragraph options
-			if (specialValue.options.useLineWrapping !== undefined && specialValue.options.useLineWrapping !== null) {
+			if (
+				specialValue.options.useLineWrapping !== undefined &&
+				specialValue.options.useLineWrapping !== null
+			) {
 				lineWrap = specialValue.options.useLineWrapping;
 			}
-			if (specialValue.options.lineHeight !== undefined && specialValue.options.lineHeight !== null) {
+			if (
+				specialValue.options.lineHeight !== undefined &&
+				specialValue.options.lineHeight !== null
+			) {
 				lineHeight = specialValue.options.lineHeight;
 			}
 
 			// Font settings
-			const hasCustomFontSize: boolean = specialValue.options.fontSize !== undefined && specialValue.options.fontSize !== null;
-			const hasCustomFontFamily: boolean = specialValue.options.fontFamily !== undefined && specialValue.options.fontFamily !== null;
+			const hasCustomFontSize: boolean =
+				specialValue.options.fontSize !== undefined &&
+				specialValue.options.fontSize !== null;
+			const hasCustomFontFamily: boolean =
+				specialValue.options.fontFamily !== undefined &&
+				specialValue.options.fontFamily !== null;
 			if (hasCustomFontFamily || hasCustomFontSize) {
 				if (!savedContext) {
 					savedContext = true;
 					ctx.save();
 				}
 
-				const fontSize: number = hasCustomFontSize ? specialValue.options.fontSize : this._defaultOptions.fontSize;
-				const fontFamily: string = hasCustomFontFamily ? specialValue.options.fontFamily : this._defaultOptions.fontFamily;
+				const fontSize: number = hasCustomFontSize
+					? specialValue.options.fontSize
+					: this._defaultOptions.fontSize;
+				const fontFamily: string = hasCustomFontFamily
+					? specialValue.options.fontFamily
+					: this._defaultOptions.fontFamily;
 
 				ctx.font = `${fontSize}px ${fontFamily}`;
 			}
@@ -275,8 +326,12 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 			}
 
 			// Alignment settings
-			const hasCustomVerticalAlignment: boolean = specialValue.options.verticalAlignment !== undefined && specialValue.options.verticalAlignment !== null;
-			const hasCustomHorizontalAlignment: boolean = specialValue.options.horizontalAlignment !== undefined && specialValue.options.horizontalAlignment !== null;
+			const hasCustomVerticalAlignment: boolean =
+				specialValue.options.verticalAlignment !== undefined &&
+				specialValue.options.verticalAlignment !== null;
+			const hasCustomHorizontalAlignment: boolean =
+				specialValue.options.horizontalAlignment !== undefined &&
+				specialValue.options.horizontalAlignment !== null;
 			if (hasCustomVerticalAlignment || hasCustomHorizontalAlignment) {
 				if (!savedContext) {
 					savedContext = true;
@@ -284,12 +339,18 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 				}
 
 				if (hasCustomVerticalAlignment) {
-					ctx.textBaseline = AlignmentUtil.verticalAlignmentToStyleStr(specialValue.options.verticalAlignment) as CanvasTextBaseline;
+					ctx.textBaseline =
+						AlignmentUtil.verticalAlignmentToStyleStr(
+							specialValue.options.verticalAlignment
+						) as CanvasTextBaseline;
 					verticalAlignment = specialValue.options.verticalAlignment;
 				}
 				if (hasCustomHorizontalAlignment) {
-					ctx.textAlign = AlignmentUtil.horizontalAlignmentToStyleStr(specialValue.options.horizontalAlignment) as CanvasTextAlign;
-					horizontalAlignment = specialValue.options.horizontalAlignment;
+					ctx.textAlign = AlignmentUtil.horizontalAlignmentToStyleStr(
+						specialValue.options.horizontalAlignment
+					) as CanvasTextAlign;
+					horizontalAlignment =
+						specialValue.options.horizontalAlignment;
 				}
 			}
 		}
@@ -298,7 +359,8 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 
 		// Check cells cache first to check whether the paragraph to render has already been cached.
 		if (!!cell.viewportCache) {
-			const cache: ITextCellRendererCache = cell.viewportCache as ITextCellRendererCache;
+			const cache: ITextCellRendererCache =
+				cell.viewportCache as ITextCellRendererCache;
 
 			// Use cached paragraph if cache is still valid
 			if (cache.text === text && cache.paragraph.width === bounds.width) {
@@ -320,14 +382,22 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 			 */
 			cell.viewportCache = {
 				paragraph,
-				text
+				text,
 			} as ITextCellRendererCache;
 		}
 
-		const clip: boolean = !TextCellRenderer._fitsInBounds(paragraph, bounds);
+		const clip: boolean = !TextCellRenderer._fitsInBounds(
+			paragraph,
+			bounds
+		);
 		if (clip) {
 			const clippingRegion = new Path2D();
-			clippingRegion.rect(bounds.left, bounds.top, bounds.width, bounds.height);
+			clippingRegion.rect(
+				bounds.left,
+				bounds.top,
+				bounds.width,
+				bounds.height
+			);
 
 			if (!savedContext) {
 				savedContext = true;
@@ -347,12 +417,14 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 				break;
 		}
 
-		let yOffset: number = Math.round(TextCellRenderer._calculateLineYOffset(
-			paragraph.lines.length,
-			lineHeight,
-			bounds,
-			verticalAlignment
-		));
+		let yOffset: number = Math.round(
+			TextCellRenderer._calculateLineYOffset(
+				paragraph.lines.length,
+				lineHeight,
+				bounds,
+				verticalAlignment
+			)
+		);
 		for (const line of paragraph.lines) {
 			ctx.fillText(line.text, xOffset, yOffset);
 
@@ -385,7 +457,11 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 				if (lineCount === 1) {
 					return bounds.top + bounds.height;
 				} else {
-					return bounds.top + bounds.height - (lineHeight * (lineCount - 1));
+					return (
+						bounds.top +
+						bounds.height -
+						lineHeight * (lineCount - 1)
+					);
 				}
 		}
 	}
@@ -395,7 +471,7 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 	 * This may be a HTML representation of the value (for example for copying formatting, lists, ...).
 	 */
 	public getCopyValue(cell: ICell): string {
-		return cell.value !== null ? `${cell.value}` : "";
+		return cell.value !== null ? `${cell.value}` : '';
 	}
 
 	/**
@@ -403,7 +479,10 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 	 * @param paragraph to check whether it fits in the cell bounds
 	 * @param bounds of the cell
 	 */
-	private static _fitsInBounds(paragraph: IParagraph, bounds: IRectangle): boolean {
+	private static _fitsInBounds(
+		paragraph: IParagraph,
+		bounds: IRectangle
+	): boolean {
 		let totalHeight: number = 0;
 
 		for (const line of paragraph.lines) {
@@ -428,7 +507,6 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 	public onDisappearing(cell: ICell): void {
 		// Do nothing
 	}
-
 }
 
 /**
@@ -439,7 +517,6 @@ export class TextCellRenderer implements ICanvasCellRenderer {
  * anymore.
  */
 interface ITextCellRendererCache {
-
 	/**
 	 * The cached paragraph.
 	 */
@@ -449,5 +526,4 @@ interface ITextCellRendererCache {
 	 * Text for which the paragraph has been created.
 	 */
 	text: string;
-
 }

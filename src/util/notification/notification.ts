@@ -1,10 +1,9 @@
-import {NotificationType} from "./notification-type";
+import { NotificationType } from './notification-type';
 
 /**
  * A notification that may carry information of warnings to the user.
  */
 export interface INotification {
-
 	/**
 	 * Type of the notification.
 	 */
@@ -19,5 +18,4 @@ export interface INotification {
 	 * Message of the notification.
 	 */
 	message: string;
-
 }

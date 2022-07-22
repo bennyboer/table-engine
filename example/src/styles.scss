@@ -1,38 +1,39 @@
-html, body {
-  height: 100%;
-  user-select: none;
+html,
+body {
+    height: 100%;
+    user-select: none;
 }
 
 body {
-  margin: 0;
-  position: relative;
-  font-family: Roboto, "Helvetica Neue", sans-serif;
+    margin: 0;
+    position: relative;
+    font-family: Roboto, 'Helvetica Neue', sans-serif;
 }
 
 .small-form-field .mat-form-field-infix {
-  padding: 0.5em 0;
+    padding: 0.5em 0;
 }
 
 .table-engine-combobox-dropdown-list {
-  background: white;
-  border-radius: 0 0 2px 2px;
-  box-shadow: 2px 2px 4px #999;
+    background: white;
+    border-radius: 0 0 2px 2px;
+    box-shadow: 2px 2px 4px #999;
 
-  ul {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
+    ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
 
-    li {
-      line-height: 1.0;
-      font-size: 12px;
-      box-sizing: border-box;
-      padding: 4px 8px;
-      border-bottom: 1px solid #EAEAEA;
+        li {
+            line-height: 1;
+            font-size: 12px;
+            box-sizing: border-box;
+            padding: 4px 8px;
+            border-bottom: 1px solid #eaeaea;
 
-      &:hover {
-        background-color: #EAEAEA;
-      }
+            &:hover {
+                background-color: #eaeaea;
+            }
+        }
     }
-  }
 }

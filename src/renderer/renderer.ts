@@ -1,23 +1,25 @@
-import {ICellRenderer} from "./cell/cell-renderer";
-import {TableEngine} from "../table-engine";
-import {IOverlayManager} from "../overlay/overlay-manager";
-import {ITableEngineOptions} from "../options";
-import {IPoint} from "../util/point";
-import {IRectangle} from "../util/rect";
+import { ICellRenderer } from './cell';
+import { TableEngine } from '../table-engine';
+import { IOverlayManager } from '../overlay';
+import { ITableEngineOptions } from '../options';
+import { IPoint, IRectangle } from '../util';
 
 /**
  * Representation of a renderer of the table engine.
  * It is responsible for rendering the table.
  */
 export interface ITableEngineRenderer extends IOverlayManager {
-
 	/**
 	 * Initialize the renderer with the given options on the passed HTML container.
 	 * @param container to initialize renderer in
 	 * @param engine reference to the table-engine
 	 * @param options of the table engine (including renderer options)
 	 */
-	initialize(container: HTMLElement, engine: TableEngine, options: ITableEngineOptions): Promise<void>;
+	initialize(
+		container: HTMLElement,
+		engine: TableEngine,
+		options: ITableEngineOptions
+	): Promise<void>;
 
 	/**
 	 * (Re)-Render the table.
@@ -83,5 +85,4 @@ export interface ITableEngineRenderer extends IOverlayManager {
 	 * @param column to scroll to
 	 */
 	scrollTo(row: number, column: number): void;
-
 }

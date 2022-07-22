@@ -2,7 +2,6 @@
  * Mask used to set a border.
  */
 export interface IBorderMask {
-
 	/**
 	 * Whether to set the border on top.
 	 */
@@ -22,5 +21,4 @@ export interface IBorderMask {
 	 * Whether to set the border to the right.
 	 */
 	right?: boolean;
-
 }

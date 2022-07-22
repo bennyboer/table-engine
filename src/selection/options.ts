@@ -1,12 +1,15 @@
-import {ISelection} from "./selection";
-import {ICellModel} from "../cell/model/cell-model.interface";
-import {ICellRange} from "../cell/range/cell-range";
+import { ISelection } from './selection';
+import { ICellModel, ICellRange } from '../cell';
 
 /**
  * Selection transform that will transform selections that start in the first row
  * or column to fill the entire selected row or column.
  */
-export const ROW_COLUMN_HEADER_TRANSFORM: (selection: ISelection, cellModel: ICellModel, causedByMove: boolean) => boolean = (selection, cellModel, causedByMove: boolean) => {
+export const ROW_COLUMN_HEADER_TRANSFORM: (
+	selection: ISelection,
+	cellModel: ICellModel,
+	causedByMove: boolean
+) => boolean = (selection, cellModel, causedByMove: boolean) => {
 	if (causedByMove) {
 		// Prevent selection of the first row and column by move (keyboard navigation).
 		if (selection.initial.row === 0) {
@@ -35,11 +38,11 @@ export const ROW_COLUMN_HEADER_TRANSFORM: (selection: ISelection, cellModel: ICe
 				startRow: 1,
 				endRow: cellModel.getRowCount() - 1,
 				startColumn: 1,
-				endColumn: cellModel.getColumnCount() - 1
+				endColumn: cellModel.getColumnCount() - 1,
 			};
 			selection.initial = {
 				row: 1,
-				column: 1
+				column: 1,
 			};
 		} else if (selection.initial.row === 0) {
 			// Select whole column
@@ -47,11 +50,11 @@ export const ROW_COLUMN_HEADER_TRANSFORM: (selection: ISelection, cellModel: ICe
 				startRow: 1,
 				endRow: cellModel.getRowCount() - 1,
 				startColumn: selection.range.startColumn,
-				endColumn: selection.range.endColumn
+				endColumn: selection.range.endColumn,
 			};
 			selection.initial = {
 				row: 1,
-				column: selection.initial.column
+				column: selection.initial.column,
 			};
 		} else if (selection.initial.column === 0) {
 			// Select whole row
@@ -59,11 +62,11 @@ export const ROW_COLUMN_HEADER_TRANSFORM: (selection: ISelection, cellModel: ICe
 				startRow: selection.range.startRow,
 				endRow: selection.range.endRow,
 				startColumn: 1,
-				endColumn: cellModel.getColumnCount() - 1
+				endColumn: cellModel.getColumnCount() - 1,
 			};
 			selection.initial = {
 				row: selection.initial.row,
-				column: 1
+				column: 1,
 			};
 		}
 	}
@@ -75,7 +78,6 @@ export const ROW_COLUMN_HEADER_TRANSFORM: (selection: ISelection, cellModel: ICe
  * Options for the selection model.
  */
 export interface ISelectionOptions {
-
 	/**
 	 * Whether multiple selections are allowed.
 	 */
@@ -88,7 +90,11 @@ export interface ISelectionOptions {
 	 * @param causedByMove whether the selection was caused by a move (keyboard navigation)
 	 * @returns whether the selection is allowed
 	 */
-	selectionTransform?: (selection: ISelection, cellModel: ICellModel, causedByMove: boolean) => boolean;
+	selectionTransform?: (
+		selection: ISelection,
+		cellModel: ICellModel,
+		causedByMove: boolean
+	) => boolean;
 
 	/**
 	 * Options for a copy-handle.
@@ -98,7 +104,6 @@ export interface ISelectionOptions {
 	 * that you might drag to invoke a copy-like operation.
 	 */
 	copyHandle?: ICopyHandleOptions;
-
 }
 
 /**
@@ -108,7 +113,6 @@ export interface ISelectionOptions {
  * that you might drag to invoke a copy-like operation.
  */
 export interface ICopyHandleOptions {
-
 	/**
 	 * Whether to show the copy handle on the primary selection.
 	 * Note that the copy-handle will only be shown when there is a single selection rectangle.
@@ -121,7 +125,6 @@ export interface ICopyHandleOptions {
 	 * @param target the target cell range (range after dropping the handle)
 	 */
 	copyHandler?: (origin: ICellRange, target: ICellRange) => void;
-
 }
 
 /**
@@ -133,7 +136,10 @@ export const fillOptions = (options?: ISelectionOptions) => {
 		options = {};
 	}
 
-	if (options.allowMultiSelection === undefined || options.allowMultiSelection === null) {
+	if (
+		options.allowMultiSelection === undefined ||
+		options.allowMultiSelection === null
+	) {
 		options.allowMultiSelection = true;
 	}
 
@@ -141,7 +147,10 @@ export const fillOptions = (options?: ISelectionOptions) => {
 		options.copyHandle = {};
 	}
 
-	if (options.copyHandle.showCopyHandle === null || options.copyHandle.showCopyHandle === undefined) {
+	if (
+		options.copyHandle.showCopyHandle === null ||
+		options.copyHandle.showCopyHandle === undefined
+	) {
 		options.copyHandle.showCopyHandle = false;
 	}
 

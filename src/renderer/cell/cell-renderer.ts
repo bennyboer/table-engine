@@ -1,7 +1,7 @@
-import {IRectangle} from "../../util/rect";
-import {ICell} from "../../cell/cell";
-import {TableEngine} from "../../table-engine";
-import {ICellRendererEventListener} from "./event/cell-renderer-event-listener";
+import { IRectangle } from '../../util';
+import { ICell } from '../../cell';
+import { TableEngine } from '../../table-engine';
+import { ICellRendererEventListener } from './event';
 
 /**
  * Renderer responsible for a single cell.
@@ -9,7 +9,6 @@ import {ICellRendererEventListener} from "./event/cell-renderer-event-listener";
  * C: Rendering context used to actually render something (for example a CanvasRenderingContext2D)
  */
 export interface ICellRenderer<C> {
-
 	/**
 	 * Initialize the cell renderer.
 	 * This is only called once.
@@ -29,7 +28,7 @@ export interface ICellRenderer<C> {
 	 * @param cell to render
 	 * @param bounds to render cell in
 	 */
-	render(ctx: C, cell: ICell, bounds: IRectangle): void
+	render(ctx: C, cell: ICell, bounds: IRectangle): void;
 
 	/**
 	 * Get the event listeners on cells for this cell renderer.
@@ -47,5 +46,4 @@ export interface ICellRenderer<C> {
 	 * @param cell that is disappearing
 	 */
 	onDisappearing(cell: ICell): void;
-
 }

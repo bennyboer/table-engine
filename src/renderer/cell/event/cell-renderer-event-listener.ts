@@ -1,12 +1,11 @@
-import {ICellRendererKeyboardEvent} from "./cell-renderer-keyboard-event";
-import {ICellRendererMouseEvent} from "./cell-renderer-mouse-event";
-import {ICellRendererFocusEvent} from "./cell-renderer-focus-event";
+import { ICellRendererKeyboardEvent } from './cell-renderer-keyboard-event';
+import { ICellRendererMouseEvent } from './cell-renderer-mouse-event';
+import { ICellRendererFocusEvent } from './cell-renderer-focus-event';
 
 /**
  * Event listeners on a cell renderer.
  */
 export interface ICellRendererEventListener {
-
 	/**
 	 * On mouse down event listener.
 	 * @param event that occurred
@@ -54,5 +53,4 @@ export interface ICellRendererEventListener {
 	 * @param event that occurred
 	 */
 	onBlur?: (event: ICellRendererFocusEvent) => void;
-
 }

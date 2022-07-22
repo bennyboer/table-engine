@@ -1,78 +1,95 @@
-import {ICellModel} from "../../cell/model/cell-model.interface";
-import {ISelectionModel} from "../../selection/model/selection-model.interface";
-import {ISelection} from "../../selection/selection";
-import {CellRangeUtil} from "../../cell/range/cell-range-util";
-import {IColor} from "../../util/color";
-import {Colors} from "../../util/colors";
+import { CellRangeUtil, ICellModel } from '../../cell';
+import { ISelection, ISelectionModel } from '../../selection';
+import { Colors, IColor } from '../../util';
 
 /**
  * Default count of rows to let the user resize columns in.
  */
-export const DEFAULT_ROW_COUNT: number = 1;
+const DEFAULT_ROW_COUNT: number = 1;
 
 /**
  * Default count of columns to let the user resize rows in.
  */
-export const DEFAULT_COLUMN_COUNT: number = 1;
+const DEFAULT_COLUMN_COUNT: number = 1;
 
 /**
  * Default size of the resizer.
  */
-export const DEFAULT_RESIZER_SIZE: number = 5;
+const DEFAULT_RESIZER_SIZE: number = 5;
 
 /**
  * Default minimum row size to resize to.
  */
-export const DEFAULT_MIN_ROW_SIZE: number = 20;
+const DEFAULT_MIN_ROW_SIZE: number = 20;
 
 /**
  * Default minimum column size to resize to.
  */
-export const DEFAULT_MIN_COLUMN_SIZE: number = 20;
+const DEFAULT_MIN_COLUMN_SIZE: number = 20;
 
 /**
  * Default thickness of the resizer line.
  */
-export const DEFAULT_RESIZER_LINE_THICKNESS: number = 1;
+const DEFAULT_RESIZER_LINE_THICKNESS: number = 1;
 
 /**
  * Default color of the resizer line.
  */
-export const DEFAULT_RESIZER_LINE_COLOR: IColor = Colors.BLACK;
+const DEFAULT_RESIZER_LINE_COLOR: IColor = Colors.BLACK;
 
 /**
  * The default resizing handler.
  */
-export const DEFAULT_RESIZING_HANDLER: (newSize: number, isRow: boolean, index: number, cellModel: ICellModel, selectionModel: ISelectionModel) => boolean = (newSize, isRow, index, cellModel, selectionModel) => {
+const DEFAULT_RESIZING_HANDLER: (
+	newSize: number,
+	isRow: boolean,
+	index: number,
+	cellModel: ICellModel,
+	selectionModel: ISelectionModel
+) => boolean = (newSize, isRow, index, cellModel, selectionModel) => {
 	const primary: ISelection | null = selectionModel.getPrimary();
 
 	/*
 	Check if the row/column is contained in the primary selection
 	and the first row/column of the other axis is contained as well.
 	 */
-	const isMultiRowColumnResize: boolean = !!primary && CellRangeUtil.contains({
-		startRow: isRow ? index : 1,
-		endRow: isRow ? index : cellModel.getRowCount() - 1,
-		startColumn: isRow ? 1 : index,
-		endColumn: isRow ? cellModel.getColumnCount() - 1 : index
-	}, primary.range) && CellRangeUtil.size(primary.range) > 1;
+	const isMultiRowColumnResize: boolean =
+		!!primary &&
+		CellRangeUtil.contains(
+			{
+				startRow: isRow ? index : 1,
+				endRow: isRow ? index : cellModel.getRowCount() - 1,
+				startColumn: isRow ? 1 : index,
+				endColumn: isRow ? cellModel.getColumnCount() - 1 : index,
+			},
+			primary.range
+		) &&
+		CellRangeUtil.size(primary.range) > 1;
 
 	if (isMultiRowColumnResize) {
 		// Resize a bunch of rows/columns
 		if (isRow) {
 			const indices: number[] = [];
-			for (let i = primary.range.startRow; i <= primary.range.endRow; i++) {
+			for (
+				let i = primary.range.startRow;
+				i <= primary.range.endRow;
+				i++
+			) {
 				indices.push(i);
 			}
 
 			cellModel.resizeRows(indices, newSize);
 		} else {
 			const indices: number[] = [];
-			for (let i = primary.range.startColumn; i <= primary.range.endColumn; i++) {
+			for (
+				let i = primary.range.startColumn;
+				i <= primary.range.endColumn;
+				i++
+			) {
 				indices.push(i);
 			}
 
-			cellModel.resizeColumns(indices, newSize)
+			cellModel.resizeColumns(indices, newSize);
 		}
 	} else {
 		// Only resize a single row/column
@@ -90,7 +107,6 @@ export const DEFAULT_RESIZING_HANDLER: (newSize: number, isRow: boolean, index: 
  * Options for resizing rows and columns.
  */
 export interface IRowColumnResizingOptions {
-
 	/**
 	 * Whether the user is allowed to resize rows or columns.
 	 */
@@ -142,8 +158,13 @@ export interface IRowColumnResizingOptions {
 	 * @param selectionModel to get the current selection with (if needed)
 	 * @returns whether we need to repaint afterwards
 	 */
-	resizingHandler?: (newSize: number, isRow: boolean, index: number, cellModel: ICellModel, selectionModel: ISelectionModel) => boolean;
-
+	resizingHandler?: (
+		newSize: number,
+		isRow: boolean,
+		index: number,
+		cellModel: ICellModel,
+		selectionModel: ISelectionModel
+	) => boolean;
 }
 
 /**
@@ -179,7 +200,10 @@ export const fillOptions = (options?: IRowColumnResizingOptions) => {
 		options.minColumnSize = DEFAULT_MIN_COLUMN_SIZE;
 	}
 
-	if (options.resizerLineThickness === undefined || options.resizerLineThickness === null) {
+	if (
+		options.resizerLineThickness === undefined ||
+		options.resizerLineThickness === null
+	) {
 		options.resizerLineThickness = DEFAULT_RESIZER_LINE_THICKNESS;
 	}
 

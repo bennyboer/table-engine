@@ -2,7 +2,6 @@
  * Representation of a point.
  */
 export interface IPoint {
-
 	/**
 	 * X-coordinate.
 	 */
@@ -12,5 +11,4 @@ export interface IPoint {
 	 * Y-coordinate.
 	 */
 	y: number;
-
 }

@@ -1,25 +1,24 @@
-import {ICanvasCellRenderer} from "../canvas-cell-renderer";
-import {ICell} from "../../../../cell/cell";
-import {IRectangle} from "../../../../util/rect";
-import {ISelectionModel} from "../../../../selection/model/selection-model.interface";
-import {TableEngine} from "../../../../table-engine";
-import {IRenderContext} from "../../canvas-renderer";
-import {ICellRendererEventListener} from "../../../cell/event/cell-renderer-event-listener";
+import { ICanvasCellRenderer } from '../canvas-cell-renderer';
+import { ICell } from '../../../../cell';
+import { IRectangle } from '../../../../util';
+import { ISelectionModel } from '../../../../selection';
+import { TableEngine } from '../../../../table-engine';
+import { IRenderContext } from '../../canvas-renderer';
+import { ICellRendererEventListener } from '../../../cell';
 
 /**
  * Spreadsheet like row/column headers.
  */
 export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
-
 	/**
 	 * Name of the cell renderer.
 	 */
-	public static readonly NAME: string = "row-column-header";
+	public static readonly NAME: string = 'row-column-header';
 
 	/**
 	 * Available letters in the alphabet to use for generating column names.
 	 */
-	private static readonly ALPHABET: string = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	private static readonly ALPHABET: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 	/**
 	 * Size of the highlight rect that is displayed when the row or column of the row/column header
@@ -31,17 +30,17 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	 * Color of the highlight rect that is displayed when the row or column of the row/column header
 	 * is currently selected.
 	 */
-	private static readonly HIGHLIGHT_RECT_COLOR: string = "#FF3366";
+	private static readonly HIGHLIGHT_RECT_COLOR: string = '#FF3366';
 
 	/**
 	 * Background color of a row/column header cell.
 	 */
-	private static readonly BACKGROUND_COLOR: string = "#F9F9F9";
+	private static readonly BACKGROUND_COLOR: string = '#F9F9F9';
 
 	/**
 	 * Background color of a hovered row/column header cell.
 	 */
-	private static readonly HOVER_BACKGROUND_COLOR: string = "#EAEAEA";
+	private static readonly HOVER_BACKGROUND_COLOR: string = '#EAEAEA';
 
 	/**
 	 * The table-engines selection model.
@@ -73,7 +72,7 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 				this._hoveredCell = null;
 				this._engine.repaint();
 			}
-		}
+		},
 	};
 
 	/**
@@ -100,9 +99,12 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	 * @param ctx to render with
 	 * @param context of the current rendering cycle
 	 */
-	public before(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
-		ctx.textBaseline = "middle";
-		ctx.textAlign = "center";
+	public before(
+		ctx: CanvasRenderingContext2D,
+		context: IRenderContext
+	): void {
+		ctx.textBaseline = 'middle';
+		ctx.textAlign = 'center';
 	}
 
 	/**
@@ -142,15 +144,19 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 					remaining -= 1;
 				}
 
-				const rest: number = remaining % RowColumnHeaderRenderer.ALPHABET.length;
+				const rest: number =
+					remaining % RowColumnHeaderRenderer.ALPHABET.length;
 				result.push(rest);
 
-				remaining = Math.floor(remaining / RowColumnHeaderRenderer.ALPHABET.length);
+				remaining = Math.floor(
+					remaining / RowColumnHeaderRenderer.ALPHABET.length
+				);
 			} while (remaining > 0);
 
-			return result.reverse()
+			return result
+				.reverse()
 				.map((v) => RowColumnHeaderRenderer.ALPHABET[v])
-				.join("");
+				.join('');
 		} else {
 			// Generate row header
 			return `${row}`;
@@ -171,11 +177,21 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	 * @param cell to render
 	 * @param bounds to render cell in
 	 */
-	public render(ctx: CanvasRenderingContext2D, cell: ICell, bounds: IRectangle): void {
-		ctx.fillStyle = cell === this._hoveredCell ? RowColumnHeaderRenderer.HOVER_BACKGROUND_COLOR : RowColumnHeaderRenderer.BACKGROUND_COLOR;
+	public render(
+		ctx: CanvasRenderingContext2D,
+		cell: ICell,
+		bounds: IRectangle
+	): void {
+		ctx.fillStyle =
+			cell === this._hoveredCell
+				? RowColumnHeaderRenderer.HOVER_BACKGROUND_COLOR
+				: RowColumnHeaderRenderer.BACKGROUND_COLOR;
 		ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
 
-		const value: string | null = RowColumnHeaderRenderer._getCellValue(cell.range.startRow, cell.range.startColumn);
+		const value: string | null = RowColumnHeaderRenderer._getCellValue(
+			cell.range.startRow,
+			cell.range.startColumn
+		);
 		if (!!value) {
 			const isRowHeader: boolean = cell.range.startColumn === 0;
 			let selected: boolean = false;
@@ -184,25 +200,45 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 				selected = this._isRowSelected(cell.range.startRow);
 				if (selected) {
 					selected = true;
-					ctx.fillStyle = RowColumnHeaderRenderer.HIGHLIGHT_RECT_COLOR;
-					ctx.fillRect(bounds.left + bounds.width - RowColumnHeaderRenderer.HIGHLIGHT_RECT_SIZE, bounds.top, RowColumnHeaderRenderer.HIGHLIGHT_RECT_SIZE, bounds.height);
+					ctx.fillStyle =
+						RowColumnHeaderRenderer.HIGHLIGHT_RECT_COLOR;
+					ctx.fillRect(
+						bounds.left +
+							bounds.width -
+							RowColumnHeaderRenderer.HIGHLIGHT_RECT_SIZE,
+						bounds.top,
+						RowColumnHeaderRenderer.HIGHLIGHT_RECT_SIZE,
+						bounds.height
+					);
 				}
 			} else {
 				// Is column header
 				selected = this._isColumnSelected(cell.range.startColumn);
 				if (selected) {
-					ctx.fillStyle = RowColumnHeaderRenderer.HIGHLIGHT_RECT_COLOR;
-					ctx.fillRect(bounds.left, bounds.top + bounds.height - RowColumnHeaderRenderer.HIGHLIGHT_RECT_SIZE, bounds.width, RowColumnHeaderRenderer.HIGHLIGHT_RECT_SIZE);
+					ctx.fillStyle =
+						RowColumnHeaderRenderer.HIGHLIGHT_RECT_COLOR;
+					ctx.fillRect(
+						bounds.left,
+						bounds.top +
+							bounds.height -
+							RowColumnHeaderRenderer.HIGHLIGHT_RECT_SIZE,
+						bounds.width,
+						RowColumnHeaderRenderer.HIGHLIGHT_RECT_SIZE
+					);
 				}
 			}
 
-			ctx.fillStyle = "#333333"; // Foreground color
+			ctx.fillStyle = '#333333'; // Foreground color
 			if (selected) {
-				ctx.font = "bold 12px sans-serif";
+				ctx.font = 'bold 12px sans-serif';
 			} else {
-				ctx.font = "12px sans-serif";
+				ctx.font = '12px sans-serif';
 			}
-			ctx.fillText(value, Math.round(bounds.left + bounds.width / 2), Math.round(bounds.top + bounds.height / 2));
+			ctx.fillText(
+				value,
+				Math.round(bounds.left + bounds.width / 2),
+				Math.round(bounds.top + bounds.height / 2)
+			);
 		}
 	}
 
@@ -226,7 +262,10 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	 */
 	private _isColumnSelected(columnIndex: number): boolean {
 		for (const s of this._selectionModel.getSelections()) {
-			if (s.range.startColumn <= columnIndex && s.range.endColumn >= columnIndex) {
+			if (
+				s.range.startColumn <= columnIndex &&
+				s.range.endColumn >= columnIndex
+			) {
 				return true;
 			}
 		}
@@ -239,7 +278,7 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	 * This may be a HTML representation of the value (for example for copying formatting, lists, ...).
 	 */
 	public getCopyValue(cell: ICell): string {
-		return "";
+		return '';
 	}
 
 	/**
@@ -249,5 +288,4 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	public onDisappearing(cell: ICell): void {
 		// Do nothing
 	}
-
 }

@@ -65,7 +65,7 @@ export class CellRange implements ICellRange {
 			startRow: row,
 			endRow: row,
 			startColumn: column,
-			endColumn: column
+			endColumn: column,
 		});
 	}
 

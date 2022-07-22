@@ -1,13 +1,16 @@
-import {IBorderSide} from "./border-side";
-import {IBorder} from "./border";
-import {BorderStyle} from "./border-style";
+import { IBorderSide } from './border-side';
+import { IBorder } from './border';
+import { BorderStyle } from './border-style';
 
 /**
  * The default border collision resolver.
  * @param sideA first side
  * @param sideB second side
  */
-const DEFAULT_BORDER_COLLISION_RESOLVER: (sideA: IBorderSide, sideB: IBorderSide) => IBorderSide = (sideA, sideB) => {
+const DEFAULT_BORDER_COLLISION_RESOLVER: (
+	sideA: IBorderSide,
+	sideB: IBorderSide
+) => IBorderSide = (sideA, sideB) => {
 	if (!!sideA && !!sideB) {
 		return sideA.priority > sideB.priority ? sideA : sideB;
 	} else if (!!sideA) {
@@ -25,9 +28,9 @@ const DEFAULT_BORDER_COLLISION_RESOLVER: (sideA: IBorderSide, sideB: IBorderSide
 const DEFAULT_BORDER_SIDE: IBorderSide = {
 	priority: 0,
 	isDefault: true,
-	color: {red: 230, green: 230, blue: 230, alpha: 1.0},
+	color: { red: 230, green: 230, blue: 230, alpha: 1.0 },
 	size: 1,
-	style: BorderStyle.SOLID
+	style: BorderStyle.SOLID,
 };
 
 /**
@@ -37,14 +40,13 @@ const DEFAULT_BORDER: IBorder = {
 	left: DEFAULT_BORDER_SIDE,
 	right: DEFAULT_BORDER_SIDE,
 	bottom: DEFAULT_BORDER_SIDE,
-	top: DEFAULT_BORDER_SIDE
+	top: DEFAULT_BORDER_SIDE,
 };
 
 /**
  * Options for the border model.
  */
 export interface IBorderOptions {
-
 	/**
 	 * Resolver for a border collision.
 	 * It may happen that two neighbouring cells define different border sides
@@ -55,7 +57,10 @@ export interface IBorderOptions {
 	 * @param sideA first side
 	 * @param sideB second side
 	 */
-	borderCollisionResolver?: (sideA: IBorderSide, sideB: IBorderSide) => IBorderSide;
+	borderCollisionResolver?: (
+		sideA: IBorderSide,
+		sideB: IBorderSide
+	) => IBorderSide;
 
 	/**
 	 * Default border to use when no border has been specified for a cell.
@@ -71,7 +76,6 @@ export interface IBorderOptions {
 	 * @param column to display border at
 	 */
 	defaultBorderSupplier?: (row: number, column: number) => IBorder;
-
 }
 
 /**

@@ -1,23 +1,24 @@
-import {HorizontalAlignment} from "./horizontal-alignment";
-import {VerticalAlignment} from "./vertical-alignment";
+import { HorizontalAlignment } from './horizontal-alignment';
+import { VerticalAlignment } from './vertical-alignment';
 
 /**
  * Utility providing methods helping with dealing with alignments.
  */
 export class AlignmentUtil {
-
 	/**
 	 * Convert a horizontal alignment to its style string representation.
 	 * @param alignment to convert
 	 */
-	public static horizontalAlignmentToStyleStr(alignment: HorizontalAlignment): string {
+	public static horizontalAlignmentToStyleStr(
+		alignment: HorizontalAlignment
+	): string {
 		switch (alignment) {
 			case HorizontalAlignment.CENTER:
-				return "center";
+				return 'center';
 			case HorizontalAlignment.LEFT:
-				return "left";
+				return 'left';
 			case HorizontalAlignment.RIGHT:
-				return "right";
+				return 'right';
 		}
 	}
 
@@ -25,15 +26,16 @@ export class AlignmentUtil {
 	 * Convert a vertical alignment to its style string representation.
 	 * @param alignment to convert
 	 */
-	public static verticalAlignmentToStyleStr(alignment: VerticalAlignment): string {
+	public static verticalAlignmentToStyleStr(
+		alignment: VerticalAlignment
+	): string {
 		switch (alignment) {
 			case VerticalAlignment.TOP:
-				return "top";
+				return 'top';
 			case VerticalAlignment.MIDDLE:
-				return "middle";
+				return 'middle';
 			case VerticalAlignment.BOTTOM:
-				return "bottom";
+				return 'bottom';
 		}
 	}
-
 }
