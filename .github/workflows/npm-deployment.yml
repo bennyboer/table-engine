@@ -17,7 +17,8 @@ jobs:
           yarn install --frozen-lockfile
       - name: Build library
         run: |
-          npm run build
+          yarn build
+          yarn bundle
       - name: Publish library
         run: npm publish
         env:

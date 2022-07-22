@@ -1,5 +1,5 @@
-module.exports = {
+export default {
 	preset: 'ts-jest',
 	testEnvironment: 'node',
-	testPathIgnorePatterns: ["lib", "example"]
+	testPathIgnorePatterns: ['lib', 'example'],
 };
