@@ -1,6 +1,991 @@
 import { CellModel, CellRange } from '../../cell';
 import { SelectionModel } from './selection-model';
 import { fillOptions } from '../../options';
+import { ISelection } from '../selection';
+
+describe('Primary selection management', () => {
+	test('first added selection is automatically primary selection', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// when: a selection is added for the first time
+		const selection = {
+			initial: {
+				row: 2,
+				column: 2,
+			},
+			range: {
+				startRow: 2,
+				endRow: 2,
+				startColumn: 2,
+				endColumn: 2,
+			},
+		};
+		selectionModel.addSelection(selection, false, false);
+
+		// then: the selection is the primary selection
+		expect(selectionModel.getPrimary()).toStrictEqual(selection);
+	});
+	test('no primary selection', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// then: no primary selection is available
+		expect(selectionModel.getPrimary()).toBeNull();
+	});
+	test('select another selection as primary', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: some selections that are added to the model
+		const firstSelection: ISelection = {
+			initial: {
+				row: 1,
+				column: 2,
+			},
+			range: {
+				startRow: 1,
+				endRow: 1,
+				startColumn: 2,
+				endColumn: 2,
+			},
+		};
+		const secondSelection: ISelection = {
+			initial: {
+				row: 4,
+				column: 5,
+			},
+			range: {
+				startRow: 4,
+				endRow: 4,
+				startColumn: 5,
+				endColumn: 5,
+			},
+		};
+		const thirdSelection: ISelection = {
+			initial: {
+				row: 3,
+				column: 3,
+			},
+			range: {
+				startRow: 3,
+				endRow: 3,
+				startColumn: 3,
+				endColumn: 3,
+			},
+		};
+		selectionModel.addSelection(firstSelection, false, false);
+		selectionModel.addSelection(secondSelection, false, false);
+		selectionModel.addSelection(thirdSelection, false, false);
+
+		// when: the primary selection is changed to the second selection
+		selectionModel.setPrimary(1);
+
+		// then: the second selection is retrieved as primary selection
+		expect(selectionModel.getPrimary()).toStrictEqual(secondSelection);
+
+		// and: all three selections can be retrieved
+		expect(selectionModel.getSelections().length).toBe(3);
+		expect(selectionModel.getSelections()[0]).toStrictEqual(firstSelection);
+		expect(selectionModel.getSelections()[1]).toStrictEqual(
+			secondSelection
+		);
+		expect(selectionModel.getSelections()[2]).toStrictEqual(thirdSelection);
+	});
+});
+
+describe('Validate selections', () => {
+	test('validate invalid selection', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+		cellModel.mergeCells({
+			startRow: 2,
+			endRow: 3,
+			startColumn: 2,
+			endColumn: 3,
+		});
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// when: an invalid selection (range does not encompass a whole merged cell) is added to the model
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 3,
+					column: 1,
+				},
+				range: {
+					startRow: 3,
+					endRow: 3,
+					startColumn: 1,
+					endColumn: 2,
+				},
+			},
+			true,
+			false
+		);
+
+		// then: the selection is added to the model but adjusted to encompass the merged cell
+		expect(selectionModel.getPrimary()).toBeDefined();
+		expect(selectionModel.getPrimary()).toStrictEqual({
+			initial: {
+				row: 3,
+				column: 1,
+			},
+			range: {
+				startRow: 2,
+				endRow: 3,
+				startColumn: 1,
+				endColumn: 3,
+			},
+		});
+	});
+	test('dont validate selection when passed false', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+		cellModel.mergeCells({
+			startRow: 2,
+			endRow: 3,
+			startColumn: 2,
+			endColumn: 3,
+		});
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// when: an invalid selection (range does not encompass a whole merged cell) is added to the model
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 3,
+					column: 1,
+				},
+				range: {
+					startRow: 3,
+					endRow: 3,
+					startColumn: 1,
+					endColumn: 2,
+				},
+			},
+			false,
+			false
+		);
+
+		// then: the selection is added to the model but not adjusted to encompass the merged cell
+		expect(selectionModel.getPrimary()).toBeDefined();
+		expect(selectionModel.getPrimary()).toStrictEqual({
+			initial: {
+				row: 3,
+				column: 1,
+			},
+			range: {
+				startRow: 3,
+				endRow: 3,
+				startColumn: 1,
+				endColumn: 2,
+			},
+		});
+	});
+});
+
+describe('Subtract selections', () => {
+	test('subtract in the center of a cell range', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection to subtract from
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 4,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: another selection is added in the center of the first selection
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 2,
+					endRow: 3,
+					startColumn: 2,
+					endColumn: 3,
+				},
+			},
+			true,
+			true
+		);
+
+		// then: the selection model now contains 4 separate selections that contain only the outermost cells of the initial selection
+		expect(selectionModel.getSelections().length).toBe(4);
+		expect(selectionModel.getSelections()[0]).toStrictEqual({
+			initial: {
+				row: 1,
+				column: 1,
+			},
+			range: {
+				startRow: 1,
+				endRow: 1,
+				startColumn: 1,
+				endColumn: 4,
+			},
+		});
+		expect(selectionModel.getSelections()[1]).toStrictEqual({
+			range: {
+				startRow: 2,
+				endRow: 3,
+				startColumn: 1,
+				endColumn: 1,
+			},
+		});
+		expect(selectionModel.getSelections()[2]).toStrictEqual({
+			range: {
+				startRow: 2,
+				endRow: 3,
+				startColumn: 4,
+				endColumn: 4,
+			},
+		});
+		expect(selectionModel.getSelections()[3]).toStrictEqual({
+			range: {
+				startRow: 4,
+				endRow: 4,
+				startColumn: 1,
+				endColumn: 4,
+			},
+		});
+	});
+	test('subtract full height from the left', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection to subtract from
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 4,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: another selection is added to the left of the first selection
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 1,
+				},
+			},
+			true,
+			true
+		);
+
+		// then: the selection model now contains a smaller selection than the initial one (first column cut)
+		expect(selectionModel.getSelections().length).toBe(1);
+		expect(selectionModel.getSelections()[0]).toStrictEqual({
+			initial: {
+				row: 1,
+				column: 2,
+			},
+			range: {
+				startRow: 1,
+				endRow: 4,
+				startColumn: 2,
+				endColumn: 4,
+			},
+		});
+	});
+	test('subtract full height from the right', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection to subtract from
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 4,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: another selection is added to the right of the first selection
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 4,
+				},
+				range: {
+					startRow: 1,
+					endRow: 4,
+					startColumn: 4,
+					endColumn: 4,
+				},
+			},
+			true,
+			true
+		);
+
+		// then: the selection model now contains a smaller selection than the initial one (last column cut)
+		expect(selectionModel.getSelections().length).toBe(1);
+		expect(selectionModel.getSelections()[0]).toStrictEqual({
+			initial: {
+				row: 1,
+				column: 1,
+			},
+			range: {
+				startRow: 1,
+				endRow: 4,
+				startColumn: 1,
+				endColumn: 3,
+			},
+		});
+	});
+	test('subtract full width from the top', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection to subtract from
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 4,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: another selection is added to the top of the first selection
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 1,
+					startColumn: 1,
+					endColumn: 4,
+				},
+			},
+			true,
+			true
+		);
+
+		// then: the selection model now contains a smaller selection than the initial one (first row cut)
+		expect(selectionModel.getSelections().length).toBe(1);
+		expect(selectionModel.getSelections()[0]).toStrictEqual({
+			initial: {
+				row: 2,
+				column: 1,
+			},
+			range: {
+				startRow: 2,
+				endRow: 4,
+				startColumn: 1,
+				endColumn: 4,
+			},
+		});
+	});
+	test('subtract full width from the bottom', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection to subtract from
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 4,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: another selection is added to the bottom of the first selection
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 4,
+					column: 1,
+				},
+				range: {
+					startRow: 4,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 4,
+				},
+			},
+			true,
+			true
+		);
+
+		// then: the selection model now contains a smaller selection than the initial one (last row cut)
+		expect(selectionModel.getSelections().length).toBe(1);
+		expect(selectionModel.getSelections()[0]).toStrictEqual({
+			initial: {
+				row: 1,
+				column: 1,
+			},
+			range: {
+				startRow: 1,
+				endRow: 3,
+				startColumn: 1,
+				endColumn: 4,
+			},
+		});
+	});
+	test('subtract lower left corner', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection to subtract from
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 4,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: another selection is added to the lower left corner of the first selection
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 3,
+					column: 1,
+				},
+				range: {
+					startRow: 3,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 2,
+				},
+			},
+			true,
+			true
+		);
+
+		// then: the selection model now contains two selections without the lower left corner
+		expect(selectionModel.getSelections().length).toBe(2);
+		expect(selectionModel.getSelections()[0]).toStrictEqual({
+			initial: {
+				row: 1,
+				column: 1,
+			},
+			range: {
+				startRow: 1,
+				endRow: 2,
+				startColumn: 1,
+				endColumn: 4,
+			},
+		});
+		expect(selectionModel.getSelections()[1]).toStrictEqual({
+			range: {
+				startRow: 3,
+				endRow: 4,
+				startColumn: 3,
+				endColumn: 4,
+			},
+		});
+	});
+	test('subtract upper left corner', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection to subtract from
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 4,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: another selection is added to the upper left corner of the first selection
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 1,
+					startColumn: 1,
+					endColumn: 1,
+				},
+			},
+			true,
+			true
+		);
+
+		// then: the selection model now contains two selections without the upper left corner
+		expect(selectionModel.getSelections().length).toBe(2);
+		expect(selectionModel.getSelections()[0]).toStrictEqual({
+			initial: {
+				row: 1,
+				column: 2,
+			},
+			range: {
+				startRow: 1,
+				endRow: 1,
+				startColumn: 2,
+				endColumn: 4,
+			},
+		});
+		expect(selectionModel.getSelections()[1]).toStrictEqual({
+			range: {
+				startRow: 2,
+				endRow: 4,
+				startColumn: 1,
+				endColumn: 4,
+			},
+		});
+	});
+	test('subtract cell on the side', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection to subtract from
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 4,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: another selection is added to the side of the first selection
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 3,
+					column: 3,
+				},
+				range: {
+					startRow: 3,
+					endRow: 3,
+					startColumn: 4,
+					endColumn: 4,
+				},
+			},
+			true,
+			true
+		);
+
+		// then: the selection model now contains three selections without the cell on the side
+		expect(selectionModel.getSelections().length).toBe(3);
+		expect(selectionModel.getSelections()[0]).toStrictEqual({
+			initial: {
+				row: 1,
+				column: 1,
+			},
+			range: {
+				startRow: 1,
+				endRow: 2,
+				startColumn: 1,
+				endColumn: 4,
+			},
+		});
+		expect(selectionModel.getSelections()[1]).toStrictEqual({
+			range: {
+				startRow: 3,
+				endRow: 3,
+				startColumn: 1,
+				endColumn: 3,
+			},
+		});
+		expect(selectionModel.getSelections()[2]).toStrictEqual({
+			range: {
+				startRow: 4,
+				endRow: 4,
+				startColumn: 1,
+				endColumn: 4,
+			},
+		});
+	});
+	test('should not subtract when the second selection is not contained in the first', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection to subtract from
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 4,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: another selection that is not contained in the first
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 0,
+					column: 2,
+				},
+				range: {
+					startRow: 0,
+					endRow: 4,
+					startColumn: 2,
+					endColumn: 2,
+				},
+			},
+			true,
+			true
+		);
+
+		// then: the selection model now contains the two selections as added before
+		expect(selectionModel.getSelections().length).toBe(2);
+		expect(selectionModel.getSelections()[0]).toStrictEqual({
+			initial: {
+				row: 1,
+				column: 1,
+			},
+			range: {
+				startRow: 1,
+				endRow: 4,
+				startColumn: 1,
+				endColumn: 4,
+			},
+		});
+		expect(selectionModel.getSelections()[1]).toStrictEqual({
+			initial: {
+				row: 0,
+				column: 2,
+			},
+			range: {
+				startRow: 0,
+				endRow: 4,
+				startColumn: 2,
+				endColumn: 2,
+			},
+		});
+	});
+});
 
 describe('[SelectionModel.moveSelection]', () => {
 	describe('Normal selection movement', () => {
@@ -3470,6 +4455,375 @@ describe('[SelectionModel.extendSelection]', () => {
 					startRow: 1,
 					endRow: 3,
 					startColumn: 1,
+					endColumn: 4,
+				},
+			});
+		});
+	});
+});
+
+describe('Selection modes', () => {
+	describe('Only allow single cell selections', () => {
+		test('add only a single cell', () => {
+			// given: A simple cell model
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({
+					selection: {
+						allowRangeSelection: false,
+					},
+				})
+			);
+
+			// when: adding a selection spanning a single cell
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 2,
+						column: 2,
+					},
+					range: {
+						startRow: 2,
+						endRow: 2,
+						startColumn: 2,
+						endColumn: 2,
+					},
+				},
+				false,
+				false
+			);
+
+			// then: the selection is only the one cell
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 2,
+					endRow: 2,
+					startColumn: 2,
+					endColumn: 2,
+				},
+			});
+		});
+		test('add only the initial cell when a range is added', () => {
+			// given: A simple cell model
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({
+					selection: {
+						allowRangeSelection: false,
+					},
+				})
+			);
+
+			// when: trying to add a selection that is bigger than one cell
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 1,
+						column: 1,
+					},
+					range: {
+						startRow: 1,
+						endRow: 2,
+						startColumn: 1,
+						endColumn: 2,
+					},
+				},
+				false,
+				false
+			);
+
+			// then: the selection is only the initial cell
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 1,
+					startColumn: 1,
+					endColumn: 1,
+				},
+			});
+		});
+		test('should not allow extending the selection', () => {
+			// given: A simple cell model
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({
+					selection: {
+						allowRangeSelection: false,
+					},
+				})
+			);
+
+			// and: a simple one-cell selection
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 1,
+						column: 1,
+					},
+					range: {
+						startRow: 1,
+						endRow: 1,
+						startColumn: 1,
+						endColumn: 1,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is extended to the right
+			selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				1,
+				0,
+				false
+			);
+
+			// then: the selection is still only the single cell
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 1,
+					startColumn: 1,
+					endColumn: 1,
+				},
+			});
+		});
+	});
+	describe('Only allow selection of a single cell range', () => {
+		test('should replace the primary selection when selecting another range', () => {
+			// given: A simple cell model
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({
+					selection: {
+						allowMultiSelection: false,
+					},
+				})
+			);
+
+			// and: a selection
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 1,
+						column: 1,
+					},
+					range: {
+						startRow: 1,
+						endRow: 2,
+						startColumn: 1,
+						endColumn: 2,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: another selection is added
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 3,
+						column: 3,
+					},
+					range: {
+						startRow: 3,
+						endRow: 4,
+						startColumn: 3,
+						endColumn: 4,
+					},
+				},
+				false,
+				false
+			);
+
+			// then: there is still only one selection
+			expect(selectionModel.getSelections().length).toBe(1);
+
+			// and: the primary selection is the second added
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 3,
+					column: 3,
+				},
+				range: {
+					startRow: 3,
+					endRow: 4,
+					startColumn: 3,
+					endColumn: 4,
+				},
+			});
+		});
+	});
+	describe('Allow selection of multiple cell ranges', () => {
+		test('should allow multiple cell ranges selected', () => {
+			// given: A simple cell model
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({
+					selection: {
+						allowMultiSelection: true,
+					},
+				})
+			);
+
+			// and: a selection
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 1,
+						column: 1,
+					},
+					range: {
+						startRow: 1,
+						endRow: 2,
+						startColumn: 1,
+						endColumn: 2,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: another selection is added
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 3,
+						column: 3,
+					},
+					range: {
+						startRow: 3,
+						endRow: 4,
+						startColumn: 3,
+						endColumn: 4,
+					},
+				},
+				false,
+				false
+			);
+
+			// then: there are two selections in the model
+			expect(selectionModel.getSelections().length).toBe(2);
+			expect(selectionModel.getSelections()[0]).toStrictEqual({
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 2,
+					startColumn: 1,
+					endColumn: 2,
+				},
+			});
+			expect(selectionModel.getSelections()[1]).toStrictEqual({
+				initial: {
+					row: 3,
+					column: 3,
+				},
+				range: {
+					startRow: 3,
+					endRow: 4,
+					startColumn: 3,
 					endColumn: 4,
 				},
 			});
