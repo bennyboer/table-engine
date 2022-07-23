@@ -1175,3 +1175,73 @@ describe('[SelectionModel.moveSelection]', () => {
 		});
 	});
 });
+
+describe('[SelectionModel.extendSelection]', () => {
+	describe('extend without merged cells', () => {
+		test('to the top', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 2 and column 2
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 2,
+						column: 2,
+					},
+					range: {
+						startRow: 2,
+						endRow: 2,
+						startColumn: 2,
+						endColumn: 2,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is extended to the top
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				0,
+				-1,
+				false
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should be extended by one row
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 1,
+					endRow: 2,
+					startColumn: 2,
+					endColumn: 2,
+				},
+			});
+		});
+	});
+});
