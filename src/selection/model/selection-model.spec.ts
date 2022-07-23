@@ -1102,5 +1102,76 @@ describe('[SelectionModel.moveSelection]', () => {
 				},
 			});
 		});
+		test('jump move to merged cell', () => {
+			// given: A simple cell model with a merged cell
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+			cellModel.mergeCells({
+				startRow: 0,
+				endRow: 1,
+				startColumn: 1,
+				endColumn: 2,
+			});
+
+			// and: a selection model with a selection under the merged cell
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 4,
+						column: 2,
+					},
+					range: {
+						startRow: 4,
+						endRow: 4,
+						startColumn: 2,
+						endColumn: 2,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is jump moved to the top
+			const changed = selectionModel.moveSelection(
+				selectionModel.getPrimary(),
+				0,
+				-1,
+				true
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should be on the merged cell
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 0,
+					column: 2,
+				},
+				range: {
+					startRow: 0,
+					endRow: 1,
+					startColumn: 1,
+					endColumn: 2,
+				},
+			});
+		});
 	});
 });
