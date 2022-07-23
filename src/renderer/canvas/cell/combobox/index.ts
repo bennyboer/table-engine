@@ -1,14 +1,16 @@
 export { ComboBoxCellRenderer } from './combobox-cell-renderer';
-export {
+export type {
 	IComboBoxCellRendererValue,
 	IComboBoxOption,
 	IComboBoxSelectOptions,
 } from './combobox-cell-renderer-value';
-export {
+export type {
 	ILabelOptions,
 	IDropdownOptions,
 	ISelectArrowOptions,
 	IPlaceholderOptions,
-	IComboBoxCellRendererOptions,
+	IComboBoxCellRendererOptions
+} from './combobox-cell-renderer-options';
+export {
 	fillOptions as fillComboboxCellRendererOptions,
 } from './combobox-cell-renderer-options';

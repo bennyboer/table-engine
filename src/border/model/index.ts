@@ -1,3 +1,3 @@
-export { IBorderModel } from './border-model.interface';
+export type { IBorderModel } from './border-model.interface';
 export { BorderModel } from './border-model';
-export { IBorderMask } from './border-mask';
+export type { IBorderMask } from './border-mask';

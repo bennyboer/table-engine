@@ -1,4 +1,4 @@
-export { ICanvasCellRenderer } from './canvas-cell-renderer';
+export type { ICanvasCellRenderer } from './canvas-cell-renderer';
 export * from './checkbox';
 export * from './combobox';
 export * from './dom';

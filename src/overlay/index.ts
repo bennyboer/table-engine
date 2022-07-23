@@ -1,2 +1,2 @@
-export { IOverlay } from './overlay';
-export { IOverlayManager } from './overlay-manager';
+export type { IOverlay } from './overlay';
+export type { IOverlayManager } from './overlay-manager';

@@ -1,18 +1,26 @@
-export {
+export type {
 	ICopyHandleRenderingOptions,
 	ISelectionRenderingOptions,
 	ISelectionColors,
-	fillOptions as fillSelectionRenderingOptions,
 } from './selection';
 export {
+	fillOptions as fillSelectionRenderingOptions,
+} from './selection';
+export type {
 	IScrollBarOptions,
-	fillOptions as fillScrollbarOptions,
 } from './scrollbar';
 export {
+	fillOptions as fillScrollbarOptions,
+} from './scrollbar';
+export type {
 	IScrollingOptions,
-	fillOptions as fillScrollingOptions,
 } from './scrolling';
 export {
+	fillOptions as fillScrollingOptions,
+} from './scrolling';
+export type {
 	IRowColumnResizingOptions,
+} from './row-column-resizing';
+export {
 	fillOptions as fillRowColumnResizingOptions,
 } from './row-column-resizing';
