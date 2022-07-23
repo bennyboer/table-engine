@@ -1174,10 +1174,272 @@ describe('[SelectionModel.moveSelection]', () => {
 			});
 		});
 	});
+	describe('at table boundary', () => {
+		test('should not change selection at table boundary moving to the top', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 0 and column 1
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 0,
+						column: 1,
+					},
+					range: {
+						startRow: 0,
+						endRow: 0,
+						startColumn: 1,
+						endColumn: 1,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is moved to the top
+			const changed = selectionModel.moveSelection(
+				selectionModel.getPrimary(),
+				0,
+				-1,
+				false
+			);
+
+			// then: the selection should not have been changed
+			expect(changed).toBeFalsy();
+
+			// and: the new selections cell range is actually not changed
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 0,
+					column: 1,
+				},
+				range: {
+					startRow: 0,
+					endRow: 0,
+					startColumn: 1,
+					endColumn: 1,
+				},
+			});
+		});
+		test('should not change selection at table boundary moving to the bottom', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 5 and column 1
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 5,
+						column: 1,
+					},
+					range: {
+						startRow: 5,
+						endRow: 5,
+						startColumn: 1,
+						endColumn: 1,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is moved to the bottom
+			const changed = selectionModel.moveSelection(
+				selectionModel.getPrimary(),
+				0,
+				1,
+				false
+			);
+
+			// then: the selection should not have been changed
+			expect(changed).toBeFalsy();
+
+			// and: the new selections cell range is actually not changed
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 5,
+					column: 1,
+				},
+				range: {
+					startRow: 5,
+					endRow: 5,
+					startColumn: 1,
+					endColumn: 1,
+				},
+			});
+		});
+		test('should not change selection at table boundary moving to the left', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 1 and column 0
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 1,
+						column: 0,
+					},
+					range: {
+						startRow: 1,
+						endRow: 1,
+						startColumn: 0,
+						endColumn: 0,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is moved to the left
+			const changed = selectionModel.moveSelection(
+				selectionModel.getPrimary(),
+				-1,
+				0,
+				false
+			);
+
+			// then: the selection should not have been changed
+			expect(changed).toBeFalsy();
+
+			// and: the new selections cell range is actually not changed
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 1,
+					column: 0,
+				},
+				range: {
+					startRow: 1,
+					endRow: 1,
+					startColumn: 0,
+					endColumn: 0,
+				},
+			});
+		});
+		test('should not change selection at table boundary moving to the right', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 1 and column 5
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 1,
+						column: 5,
+					},
+					range: {
+						startRow: 1,
+						endRow: 1,
+						startColumn: 5,
+						endColumn: 5,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is moved to the right
+			const changed = selectionModel.moveSelection(
+				selectionModel.getPrimary(),
+				1,
+				0,
+				false
+			);
+
+			// then: the selection should not have been changed
+			expect(changed).toBeFalsy();
+
+			// and: the new selections cell range is actually not changed
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 1,
+					column: 5,
+				},
+				range: {
+					startRow: 1,
+					endRow: 1,
+					startColumn: 5,
+					endColumn: 5,
+				},
+			});
+		});
+	});
 });
 
 describe('[SelectionModel.extendSelection]', () => {
-	describe('extend without merged cells', () => {
+	describe('normal extend without merged cells', () => {
 		test('to the top', () => {
 			// given: A simple cell model without merged cells
 			const cellModel = CellModel.generate(
@@ -1240,6 +1502,798 @@ describe('[SelectionModel.extendSelection]', () => {
 					endRow: 2,
 					startColumn: 2,
 					endColumn: 2,
+				},
+			});
+		});
+		test('to the bottom', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 2 and column 2
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 2,
+						column: 2,
+					},
+					range: {
+						startRow: 2,
+						endRow: 2,
+						startColumn: 2,
+						endColumn: 2,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is extended to the bottom
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				0,
+				1,
+				false
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should be extended by one row
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 2,
+					endRow: 3,
+					startColumn: 2,
+					endColumn: 2,
+				},
+			});
+		});
+		test('to the left', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 2 and column 2
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 2,
+						column: 2,
+					},
+					range: {
+						startRow: 2,
+						endRow: 2,
+						startColumn: 2,
+						endColumn: 2,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is extended to the left
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				-1,
+				0,
+				false
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should be extended by one row
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 2,
+					endRow: 2,
+					startColumn: 1,
+					endColumn: 2,
+				},
+			});
+		});
+		test('to the right', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 2 and column 2
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 2,
+						column: 2,
+					},
+					range: {
+						startRow: 2,
+						endRow: 2,
+						startColumn: 2,
+						endColumn: 2,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is extended to the right
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				1,
+				0,
+				false
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should be extended by one row
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 2,
+					endRow: 2,
+					startColumn: 2,
+					endColumn: 3,
+				},
+			});
+		});
+	});
+	describe('jump extend without merged cells', () => {
+		test('to the top', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 2 and column 2
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 2,
+						column: 2,
+					},
+					range: {
+						startRow: 2,
+						endRow: 2,
+						startColumn: 2,
+						endColumn: 2,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is jump extended to the top
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				0,
+				-1,
+				true
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should be extended until row 0
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 0,
+					endRow: 2,
+					startColumn: 2,
+					endColumn: 2,
+				},
+			});
+		});
+		test('to the bottom', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 2 and column 2
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 2,
+						column: 2,
+					},
+					range: {
+						startRow: 2,
+						endRow: 2,
+						startColumn: 2,
+						endColumn: 2,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is jump extended to the bottom
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				0,
+				1,
+				true
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should be extended until row 5
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 2,
+					endRow: 5,
+					startColumn: 2,
+					endColumn: 2,
+				},
+			});
+		});
+		test('to the left', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 2 and column 2
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 2,
+						column: 2,
+					},
+					range: {
+						startRow: 2,
+						endRow: 2,
+						startColumn: 2,
+						endColumn: 2,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is jump extended to the left
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				-1,
+				0,
+				true
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should be extended until column 0
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 2,
+					endRow: 2,
+					startColumn: 0,
+					endColumn: 2,
+				},
+			});
+		});
+		test('to the right', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 2 and column 2
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 2,
+						column: 2,
+					},
+					range: {
+						startRow: 2,
+						endRow: 2,
+						startColumn: 2,
+						endColumn: 2,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is jump extended to the right
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				1,
+				0,
+				true
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should be extended until column 5
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 2,
+					endRow: 2,
+					startColumn: 2,
+					endColumn: 5,
+				},
+			});
+		});
+	});
+	describe('at table boundary', () => {
+		test('should not change selection at table boundary extending to the top', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 0 and column 1
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 0,
+						column: 1,
+					},
+					range: {
+						startRow: 0,
+						endRow: 0,
+						startColumn: 1,
+						endColumn: 1,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is moved to the top
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				0,
+				-1,
+				false
+			);
+
+			// then: the selection should not have been changed
+			expect(changed).toBeFalsy();
+
+			// and: the new selections cell range is actually not changed
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 0,
+					column: 1,
+				},
+				range: {
+					startRow: 0,
+					endRow: 0,
+					startColumn: 1,
+					endColumn: 1,
+				},
+			});
+		});
+		test('should not change selection at table boundary extending to the bottom', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 5 and column 1
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 5,
+						column: 1,
+					},
+					range: {
+						startRow: 5,
+						endRow: 5,
+						startColumn: 1,
+						endColumn: 1,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is moved to the bottom
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				0,
+				1,
+				false
+			);
+
+			// then: the selection should not have been changed
+			expect(changed).toBeFalsy();
+
+			// and: the new selections cell range is actually not changed
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 5,
+					column: 1,
+				},
+				range: {
+					startRow: 5,
+					endRow: 5,
+					startColumn: 1,
+					endColumn: 1,
+				},
+			});
+		});
+		test('should not change selection at table boundary extending to the left', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 1 and column 0
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 1,
+						column: 0,
+					},
+					range: {
+						startRow: 1,
+						endRow: 1,
+						startColumn: 0,
+						endColumn: 0,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is moved to the left
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				-1,
+				0,
+				false
+			);
+
+			// then: the selection should not have been changed
+			expect(changed).toBeFalsy();
+
+			// and: the new selections cell range is actually not changed
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 1,
+					column: 0,
+				},
+				range: {
+					startRow: 1,
+					endRow: 1,
+					startColumn: 0,
+					endColumn: 0,
+				},
+			});
+		});
+		test('should not change selection at table boundary extending to the right', () => {
+			// given: A simple cell model without merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+
+			// and: a selection model with a selection at row 1 and column 5
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 1,
+						column: 5,
+					},
+					range: {
+						startRow: 1,
+						endRow: 1,
+						startColumn: 5,
+						endColumn: 5,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is moved to the right
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				1,
+				0,
+				false
+			);
+
+			// then: the selection should not have been changed
+			expect(changed).toBeFalsy();
+
+			// and: the new selections cell range is actually not changed
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 1,
+					column: 5,
+				},
+				range: {
+					startRow: 1,
+					endRow: 1,
+					startColumn: 5,
+					endColumn: 5,
+				},
+			});
+		});
+	});
+	describe('extend with merged cells', () => {
+		test('extend to merged cell on the right', () => {
+			// given: A simple cell model with merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+			cellModel.mergeCells({
+				startRow: 1,
+				endRow: 3,
+				startColumn: 3,
+				endColumn: 4,
+			});
+
+			// and: a selection model with a selection at row 2 and column 2
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 2,
+						column: 2,
+					},
+					range: {
+						startRow: 2,
+						endRow: 2,
+						startColumn: 2,
+						endColumn: 2,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is extended to the right
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				1,
+				0,
+				false
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should be extended with the merged cell
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 1,
+					endRow: 3,
+					startColumn: 2,
+					endColumn: 4,
 				},
 			});
 		});
