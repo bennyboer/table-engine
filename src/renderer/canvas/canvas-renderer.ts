@@ -362,6 +362,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		this._initializeCellRenderers();
 	}
 
+	/**
+	 * Create a container Element in which the canvas and html view will later be injected.
+	 * @param parentContainer the container defined by the user
+	 */
 	private _createTableContainer(parentContainer: HTMLElement): HTMLElement {
 		const div = document.createElement('div');
 		// full size in parent
