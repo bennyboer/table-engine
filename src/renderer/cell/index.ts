@@ -1,2 +1,2 @@
-export { ICellRenderer } from './cell-renderer';
+export type { ICellRenderer } from './cell-renderer';
 export * from './event';

@@ -1,6 +1,8 @@
 export { RatingCellRenderer } from './rating-cell-renderer';
-export { IRatingCellRendererValue } from './rating-cell-renderer-value';
+export type { IRatingCellRendererValue } from './rating-cell-renderer-value';
+export type {
+	IRatingCellRendererOptions
+} from './rating-cell-renderer-options';
 export {
-	IRatingCellRendererOptions,
 	fillOptions as fillRatingCellRendererOptions,
 } from './rating-cell-renderer-options';

@@ -1,9 +1,11 @@
-export { ITableEngineRenderer } from './renderer';
+export type { ITableEngineRenderer } from './renderer';
 export { RendererType } from './renderers';
 export { RendererFactory } from './renderer-factory';
-export {
+export type {
 	IRendererOptions,
-	IViewOptions,
+	IViewOptions
+} from './renderer-options';
+export {
 	fillOptions as fillRendererOptions,
 } from './renderer-options';
 export * from './options';
