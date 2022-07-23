@@ -83,6 +83,17 @@ export class SelectionModel implements ISelectionModel {
 		if (!this._options.selection.allowMultiSelection) {
 			this.clear();
 		}
+		if (!this._options.selection.allowRangeSelection) {
+			selection = {
+				initial: selection.initial,
+				range: {
+					startRow: selection.initial.row,
+					endRow: selection.initial.row,
+					startColumn: selection.initial.column,
+					endColumn: selection.initial.column,
+				},
+			};
+		}
 
 		if (validate) {
 			const result = this._validateSelection(selection, subtract);
@@ -98,16 +109,8 @@ export class SelectionModel implements ISelectionModel {
 		} else {
 			// When there is a selection transform we need to consult that first
 			// whether the selection is possible!
-			if (!!this._options.selection.selectionTransform) {
-				if (
-					!this._options.selection.selectionTransform(
-						selection,
-						this._cellModel,
-						false
-					)
-				) {
-					return; // Selection not allowed!
-				}
+			if (!this._transformSelection(selection, false)) {
+				return; // Selection not allowed!
 			}
 
 			this._selections.push(selection);
@@ -136,6 +139,14 @@ export class SelectionModel implements ISelectionModel {
 
 		selection.range = newRange;
 		selection.initial = newInitial;
+		if (!this._options.selection.allowRangeSelection) {
+			selection.range = {
+				startRow: selection.initial.row,
+				endRow: selection.initial.row,
+				startColumn: selection.initial.column,
+				endColumn: selection.initial.column,
+			};
+		}
 
 		let undoChange: boolean = false;
 		let subtractChange: boolean = false;
@@ -161,16 +172,8 @@ export class SelectionModel implements ISelectionModel {
 		} else {
 			// When there is a selection transform we need to consult that first
 			// whether the selection is possible!
-			if (!!this._options.selection.selectionTransform) {
-				if (
-					!this._options.selection.selectionTransform(
-						selection,
-						this._cellModel,
-						false
-					)
-				) {
-					undoChange = true;
-				}
+			if (!this._transformSelection(selection, false)) {
+				undoChange = true;
 			}
 		}
 
@@ -219,16 +222,8 @@ export class SelectionModel implements ISelectionModel {
 
 		// When there is a selection transform we need to consult that first
 		// whether the selection is possible!
-		if (!!this._options.selection.selectionTransform) {
-			if (
-				!this._options.selection.selectionTransform(
-					selection,
-					this._cellModel,
-					false
-				)
-			) {
-				return null; // Selection not allowed
-			}
+		if (!this._transformSelection(selection, false)) {
+			return null; // Selection not allowed
 		}
 
 		if (subtract) {
@@ -458,6 +453,10 @@ export class SelectionModel implements ISelectionModel {
 		yDiff: number,
 		jump: boolean
 	): boolean {
+		if (!this._options.selection.allowRangeSelection) {
+			return false;
+		}
+
 		if (xDiff !== 0) {
 			if (xDiff < 0) {
 				if (selection.initial.column < selection.range.endColumn) {
@@ -475,17 +474,9 @@ export class SelectionModel implements ISelectionModel {
 
 					const oldValue = selection.range.endColumn;
 					selection.range.endColumn = newColumn;
-					if (!!this._options.selection.selectionTransform) {
-						if (
-							!this._options.selection.selectionTransform(
-								selection,
-								this._cellModel,
-								true
-							)
-						) {
-							selection.range.endColumn = oldValue; // Set old value
-							return false;
-						}
+					if (!this._transformSelection(selection, true)) {
+						selection.range.endColumn = oldValue; // Set old value
+						return false;
 					}
 
 					return true;
@@ -508,17 +499,9 @@ export class SelectionModel implements ISelectionModel {
 
 					const oldValue = selection.range.startColumn;
 					selection.range.startColumn = newColumn;
-					if (!!this._options.selection.selectionTransform) {
-						if (
-							!this._options.selection.selectionTransform(
-								selection,
-								this._cellModel,
-								true
-							)
-						) {
-							selection.range.startColumn = oldValue; // Set old value
-							return false;
-						}
+					if (!this._transformSelection(selection, true)) {
+						selection.range.startColumn = oldValue; // Set old value
+						return false;
 					}
 
 					return true;
@@ -539,17 +522,9 @@ export class SelectionModel implements ISelectionModel {
 
 					const oldValue = selection.range.startColumn;
 					selection.range.startColumn = newColumn;
-					if (!!this._options.selection.selectionTransform) {
-						if (
-							!this._options.selection.selectionTransform(
-								selection,
-								this._cellModel,
-								true
-							)
-						) {
-							selection.range.startColumn = oldValue; // Set old value
-							return false;
-						}
+					if (!this._transformSelection(selection, true)) {
+						selection.range.startColumn = oldValue; // Set old value
+						return false;
 					}
 
 					return true;
@@ -572,17 +547,9 @@ export class SelectionModel implements ISelectionModel {
 
 					const oldValue = selection.range.endColumn;
 					selection.range.endColumn = newColumn;
-					if (!!this._options.selection.selectionTransform) {
-						if (
-							!this._options.selection.selectionTransform(
-								selection,
-								this._cellModel,
-								true
-							)
-						) {
-							selection.range.endColumn = oldValue; // Set old value
-							return false;
-						}
+					if (!this._transformSelection(selection, true)) {
+						selection.range.endColumn = oldValue; // Set old value
+						return false;
 					}
 
 					return true;
@@ -607,17 +574,9 @@ export class SelectionModel implements ISelectionModel {
 
 					const oldValue = selection.range.endRow;
 					selection.range.endRow = newRow;
-					if (!!this._options.selection.selectionTransform) {
-						if (
-							!this._options.selection.selectionTransform(
-								selection,
-								this._cellModel,
-								true
-							)
-						) {
-							selection.range.endRow = oldValue; // Set old value
-							return false;
-						}
+					if (!this._transformSelection(selection, true)) {
+						selection.range.endRow = oldValue; // Set old value
+						return false;
 					}
 
 					return true;
@@ -640,17 +599,9 @@ export class SelectionModel implements ISelectionModel {
 
 					const oldValue = selection.range.startRow;
 					selection.range.startRow = newRow;
-					if (!!this._options.selection.selectionTransform) {
-						if (
-							!this._options.selection.selectionTransform(
-								selection,
-								this._cellModel,
-								true
-							)
-						) {
-							selection.range.startRow = oldValue; // Set old value
-							return false;
-						}
+					if (!this._transformSelection(selection, true)) {
+						selection.range.startRow = oldValue; // Set old value
+						return false;
 					}
 
 					return true;
@@ -671,17 +622,9 @@ export class SelectionModel implements ISelectionModel {
 
 					const oldValue = selection.range.startRow;
 					selection.range.startRow = newRow;
-					if (!!this._options.selection.selectionTransform) {
-						if (
-							!this._options.selection.selectionTransform(
-								selection,
-								this._cellModel,
-								true
-							)
-						) {
-							selection.range.startRow = oldValue; // Set old value
-							return false;
-						}
+					if (!this._transformSelection(selection, true)) {
+						selection.range.startRow = oldValue; // Set old value
+						return false;
 					}
 
 					return true;
@@ -704,17 +647,9 @@ export class SelectionModel implements ISelectionModel {
 
 					const oldValue = selection.range.endRow;
 					selection.range.endRow = newRow;
-					if (!!this._options.selection.selectionTransform) {
-						if (
-							!this._options.selection.selectionTransform(
-								selection,
-								this._cellModel,
-								true
-							)
-						) {
-							selection.range.endRow = oldValue; // Set old value
-							return false;
-						}
+					if (!this._transformSelection(selection, true)) {
+						selection.range.endRow = oldValue; // Set old value
+						return false;
 					}
 
 					return true;
@@ -765,18 +700,10 @@ export class SelectionModel implements ISelectionModel {
 					previousColumn
 				);
 				selection.initial.column = previousColumn;
-				if (!!this._options.selection.selectionTransform) {
-					if (
-						!this._options.selection.selectionTransform(
-							selection,
-							this._cellModel,
-							true
-						)
-					) {
-						selection.range = oldRange;
-						selection.initial.column = oldInitial;
-						return false;
-					}
+				if (!this._transformSelection(selection, true)) {
+					selection.range = oldRange;
+					selection.initial.column = oldInitial;
+					return false;
 				}
 
 				return true;
@@ -804,18 +731,10 @@ export class SelectionModel implements ISelectionModel {
 					nextColumn
 				);
 				selection.initial.column = nextColumn;
-				if (!!this._options.selection.selectionTransform) {
-					if (
-						!this._options.selection.selectionTransform(
-							selection,
-							this._cellModel,
-							true
-						)
-					) {
-						selection.range = oldRange;
-						selection.initial.column = oldInitial;
-						return false;
-					}
+				if (!this._transformSelection(selection, true)) {
+					selection.range = oldRange;
+					selection.initial.column = oldInitial;
+					return false;
 				}
 
 				return true;
@@ -847,18 +766,10 @@ export class SelectionModel implements ISelectionModel {
 					selection.initial.column
 				);
 				selection.initial.row = previousRow;
-				if (!!this._options.selection.selectionTransform) {
-					if (
-						!this._options.selection.selectionTransform(
-							selection,
-							this._cellModel,
-							true
-						)
-					) {
-						selection.range = oldRange;
-						selection.initial.row = oldInitial;
-						return false;
-					}
+				if (!this._transformSelection(selection, true)) {
+					selection.range = oldRange;
+					selection.initial.row = oldInitial;
+					return false;
 				}
 
 				return true;
@@ -886,18 +797,10 @@ export class SelectionModel implements ISelectionModel {
 					selection.initial.column
 				);
 				selection.initial.row = nextRow;
-				if (!!this._options.selection.selectionTransform) {
-					if (
-						!this._options.selection.selectionTransform(
-							selection,
-							this._cellModel,
-							true
-						)
-					) {
-						selection.range = oldRange;
-						selection.initial.row = oldInitial;
-						return false;
-					}
+				if (!this._transformSelection(selection, true)) {
+					selection.range = oldRange;
+					selection.initial.row = oldInitial;
+					return false;
 				}
 
 				return true;
@@ -1438,6 +1341,40 @@ export class SelectionModel implements ISelectionModel {
 		);
 
 		return previousVisibleColumn;
+	}
+
+	/**
+	 * Transform the selection by a user defined routine.
+	 * @param selection to transform
+	 * @param causedByMove whether the selection is caused by a move (keyboard navigation)
+	 * @returns whether the selection is possible
+	 * @private
+	 */
+	private _transformSelection(
+		selection: ISelection,
+		causedByMove: boolean
+	): boolean {
+		if (!this._options.selection.selectionTransform) {
+			return true; // No user defined routine present
+		}
+
+		const result = this._options.selection.selectionTransform(
+			selection,
+			this._cellModel,
+			causedByMove
+		);
+
+		// Making sure the transformed selection satisfies the option whether only a single cell can be selected
+		if (!this._options.selection.allowRangeSelection) {
+			selection.range = {
+				startRow: selection.initial.row,
+				endRow: selection.initial.row,
+				startColumn: selection.initial.column,
+				endColumn: selection.initial.column,
+			};
+		}
+
+		return result;
 	}
 }
 
