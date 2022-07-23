@@ -1,8 +1,9 @@
-# IntelliJ
+# IDEs
 /.idea
-
+/.vscode
 # NodeJS
 node_modules
 
 # Build output
 /lib
+
