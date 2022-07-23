@@ -16,6 +16,27 @@ export class CellRangeUtil {
 	}
 
 	/**
+	 * Validate the passed cell range so that startRow <= endRow
+	 * and startColumn <= endColumn.
+	 * Modifies the passed cell range in-place.
+	 * @param range to validate
+	 */
+	public static validate(range: ICellRange): ICellRange {
+		if (range.endRow < range.startRow) {
+			const newStartRow = range.endRow;
+			range.endRow = range.startRow;
+			range.startRow = newStartRow;
+		}
+		if (range.endColumn < range.startColumn) {
+			const newStartColumn = range.endColumn;
+			range.endColumn = range.startColumn;
+			range.startColumn = newStartColumn;
+		}
+
+		return range;
+	}
+
+	/**
 	 * Check whether the given range is contained in the other range.
 	 * @param range to check whether it is contained in the second range
 	 * @param containedIn range that contains the first range
@@ -79,42 +100,50 @@ export class CellRangeUtil {
 
 		// Cut top rows if necessary
 		if (a.startRow !== b.startRow) {
-			result.push({
-				startRow: Math.min(a.startRow, b.startRow),
-				endRow: Math.max(a.startRow, b.startRow) - 1, // Exclusive!
-				startColumn: Math.min(a.startColumn, b.startColumn),
-				endColumn: Math.max(a.endColumn, b.endColumn),
-			});
+			result.push(
+				CellRangeUtil.validate({
+					startRow: Math.min(a.startRow, b.startRow),
+					endRow: Math.max(a.startRow, b.startRow) - 1, // Exclusive!
+					startColumn: Math.min(a.startColumn, b.startColumn),
+					endColumn: Math.max(a.endColumn, b.endColumn),
+				})
+			);
 		}
 
 		// Cut bottom rows in necessary
 		if (a.endRow !== b.endRow) {
-			result.push({
-				startRow: Math.min(a.endRow, b.endRow) + 1, // Exclusive!
-				endRow: Math.max(a.endRow, b.endRow),
-				startColumn: Math.min(a.startColumn, b.startColumn),
-				endColumn: Math.max(a.endColumn, b.endColumn),
-			});
+			result.push(
+				CellRangeUtil.validate({
+					startRow: Math.min(a.endRow, b.endRow) + 1, // Exclusive!
+					endRow: Math.max(a.endRow, b.endRow),
+					startColumn: Math.min(a.startColumn, b.startColumn),
+					endColumn: Math.max(a.endColumn, b.endColumn),
+				})
+			);
 		}
 
 		// Cut left columns in between already cut rows
 		if (a.startColumn !== b.startColumn) {
-			result.push({
-				startRow: Math.max(a.startRow, b.startRow),
-				endRow: Math.min(a.endRow, b.endRow),
-				startColumn: Math.min(a.startColumn, b.startColumn),
-				endColumn: Math.max(a.startColumn, b.startColumn) - 1, // Exclusive!
-			});
+			result.push(
+				CellRangeUtil.validate({
+					startRow: Math.max(a.startRow, b.startRow),
+					endRow: Math.min(a.endRow, b.endRow),
+					startColumn: Math.min(a.startColumn, b.startColumn),
+					endColumn: Math.max(a.startColumn, b.startColumn) - 1, // Exclusive!
+				})
+			);
 		}
 
 		// Cut right columns in between already cut rows
 		if (a.endColumn !== b.endColumn) {
-			result.push({
-				startRow: Math.max(a.startRow, b.startRow),
-				endRow: Math.min(a.endRow, b.endRow),
-				startColumn: Math.min(a.endColumn, b.endColumn) + 1, // Exclusive!
-				endColumn: Math.max(a.endColumn, b.endColumn),
-			});
+			result.push(
+				CellRangeUtil.validate({
+					startRow: Math.max(a.startRow, b.startRow),
+					endRow: Math.min(a.endRow, b.endRow),
+					startColumn: Math.min(a.endColumn, b.endColumn) + 1, // Exclusive!
+					endColumn: Math.max(a.endColumn, b.endColumn),
+				})
+			);
 		}
 
 		return result;
