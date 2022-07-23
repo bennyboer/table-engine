@@ -457,9 +457,34 @@ export class SelectionModel implements ISelectionModel {
 			return false;
 		}
 
+		const changed = this._extendSelectionInternal(
+			selection,
+			xDiff,
+			yDiff,
+			jump
+		);
+
+		this._validateSelection(selection, false);
+
+		return changed;
+	}
+
+	private _extendSelectionInternal(
+		selection: ISelection,
+		xDiff: number,
+		yDiff: number,
+		jump: boolean
+	) {
 		if (xDiff !== 0) {
 			if (xDiff < 0) {
 				if (selection.initial.column < selection.range.endColumn) {
+					// Iterate over the next columns
+					// When a column is invisible continue with the next one
+					// When a column is visible check each cell
+					// When a cells end column is higher than the current column continue with the next higher column (cell.range.endColumn + 1)
+					// If that is not the case, check the next row
+					// Finish when all rows in a column are OK!
+
 					// Shrink the selection
 					const newColumn = jump
 						? selection.initial.column
