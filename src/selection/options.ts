@@ -79,6 +79,12 @@ export const ROW_COLUMN_HEADER_TRANSFORM: (
  */
 export interface ISelectionOptions {
 	/**
+	 * Whether selecting ranges is allowed.
+	 * When false only a single cell can be selected.
+	 */
+	allowRangeSelection?: boolean;
+
+	/**
 	 * Whether multiple selections are allowed.
 	 */
 	allowMultiSelection?: boolean;
@@ -134,6 +140,13 @@ export interface ICopyHandleOptions {
 export const fillOptions = (options?: ISelectionOptions) => {
 	if (!options) {
 		options = {};
+	}
+
+	if (
+		options.allowRangeSelection === undefined ||
+		options.allowRangeSelection === null
+	) {
+		options.allowRangeSelection = true;
 	}
 
 	if (

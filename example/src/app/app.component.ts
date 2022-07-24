@@ -579,7 +579,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 								})
 								.afterDismissed()
 								.subscribe((dismiss) => {
-									console.log(dismiss.dismissedByAction);
 									(
 										notification as CopyPerformanceWarningNotification
 									).callback(dismiss.dismissedByAction);
