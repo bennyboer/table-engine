@@ -1,4 +1,4 @@
-import { IRectangle } from '../../util';
+import { IRectangle, ISize } from '../../util';
 import { ICell } from '../../cell';
 import { TableEngine } from '../../table-engine';
 import { ICellRendererEventListener } from './event';
@@ -46,4 +46,11 @@ export interface ICellRenderer<C> {
 	 * @param cell that is disappearing
 	 */
 	onDisappearing(cell: ICell): void;
+
+	/**
+	 * Estimate the preferred size of the given cell.
+	 * @param cell the preferred size is to be estimated of
+	 * @returns the preferred size or null if no estimate could be made
+	 */
+	estimatePreferredSize(cell: ICell): ISize | null;
 }

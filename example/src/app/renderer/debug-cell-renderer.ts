@@ -8,6 +8,7 @@ import { Colors } from '../../../../src/util/colors';
 import { AlignmentUtil } from '../../../../src/util/alignment/alignment-util';
 import { VerticalAlignment } from '../../../../src/util/alignment/vertical-alignment';
 import { HorizontalAlignment } from '../../../../src/util/alignment/horizontal-alignment';
+import { ISize } from 'table-engine/util/size';
 
 export class DebugCellRenderer implements ICanvasCellRenderer {
 	public static readonly NAME: string = 'debug';
@@ -104,5 +105,9 @@ export class DebugCellRenderer implements ICanvasCellRenderer {
 	 */
 	public onDisappearing(cell: ICell): void {
 		// Do nothing
+	}
+
+	estimatePreferredSize(cell: ICell): ISize | null {
+		return null; // Renderer does not have a preferred size
 	}
 }

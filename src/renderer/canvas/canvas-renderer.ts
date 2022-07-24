@@ -23,7 +23,11 @@ import {
 	IRectangle,
 	ISize,
 } from '../../util';
-import { IScrollBarOptions, ISelectionRenderingOptions } from '../options';
+import {
+	IResizerDoubleClickActionOptions,
+	IScrollBarOptions,
+	ISelectionRenderingOptions,
+} from '../options';
 import {
 	ICellRenderer,
 	ICellRendererEvent,
@@ -1780,6 +1784,126 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	/**
+	 * Will estimate the preferred row/column size if possible
+	 * using the cell renderers.
+	 * @param index of the row/column to estimate size of
+	 * @param isRow whether the index is a row or a column
+	 */
+	private _estimatePreferredRowColumnSize(
+		index: number,
+		isRow: boolean
+	): IPreferredRowColumnSizeResult {
+		const indexHidden: boolean = isRow
+			? this._cellModel.isRowHidden(index)
+			: this._cellModel.isColumnHidden(index);
+		if (indexHidden) {
+			return {
+				success: false,
+			};
+		}
+
+		const range: ICellRange = isRow
+			? {
+					startRow: index,
+					endRow: index,
+					startColumn: 0,
+					endColumn: this._cellModel.getColumnCount() - 1,
+			  }
+			: {
+					startRow: 0,
+					endRow: this._cellModel.getRowCount() - 1,
+					startColumn: index,
+					endColumn: index,
+			  };
+		const cells: ICell[] = this._cellModel.getCells(range, {
+			includeHidden: false,
+		});
+
+		let maxEstimate: number = -1;
+		for (const cell of cells) {
+			const onlySpansIndex: boolean =
+				CellRangeUtil.isSingleRowColumnRange(cell.range) ||
+				(isRow
+					? cell.range.startRow === index &&
+					  cell.range.endRow === index
+					: cell.range.startColumn === index &&
+					  cell.range.endColumn === index);
+
+			if (onlySpansIndex) {
+				const cellRenderer: ICanvasCellRenderer =
+					this._getCellRendererForName(cell.rendererName);
+				const preferredSize: ISize | null =
+					cellRenderer.estimatePreferredSize(cell);
+				if (!!preferredSize) {
+					const estimate: number = isRow
+						? preferredSize.height
+						: preferredSize.width;
+					if (maxEstimate < estimate) {
+						maxEstimate = estimate;
+					}
+				}
+			}
+		}
+
+		if (maxEstimate < 0) {
+			return { success: false };
+		} else {
+			return {
+				success: true,
+				preferredSize: maxEstimate,
+			};
+		}
+	}
+
+	private _performDoubleClickResizerAction(
+		index: number,
+		isRow: boolean
+	): void {
+		const options: IResizerDoubleClickActionOptions =
+			this._options.renderer.canvas.rowColumnResizing.doubleClickAction;
+
+		const allowDefaultActions = options.custom(index, isRow);
+		if (!allowDefaultActions) {
+			return;
+		}
+
+		const useEstimate = options.useEstimate;
+		const resetRowSize = options.resetRowSize;
+		const resetColumnSize = options.resetColumnSize;
+
+		let resetSize = false;
+		if (useEstimate) {
+			const estimationResult: IPreferredRowColumnSizeResult =
+				this._estimatePreferredRowColumnSize(index, isRow);
+
+			if (estimationResult.success) {
+				if (isRow) {
+					this._cellModel.resizeRows(
+						[index],
+						estimationResult.preferredSize
+					);
+				} else {
+					this._cellModel.resizeColumns(
+						[index],
+						estimationResult.preferredSize
+					);
+				}
+			} else {
+				resetSize = true; // Reset size to the fixed options instead
+			}
+		}
+
+		if (resetSize) {
+			// Resize given row/column to the given reset size
+			if (isRow) {
+				this._cellModel.resizeRows([index], resetRowSize);
+			} else {
+				this._cellModel.resizeColumns([index], resetColumnSize);
+			}
+		}
+	}
+
+	/**
 	 * Called when a double click event on the canvas has been registered.
 	 * @param event that occurred
 	 */
@@ -1793,7 +1917,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const resizerInfo: IResizerInfo = this._isMouseOverResizingSpace(x, y);
 		if (resizerInfo.isMouseOver) {
 			// Double click on resizer detected
-			// TODO
+			this._performDoubleClickResizerAction(
+				resizerInfo.index,
+				resizerInfo.overRow
+			);
 		} else {
 			// Send event to cell renderer for the cell on the current position
 			const range: ICellRange | null = this._getCellRangeAtPoint(
@@ -5355,4 +5482,9 @@ interface IndexRange {
 	 * Second index in the range.
 	 */
 	to: number;
+}
+
+interface IPreferredRowColumnSizeResult {
+	success: boolean;
+	preferredSize?: number;
 }

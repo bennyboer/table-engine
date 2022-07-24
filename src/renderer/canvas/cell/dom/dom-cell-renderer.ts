@@ -1,5 +1,5 @@
 import { ICanvasCellRenderer } from '../canvas-cell-renderer';
-import { IRectangle } from '../../../../util';
+import { IRectangle, ISize } from '../../../../util';
 import { ICell } from '../../../../cell';
 import { TableEngine } from '../../../../table-engine';
 import { ICellRendererEventListener } from '../../../cell';
@@ -121,6 +121,10 @@ export class DOMCellRenderer implements ICanvasCellRenderer {
 
 			return cache;
 		}
+	}
+
+	estimatePreferredSize(cell: ICell): ISize | null {
+		return null; // Renderer does not have a preferred size
 	}
 }
 

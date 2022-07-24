@@ -1,6 +1,6 @@
 import { ICanvasCellRenderer } from '../canvas-cell-renderer';
 import { ICell } from '../../../../cell';
-import { IRectangle } from '../../../../util';
+import { IRectangle, ISize } from '../../../../util';
 import { TableEngine } from '../../../../table-engine';
 import { IRenderContext } from '../../canvas-renderer';
 import { ICellRendererEventListener } from '../../../cell';
@@ -233,6 +233,10 @@ export class LoadingCellRenderer implements ICanvasCellRenderer {
 	 */
 	public onDisappearing(cell: ICell): void {
 		// Do nothing
+	}
+
+	estimatePreferredSize(cell: ICell): ISize | null {
+		return null; // Renderer does not have a preferred size
 	}
 }
 

@@ -3,7 +3,7 @@ import { IRenderContext } from '../../canvas-renderer';
 import { ICell } from '../../../../cell';
 import { ICellRendererEventListener } from '../../../cell';
 import { TableEngine } from '../../../../table-engine';
-import { Colors, IColor, IPoint, IRectangle } from '../../../../util';
+import { Colors, IColor, IPoint, IRectangle, ISize } from '../../../../util';
 import {
 	fillOptions,
 	IRatingCellRendererOptions,
@@ -469,6 +469,10 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 		path.closePath();
 
 		return path;
+	}
+
+	estimatePreferredSize(cell: ICell): ISize {
+		return null; // Renderer does not have a preferred size
 	}
 }
 

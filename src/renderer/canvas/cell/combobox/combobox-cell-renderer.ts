@@ -13,7 +13,7 @@ import {
 	ICellRendererEventListener,
 	ICellRendererMouseEvent,
 } from '../../../cell';
-import { Colors, IRectangle } from '../../../../util';
+import { Colors, IRectangle, ISize } from '../../../../util';
 import {
 	IComboBoxCellRendererValue,
 	IComboBoxOption,
@@ -110,15 +110,23 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 			cache
 		);
 
-		const selectArrowWidth: number =
-			ComboBoxCellRenderer._renderSelectArrow(ctx, bounds, style);
-		ComboBoxCellRenderer._renderLabel(
+		const selectArrowSize: ISize = ComboBoxCellRenderer._renderSelectArrow(
+			ctx,
+			bounds,
+			style
+		);
+		const labelSize: ISize = ComboBoxCellRenderer._renderLabel(
 			ctx,
 			bounds,
 			value,
 			style,
-			selectArrowWidth
+			selectArrowSize.width
 		);
+
+		cache.preferredSize = {
+			width: selectArrowSize.width + labelSize.width,
+			height: selectArrowSize.height + labelSize.height,
+		};
 	}
 
 	private _determineRenderingStyle(
@@ -170,7 +178,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		ctx: CanvasRenderingContext2D,
 		bounds: IRectangle,
 		style: IRenderingStyle
-	): number {
+	): ISize {
 		const selectArrowPath: ISelectArrowPath =
 			ComboBoxCellRenderer._makeSelectArrowPath();
 
@@ -208,7 +216,10 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 
 		ctx.stroke(transformedSelectArrowPath);
 
-		return selectArrowWidth + 2 * style.padding;
+		return {
+			width: selectArrowWidth + 2 * style.padding,
+			height: selectArrowHeight,
+		};
 	}
 
 	private static _renderLabel(
@@ -217,7 +228,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		value: IComboBoxCellRendererValue,
 		style: IRenderingStyle,
 		selectArrowWidth: number
-	) {
+	): ISize {
 		const labelXOffset = bounds.left + style.padding;
 		const labelYOffset = bounds.top + Math.round(bounds.height / 2);
 
@@ -237,7 +248,9 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 			color = style.labelOptions.hoveredColor;
 		}
 
-		ctx.font = `${style.labelOptions.fontSize}px ${style.labelOptions.fontFamily}`;
+		const fontSize = style.labelOptions.fontSize;
+		const fontFamily = style.labelOptions.fontFamily;
+		ctx.font = `${fontSize}px ${fontFamily}`;
 		ctx.fillStyle = Colors.toStyleStr(color);
 
 		// Check if label fits into box
@@ -263,6 +276,11 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		if (overflow) {
 			ctx.restore();
 		}
+
+		return {
+			width: style.padding + measuredWidth,
+			height: fontSize,
+		};
 	}
 
 	private static _makeSelectArrowPath(): ISelectArrowPath {
@@ -459,6 +477,15 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 			this._engine.repaint();
 		}
 	}
+
+	estimatePreferredSize(cell: ICell): ISize | null {
+		const cache: IViewportCache = ComboBoxCellRenderer._cache(cell);
+		if (!!cache.preferredSize) {
+			return cache.preferredSize;
+		} else {
+			return null;
+		}
+	}
 }
 
 interface ISelectArrowPath {
@@ -478,4 +505,5 @@ interface IRenderingStyle {
 
 interface IViewportCache {
 	hovered: boolean;
+	preferredSize?: ISize;
 }
