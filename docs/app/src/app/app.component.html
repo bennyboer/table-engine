@@ -1,5 +1,5 @@
 <mat-toolbar class='toolbar'>
-  <button mat-icon-button>
+  <button mat-icon-button (click)='drawer.toggle()'>
     <mat-icon>menu</mat-icon>
   </button>
   <img src='assets/logo.svg' height='48'>
@@ -7,10 +7,15 @@
 </mat-toolbar>
 
 <mat-drawer-container class='drawer-container'>
-  <mat-drawer mode='side' opened>
-    <mat-action-list>
-      <button mat-list-item>Introduction</button>
-      <button mat-list-item>Examples</button>
+  <mat-drawer #drawer mode='side' opened>
+    <mat-action-list class='navigation-list'>
+      <mat-list-item>Introduction</mat-list-item>
+
+      <mat-divider></mat-divider>
+      <div mat-subheader>Examples</div>
+
+      <mat-list-item>Minimal</mat-list-item>
+      <mat-list-item>Row/column headers</mat-list-item>
     </mat-action-list>
   </mat-drawer>
   <mat-drawer-content>Main content</mat-drawer-content>
