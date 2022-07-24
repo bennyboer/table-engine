@@ -1,0 +1,14 @@
+:host {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+}
+
+.toolbar {
+  flex: 0 0 auto;
+}
+
+.drawer-container {
+  flex: 1 1 auto;
+}
