@@ -25,6 +25,12 @@ export interface ICellRendererEventListener {
 	onMouseOut?: (event: ICellRendererMouseEvent) => void;
 
 	/**
+	 * Called when a double click is detected on the cell.
+	 * @param event that occurred
+	 */
+	onDoubleClick?: (event: ICellRendererMouseEvent) => void;
+
+	/**
 	 * On mouse up event listener.
 	 * @param event that occurred
 	 */

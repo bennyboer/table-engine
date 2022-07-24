@@ -28,25 +28,10 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 	public static readonly NAME: string = 'text';
 
 	/**
-	 * Max duration of two mouse up events to be detected as double click (in milliseconds).
-	 */
-	private static readonly MAX_DOUBLE_CLICK_DURATION: number = 300;
-
-	/**
 	 * Line wrapping algorithm to use.
 	 */
 	private static readonly LINE_WRAPPER: ILineWrapper =
 		new TrivialLineWrapper();
-
-	/**
-	 * Cell of the last mouse up.
-	 */
-	private _lastCellMouseUp: ICell | null = null;
-
-	/**
-	 * Timestamp of the last mouse up event.
-	 */
-	private _lastMouseUpTimestamp: number;
 
 	/**
 	 * Reference to the table engine.
@@ -62,23 +47,7 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 	 * Event listeners on cells rendered with this cell renderer.
 	 */
 	private _eventListener: ICellRendererEventListener = {
-		onMouseUp: (event) => {
-			const currentTimestamp: number = window.performance.now();
-			if (
-				!!this._lastCellMouseUp &&
-				this._lastCellMouseUp === event.cell
-			) {
-				// Check if is double click
-				const diff: number =
-					currentTimestamp - this._lastMouseUpTimestamp;
-				if (diff <= TextCellRenderer.MAX_DOUBLE_CLICK_DURATION) {
-					this._onDoubleClick(event);
-				}
-			}
-
-			this._lastCellMouseUp = event.cell;
-			this._lastMouseUpTimestamp = currentTimestamp;
-		},
+		onDoubleClick: (event) => this._onDoubleClick(event),
 	};
 
 	constructor(defaultOptions?: ITextCellRendererOptions) {
