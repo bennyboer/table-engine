@@ -1,35 +1,44 @@
 import {
-    ChangeDetectionStrategy,
-    ChangeDetectorRef,
-    Component,
-    OnDestroy,
+	ChangeDetectionStrategy,
+	ChangeDetectorRef,
+	Component,
+	ViewChild,
 } from '@angular/core';
-import { MediaMatcher } from '@angular/cdk/layout';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { NavigationEnd, Router } from '@angular/router';
+import { filter, map, Observable, tap, withLatestFrom } from 'rxjs';
+import { MatSidenav } from '@angular/material/sidenav';
 
 @Component({
-    selector: 'app-root',
-    templateUrl: './app.component.html',
-    styleUrls: ['./app.component.scss'],
-    changeDetection: ChangeDetectionStrategy.OnPush,
+	selector: 'app-root',
+	templateUrl: './app.component.html',
+	styleUrls: ['./app.component.scss'],
+	changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppComponent implements OnDestroy {
-    private _mobileQuery: MediaQueryList;
-    private readonly _mobileQueryListener: () => void;
+export class AppComponent {
+	@ViewChild('drawer')
+	drawer?: MatSidenav;
 
-    constructor(changeDetectorRef: ChangeDetectorRef, media: MediaMatcher) {
-        this._mobileQuery = media.matchMedia('(max-width: 600px)');
-        this._mobileQueryListener = () => changeDetectorRef.detectChanges();
-        this._mobileQuery.addEventListener('change', this._mobileQueryListener);
-    }
+	isMobile: boolean = false;
 
-    ngOnDestroy(): void {
-        this._mobileQuery.removeEventListener(
-            'change',
-            this._mobileQueryListener
-        );
-    }
+	private isMobile$: Observable<boolean> = this.breakpointObserver
+		.observe(Breakpoints.Handset)
+		.pipe(
+			map((result) => result.matches),
+			tap((result) => (this.isMobile = result)),
+			tap(() => this.cd.markForCheck())
+		);
 
-    get isMobile(): boolean {
-        return this._mobileQuery.matches;
-    }
+	constructor(
+		private readonly breakpointObserver: BreakpointObserver,
+		private readonly cd: ChangeDetectorRef,
+		router: Router
+	) {
+		router.events
+			.pipe(
+				withLatestFrom(this.isMobile$),
+				filter(([a, b]) => b && a instanceof NavigationEnd)
+			)
+			.subscribe((_) => this.drawer?.close());
+	}
 }
