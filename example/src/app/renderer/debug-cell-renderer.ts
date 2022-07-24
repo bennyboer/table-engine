@@ -1,13 +1,15 @@
-import { ICanvasCellRenderer } from '../../../../src/renderer/canvas/cell/canvas-cell-renderer';
-import { ICell } from '../../../../src/cell/cell';
-import { IRenderContext } from '../../../../src/renderer/canvas/canvas-renderer';
-import { ICellRendererEventListener } from '../../../../src/renderer/cell/event/cell-renderer-event-listener';
-import { TableEngine } from '../../../../src/table-engine';
-import { IRectangle } from '../../../../src/util/rect';
-import { Colors } from '../../../../src/util/colors';
-import { AlignmentUtil } from '../../../../src/util/alignment/alignment-util';
-import { VerticalAlignment } from '../../../../src/util/alignment/vertical-alignment';
-import { HorizontalAlignment } from '../../../../src/util/alignment/horizontal-alignment';
+import {
+	AlignmentUtil,
+	Colors,
+	HorizontalAlignment,
+	ICanvasCellRenderer,
+	ICell,
+	ICellRendererEventListener,
+	IRectangle,
+	IRenderContext,
+	TableEngine,
+	VerticalAlignment,
+} from '../../../../src';
 import { ISize } from 'table-engine/util/size';
 
 export class DebugCellRenderer implements ICanvasCellRenderer {
