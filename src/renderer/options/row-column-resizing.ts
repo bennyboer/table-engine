@@ -38,6 +38,31 @@ const DEFAULT_RESIZER_LINE_THICKNESS: number = 1;
 const DEFAULT_RESIZER_LINE_COLOR: IColor = Colors.BLACK;
 
 /**
+ * Default custom action that is executed
+ * when double clicking a resizer.
+ */
+const DEFAULT_CUSTOM_DOUBLE_CLICK_ACTION: (
+	index: number,
+	isRow: boolean
+) => boolean = () => true;
+
+/**
+ * Default size to reset a row to when double clicking.
+ */
+const DEFAULT_RESET_ROW_SIZE: number = 20;
+
+/**
+ * Default size to reset a column to when double clicking.
+ */
+const DEFAULT_RESET_COLUMN_SIZE: number = 100;
+
+/**
+ * Default value for whether to resize a row/column when double clicking
+ * a resizer to an estimate of the cell renderers.
+ */
+const DEFAULT_DOUBLE_CLICK_RESIZING_USE_ESTIMATE: boolean = true;
+
+/**
  * The default resizing handler.
  */
 const DEFAULT_RESIZING_HANDLER: (
@@ -165,6 +190,38 @@ export interface IRowColumnResizingOptions {
 		cellModel: ICellModel,
 		selectionModel: ISelectionModel
 	) => boolean;
+
+	doubleClickAction?: IResizerDoubleClickActionOptions;
+}
+
+export interface IResizerDoubleClickActionOptions {
+	/**
+	 * Custom action executed when a resizer is double clicked.
+	 * Returns whether to execute the default actions.
+	 * @param index of the row or column
+	 * @param isRow whether the index means a row or a column
+	 */
+	custom?: (index: number, isRow: boolean) => boolean;
+
+	/**
+	 * Row size to reset to when double clicking and the cell renderers
+	 * are not able to give an estimate.
+	 */
+	resetRowSize?: number;
+
+	/**
+	 * Column size to reset to when double clicking and the cell renderers
+	 * are not able to give an estimate.
+	 */
+	resetColumnSize?: number;
+
+	/**
+	 * Whether to let the cell renderers calculate a preferred size for
+	 * the row/column to resize with double-click on the resizer.
+	 * If this is false, it will reset the row/column size to the given reset size
+	 * (see resetRowSize or resetColumnSize properties).
+	 */
+	useEstimate?: boolean;
 }
 
 /**
@@ -213,6 +270,39 @@ export const fillOptions = (options?: IRowColumnResizingOptions) => {
 
 	if (!options.resizingHandler) {
 		options.resizingHandler = DEFAULT_RESIZING_HANDLER;
+	}
+
+	options.doubleClickAction = fillDoubleClickActionOptions(
+		options.doubleClickAction
+	);
+
+	return options;
+};
+
+const fillDoubleClickActionOptions = (
+	options?: IResizerDoubleClickActionOptions
+) => {
+	if (!options) {
+		options = {};
+	}
+
+	if (!options.custom) {
+		options.custom = DEFAULT_CUSTOM_DOUBLE_CLICK_ACTION;
+	}
+
+	if (options.resetRowSize === undefined || options.resetRowSize === null) {
+		options.resetRowSize = DEFAULT_RESET_ROW_SIZE;
+	}
+
+	if (
+		options.resetColumnSize === undefined ||
+		options.resetColumnSize === null
+	) {
+		options.resetColumnSize = DEFAULT_RESET_COLUMN_SIZE;
+	}
+
+	if (options.useEstimate === undefined || options.useEstimate === null) {
+		options.useEstimate = DEFAULT_DOUBLE_CLICK_RESIZING_USE_ESTIMATE;
 	}
 
 	return options;

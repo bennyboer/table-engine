@@ -1,6 +1,6 @@
 import { ICanvasCellRenderer } from '../canvas-cell-renderer';
 import { ICell } from '../../../../cell';
-import { IRectangle } from '../../../../util';
+import { IRectangle, ISize } from '../../../../util';
 import { ISelectionModel } from '../../../../selection';
 import { TableEngine } from '../../../../table-engine';
 import { IRenderContext } from '../../canvas-renderer';
@@ -67,13 +67,23 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 				this._engine.repaint();
 			}
 		},
-		onMouseOut: (event) => {
+		onMouseOut: () => {
 			if (this._hoveredCell !== null) {
 				this._hoveredCell = null;
 				this._engine.repaint();
 			}
 		},
 	};
+
+	private static _cache(cell: ICell): IViewportCache {
+		if (!!cell.viewportCache) {
+			return cell.viewportCache as IViewportCache;
+		} else {
+			const cache: IViewportCache = {};
+			cell.viewportCache = cache;
+			return cache;
+		}
+	}
 
 	/**
 	 * Initialize the cell renderer.
@@ -188,13 +198,18 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 				: RowColumnHeaderRenderer.BACKGROUND_COLOR;
 		ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
 
+		const preferredSize: ISize = {
+			width: 0,
+			height: 0,
+		};
+
 		const value: string | null = RowColumnHeaderRenderer._getCellValue(
 			cell.range.startRow,
 			cell.range.startColumn
 		);
 		if (!!value) {
 			const isRowHeader: boolean = cell.range.startColumn === 0;
-			let selected: boolean = false;
+			let selected: boolean;
 			if (isRowHeader) {
 				// Is row header
 				selected = this._isRowSelected(cell.range.startRow);
@@ -229,17 +244,26 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 			}
 
 			ctx.fillStyle = '#333333'; // Foreground color
+
+			const fontSize: number = 12;
 			if (selected) {
-				ctx.font = 'bold 12px sans-serif';
+				ctx.font = `bold ${fontSize}px sans-serif`;
 			} else {
-				ctx.font = '12px sans-serif';
+				ctx.font = `${fontSize}px sans-serif`;
 			}
+			const textWidth = ctx.measureText(value).width;
 			ctx.fillText(
 				value,
 				Math.round(bounds.left + bounds.width / 2),
 				Math.round(bounds.top + bounds.height / 2)
 			);
+
+			preferredSize.width = textWidth;
+			preferredSize.height = fontSize;
 		}
+
+		const cache = RowColumnHeaderRenderer._cache(cell);
+		cache.preferredSize = preferredSize;
 	}
 
 	/**
@@ -288,4 +312,17 @@ export class RowColumnHeaderRenderer implements ICanvasCellRenderer {
 	public onDisappearing(cell: ICell): void {
 		// Do nothing
 	}
+
+	estimatePreferredSize(cell: ICell): ISize {
+		const cache: IViewportCache = RowColumnHeaderRenderer._cache(cell);
+		if (!!cache.preferredSize) {
+			return cache.preferredSize;
+		} else {
+			return null;
+		}
+	}
+}
+
+interface IViewportCache {
+	preferredSize?: ISize;
 }

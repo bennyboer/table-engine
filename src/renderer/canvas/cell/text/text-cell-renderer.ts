@@ -9,6 +9,7 @@ import {
 	Colors,
 	HorizontalAlignment,
 	IRectangle,
+	ISize,
 	VerticalAlignment,
 } from '../../../../util';
 import { ILineWrapper, IParagraph, TrivialLineWrapper } from './line-wrap';
@@ -28,25 +29,10 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 	public static readonly NAME: string = 'text';
 
 	/**
-	 * Max duration of two mouse up events to be detected as double click (in milliseconds).
-	 */
-	private static readonly MAX_DOUBLE_CLICK_DURATION: number = 300;
-
-	/**
 	 * Line wrapping algorithm to use.
 	 */
 	private static readonly LINE_WRAPPER: ILineWrapper =
 		new TrivialLineWrapper();
-
-	/**
-	 * Cell of the last mouse up.
-	 */
-	private _lastCellMouseUp: ICell | null = null;
-
-	/**
-	 * Timestamp of the last mouse up event.
-	 */
-	private _lastMouseUpTimestamp: number;
 
 	/**
 	 * Reference to the table engine.
@@ -62,27 +48,25 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 	 * Event listeners on cells rendered with this cell renderer.
 	 */
 	private _eventListener: ICellRendererEventListener = {
-		onMouseUp: (event) => {
-			const currentTimestamp: number = window.performance.now();
-			if (
-				!!this._lastCellMouseUp &&
-				this._lastCellMouseUp === event.cell
-			) {
-				// Check if is double click
-				const diff: number =
-					currentTimestamp - this._lastMouseUpTimestamp;
-				if (diff <= TextCellRenderer.MAX_DOUBLE_CLICK_DURATION) {
-					this._onDoubleClick(event);
-				}
-			}
-
-			this._lastCellMouseUp = event.cell;
-			this._lastMouseUpTimestamp = currentTimestamp;
-		},
+		onDoubleClick: (event) => this._onDoubleClick(event),
 	};
 
 	constructor(defaultOptions?: ITextCellRendererOptions) {
 		this._defaultOptions = fillTextCellRendererOptions(defaultOptions);
+	}
+
+	/**
+	 * Get the viewport cache of the given cell.
+	 * @param cell to get cache for
+	 */
+	private static _cache(cell: ICell): ITextCellRendererCache {
+		if (!!cell.viewportCache) {
+			return cell.viewportCache as ITextCellRendererCache;
+		} else {
+			const cache: ITextCellRendererCache = {};
+			cell.viewportCache = cache;
+			return cache;
+		}
 	}
 
 	/**
@@ -255,6 +239,8 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 			return;
 		}
 
+		const cache: ITextCellRendererCache = TextCellRenderer._cache(cell);
+
 		// Check if the value is of the special text cell renderer interface for more customization
 		const isSpecialCellRendererValue: boolean =
 			typeof cell.value === 'object' && 'text' in cell.value;
@@ -273,6 +259,7 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 			this._defaultOptions.verticalAlignment;
 		let horizontalAlignment: HorizontalAlignment =
 			this._defaultOptions.horizontalAlignment;
+		let fontSize: number = this._defaultOptions.fontSize;
 
 		// Override options if necessary
 		let savedContext: boolean = false;
@@ -304,7 +291,7 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 					ctx.save();
 				}
 
-				const fontSize: number = hasCustomFontSize
+				fontSize = hasCustomFontSize
 					? specialValue.options.fontSize
 					: this._defaultOptions.fontSize;
 				const fontFamily: string = hasCustomFontFamily
@@ -358,10 +345,7 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 		let paragraph: IParagraph = null;
 
 		// Check cells cache first to check whether the paragraph to render has already been cached.
-		if (!!cell.viewportCache) {
-			const cache: ITextCellRendererCache =
-				cell.viewportCache as ITextCellRendererCache;
-
+		if (!!cache.paragraph && !!cache.text) {
 			// Use cached paragraph if cache is still valid
 			if (cache.text === text && cache.paragraph.width === bounds.width) {
 				paragraph = cache.paragraph;
@@ -380,10 +364,8 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 			Cache in viewport cache so that the paragraph does not need
 			to be recreated as long as the cell stays in the viewport.
 			 */
-			cell.viewportCache = {
-				paragraph,
-				text,
-			} as ITextCellRendererCache;
+			cache.paragraph = paragraph;
+			cache.text = text;
 		}
 
 		const clip: boolean = !TextCellRenderer._fitsInBounds(
@@ -434,6 +416,11 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 		if (savedContext) {
 			ctx.restore();
 		}
+
+		cache.preferredSize = {
+			width: lineWrap ? 0 : paragraph.width,
+			height: lineWrap ? paragraph.lines.length * lineHeight : fontSize,
+		};
 	}
 
 	private static _calculateLineYOffset(
@@ -507,6 +494,15 @@ export class TextCellRenderer implements ICanvasCellRenderer {
 	public onDisappearing(cell: ICell): void {
 		// Do nothing
 	}
+
+	estimatePreferredSize(cell: ICell): ISize | null {
+		const cache: ITextCellRendererCache = TextCellRenderer._cache(cell);
+		if (!!cache.preferredSize) {
+			return cache.preferredSize;
+		} else {
+			return null;
+		}
+	}
 }
 
 /**
@@ -520,10 +516,12 @@ interface ITextCellRendererCache {
 	/**
 	 * The cached paragraph.
 	 */
-	paragraph: IParagraph;
+	paragraph?: IParagraph;
 
 	/**
 	 * Text for which the paragraph has been created.
 	 */
-	text: string;
+	text?: string;
+
+	preferredSize?: ISize;
 }

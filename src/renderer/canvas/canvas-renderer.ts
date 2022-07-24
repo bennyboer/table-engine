@@ -23,7 +23,11 @@ import {
 	IRectangle,
 	ISize,
 } from '../../util';
-import { IScrollBarOptions, ISelectionRenderingOptions } from '../options';
+import {
+	IResizerDoubleClickActionOptions,
+	IScrollBarOptions,
+	ISelectionRenderingOptions,
+} from '../options';
 import {
 	ICellRenderer,
 	ICellRendererEvent,
@@ -145,6 +149,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Registered listener to mouse up events.
 	 */
 	private _mouseUpListener: (MouseEvent) => void;
+
+	/**
+	 * Registered listener to double click events.
+	 */
+	private _doubleClickListener: (MouseEvent) => void;
 
 	/**
 	 * Registered listener to touch start events.
@@ -579,6 +588,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		this._mouseUpListener = (event) => this._onMouseUp(event);
 		window.addEventListener('mouseup', this._mouseUpListener);
 
+		this._doubleClickListener = (event) => this._onDoubleClick(event);
+		this._overlayContainer.addEventListener(
+			'dblclick',
+			this._doubleClickListener
+		);
+
 		// Listen for touch events
 		this._touchStartListener = (event) => this._onTouchStart(event);
 		this._overlayContainer.addEventListener(
@@ -672,6 +687,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 		if (!!this._mouseUpListener) {
 			window.removeEventListener('mouseup', this._mouseUpListener);
+		}
+		if (!!this._doubleClickListener) {
+			this._overlayContainer.removeEventListener(
+				'dblclick',
+				this._doubleClickListener
+			);
 		}
 
 		if (!!this._touchStartListener) {
@@ -922,15 +943,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	): ICellRange | null {
 		const fixedRowsHeight: number =
 			!!this._lastRenderingContext &&
-				!!this._lastRenderingContext.cells.fixedRowCells
+			!!this._lastRenderingContext.cells.fixedRowCells
 				? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-					.height
+						.height
 				: 0;
 		const fixedColumnWidth: number =
 			!!this._lastRenderingContext &&
-				!!this._lastRenderingContext.cells.fixedColumnCells
+			!!this._lastRenderingContext.cells.fixedColumnCells
 				? this._lastRenderingContext.cells.fixedColumnCells
-					.viewPortBounds.width
+						.viewPortBounds.width
 				: 0;
 
 		if (!allowOverflow) {
@@ -1097,12 +1118,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		return (
 			x >= ctx.selection.copyHandle.bounds.left &&
 			x <=
-			ctx.selection.copyHandle.bounds.left +
-			ctx.selection.copyHandle.bounds.width &&
+				ctx.selection.copyHandle.bounds.left +
+					ctx.selection.copyHandle.bounds.width &&
 			y >= ctx.selection.copyHandle.bounds.top &&
 			y <=
-			ctx.selection.copyHandle.bounds.top +
-			ctx.selection.copyHandle.bounds.height
+				ctx.selection.copyHandle.bounds.top +
+					ctx.selection.copyHandle.bounds.height
 		);
 	}
 
@@ -1577,26 +1598,26 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		if (this._autoScrollContext.xDiff > 0) {
 			this._autoScrollContext.xDiff = Math.max(
 				this._autoScrollContext.xDiff +
-				(this._autoScrollContext.acceleration * diff) / 1000,
+					(this._autoScrollContext.acceleration * diff) / 1000,
 				0
 			);
 		} else {
 			this._autoScrollContext.xDiff = Math.min(
 				this._autoScrollContext.xDiff -
-				(this._autoScrollContext.acceleration * diff) / 1000,
+					(this._autoScrollContext.acceleration * diff) / 1000,
 				0
 			);
 		}
 		if (this._autoScrollContext.yDiff > 0) {
 			this._autoScrollContext.yDiff = Math.max(
 				this._autoScrollContext.yDiff +
-				(this._autoScrollContext.acceleration * diff) / 1000,
+					(this._autoScrollContext.acceleration * diff) / 1000,
 				0
 			);
 		} else {
 			this._autoScrollContext.yDiff = Math.min(
 				this._autoScrollContext.yDiff -
-				(this._autoScrollContext.acceleration * diff) / 1000,
+					(this._autoScrollContext.acceleration * diff) / 1000,
 				0
 			);
 		}
@@ -1714,7 +1735,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			const fixedRowsHeight: number = !!this._lastRenderingContext.cells
 				.fixedRowCells
 				? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-					.height
+						.height
 				: 0;
 			const viewPortHeight =
 				this._lastRenderingContext.cells.nonFixedCells.viewPortBounds
@@ -1740,7 +1761,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			const fixedColumnWidth: number = !!this._lastRenderingContext.cells
 				.fixedColumnCells
 				? this._lastRenderingContext.cells.fixedColumnCells
-					.viewPortBounds.width
+						.viewPortBounds.width
 				: 0;
 			const viewPortWidth =
 				this._lastRenderingContext.cells.nonFixedCells.viewPortBounds
@@ -1758,6 +1779,168 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 			if (this._scrollToX((curX / maxX) * (tableWidth - viewPortWidth))) {
 				this._repaintScheduler.next();
+			}
+		}
+	}
+
+	/**
+	 * Will estimate the preferred row/column size if possible
+	 * using the cell renderers.
+	 * @param index of the row/column to estimate size of
+	 * @param isRow whether the index is a row or a column
+	 */
+	private _estimatePreferredRowColumnSize(
+		index: number,
+		isRow: boolean
+	): IPreferredRowColumnSizeResult {
+		const indexHidden: boolean = isRow
+			? this._cellModel.isRowHidden(index)
+			: this._cellModel.isColumnHidden(index);
+		if (indexHidden) {
+			return {
+				success: false,
+			};
+		}
+
+		const range: ICellRange = isRow
+			? {
+					startRow: index,
+					endRow: index,
+					startColumn: 0,
+					endColumn: this._cellModel.getColumnCount() - 1,
+			  }
+			: {
+					startRow: 0,
+					endRow: this._cellModel.getRowCount() - 1,
+					startColumn: index,
+					endColumn: index,
+			  };
+		const cells: ICell[] = this._cellModel.getCells(range, {
+			includeHidden: false,
+		});
+
+		let maxEstimate: number = -1;
+		for (const cell of cells) {
+			const onlySpansIndex: boolean =
+				CellRangeUtil.isSingleRowColumnRange(cell.range) ||
+				(isRow
+					? cell.range.startRow === index &&
+					  cell.range.endRow === index
+					: cell.range.startColumn === index &&
+					  cell.range.endColumn === index);
+
+			if (onlySpansIndex) {
+				const cellRenderer: ICanvasCellRenderer =
+					this._getCellRendererForName(cell.rendererName);
+				const preferredSize: ISize | null =
+					cellRenderer.estimatePreferredSize(cell);
+				if (!!preferredSize) {
+					const estimate: number = isRow
+						? preferredSize.height
+						: preferredSize.width;
+					if (maxEstimate < estimate) {
+						maxEstimate = estimate;
+					}
+				}
+			}
+		}
+
+		if (maxEstimate < 0) {
+			return { success: false };
+		} else {
+			return {
+				success: true,
+				preferredSize: maxEstimate,
+			};
+		}
+	}
+
+	private _performDoubleClickResizerAction(
+		index: number,
+		isRow: boolean
+	): void {
+		const options: IResizerDoubleClickActionOptions =
+			this._options.renderer.canvas.rowColumnResizing.doubleClickAction;
+
+		const allowDefaultActions = options.custom(index, isRow);
+		if (!allowDefaultActions) {
+			return;
+		}
+
+		const useEstimate = options.useEstimate;
+		const resetRowSize = options.resetRowSize;
+		const resetColumnSize = options.resetColumnSize;
+
+		let resetSize = false;
+		if (useEstimate) {
+			const estimationResult: IPreferredRowColumnSizeResult =
+				this._estimatePreferredRowColumnSize(index, isRow);
+
+			if (estimationResult.success) {
+				if (isRow) {
+					this._cellModel.resizeRows(
+						[index],
+						estimationResult.preferredSize
+					);
+				} else {
+					this._cellModel.resizeColumns(
+						[index],
+						estimationResult.preferredSize
+					);
+				}
+			} else {
+				resetSize = true; // Reset size to the fixed options instead
+			}
+		}
+
+		if (resetSize) {
+			// Resize given row/column to the given reset size
+			if (isRow) {
+				this._cellModel.resizeRows([index], resetRowSize);
+			} else {
+				this._cellModel.resizeColumns([index], resetColumnSize);
+			}
+		}
+	}
+
+	/**
+	 * Called when a double click event on the canvas has been registered.
+	 * @param event that occurred
+	 */
+	private _onDoubleClick(event: MouseEvent): void {
+		if (!this._lastRenderingContext) {
+			return;
+		}
+
+		const [x, y] = this._getMouseOffset(event);
+
+		const resizerInfo: IResizerInfo = this._isMouseOverResizingSpace(x, y);
+		if (resizerInfo.isMouseOver) {
+			// Double click on resizer detected
+			this._performDoubleClickResizerAction(
+				resizerInfo.index,
+				resizerInfo.overRow
+			);
+		} else {
+			// Send event to cell renderer for the cell on the current position
+			const range: ICellRange | null = this._getCellRangeAtPoint(
+				x,
+				y,
+				false
+			);
+			if (!!range) {
+				this._sendEventForPosition(
+					range.startRow,
+					range.startColumn,
+					(listener) => listener.onDoubleClick,
+					(e) => {
+						const mouseEvent: ICellRendererMouseEvent =
+							e as ICellRendererMouseEvent;
+						mouseEvent.offset = { x, y };
+						mouseEvent.originalEvent = event;
+						return mouseEvent;
+					}
+				);
 			}
 		}
 	}
@@ -1782,8 +1965,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			const oldSize: number = this._resizingDragStart.info.overRow
 				? this._cellModel.getRowSize(this._resizingDragStart.info.index)
 				: this._cellModel.getColumnSize(
-					this._resizingDragStart.info.index
-				);
+						this._resizingDragStart.info.index
+				  );
 			let newSize: number = oldSize + sizeDiff;
 
 			// Restrict new size by the min allowed row/column sizes from options
@@ -1984,7 +2167,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 			this.setZoom(
 				(this._touchZoomContext.startZoom * currentFingerDistance) /
-				this._touchZoomContext.startTouchDistance
+					this._touchZoomContext.startTouchDistance
 			);
 			return;
 		}
@@ -2027,11 +2210,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 				this._updateAutoScrolling(
 					-this._panningStart.speedX *
-					this.rendererOptions.canvas.scrolling
-						.touchScrollingSpeedFactor,
+						this.rendererOptions.canvas.scrolling
+							.touchScrollingSpeedFactor,
 					-this._panningStart.speedY *
-					this.rendererOptions.canvas.scrolling
-						.touchScrollingSpeedFactor,
+						this.rendererOptions.canvas.scrolling
+							.touchScrollingSpeedFactor,
 					this.rendererOptions.canvas.scrolling
 						.touchScrollingAcceleration
 				);
@@ -2083,15 +2266,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		// Re-size scroll bar offsets as well
 		const fixedRowsHeight: number =
 			!!this._lastRenderingContext &&
-				!!this._lastRenderingContext.cells.fixedRowCells
+			!!this._lastRenderingContext.cells.fixedRowCells
 				? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-					.height
+						.height
 				: 0;
 		const fixedColumnsWidth: number =
 			!!this._lastRenderingContext &&
-				!!this._lastRenderingContext.cells.fixedColumnCells
+			!!this._lastRenderingContext.cells.fixedColumnCells
 				? this._lastRenderingContext.cells.fixedColumnCells
-					.viewPortBounds.width
+						.viewPortBounds.width
 				: 0;
 
 		const tableHeight: number =
@@ -2102,11 +2285,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const oldViewPort: IRectangle = !!this._lastRenderingContext
 			? this._lastRenderingContext.cells.nonFixedCells.viewPortBounds
 			: {
-				top: 0,
-				left: 0,
-				width: 0,
-				height: 0,
-			};
+					top: 0,
+					left: 0,
+					width: 0,
+					height: 0,
+			  };
 
 		if (tableWidth > newBounds.width) {
 			const oldMaxOffset = tableWidth - oldViewPort.width;
@@ -2558,7 +2741,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		return !!this._lastRenderingContext &&
 			!!this._lastRenderingContext.cells.fixedRowCells
 			? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-				.height
+					.height
 			: 0;
 	}
 
@@ -2566,7 +2749,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		return !!this._lastRenderingContext &&
 			!!this._lastRenderingContext.cells.fixedColumnCells
 			? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds
-				.width
+					.width
 			: 0;
 	}
 
@@ -2594,12 +2777,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const fixedRowsHeight: number = !!this._lastRenderingContext.cells
 			.fixedRowCells
 			? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-				.height
+					.height
 			: 0;
 		const fixedColumnsWidth: number = !!this._lastRenderingContext.cells
 			.fixedColumnCells
 			? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds
-				.width
+					.width
 			: 0;
 
 		bounds.left -= fixedColumnsWidth;
@@ -2762,7 +2945,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const fixedColumnsWidth: number = !!this._lastRenderingContext.cells
 			.fixedColumnCells
 			? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds
-				.width
+					.width
 			: 0;
 
 		const tableWidth: number =
@@ -2818,7 +3001,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const fixedRowsHeight: number = !!this._lastRenderingContext.cells
 			.fixedRowCells
 			? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-				.height
+					.height
 			: 0;
 
 		const tableHeight: number =
@@ -3187,7 +3370,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					if (initialUnderFixedColumnsOffset > 0) {
 						initialBounds.width = Math.max(
 							initialBounds.width -
-							initialUnderFixedColumnsOffset,
+								initialUnderFixedColumnsOffset,
 							0
 						);
 					}
@@ -3361,16 +3544,16 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const fixedRowsHeight: number =
 			fixedRows > 0
 				? this._cellModel.getRowOffset(fixedRows - 1) +
-				(this._cellModel.isRowHidden(fixedRows - 1)
-					? 0.0
-					: this._cellModel.getRowSize(fixedRows - 1))
+				  (this._cellModel.isRowHidden(fixedRows - 1)
+						? 0.0
+						: this._cellModel.getRowSize(fixedRows - 1))
 				: 0;
 		const fixedColumnsWidth: number =
 			fixedColumns > 0
 				? this._cellModel.getColumnOffset(fixedColumns - 1) +
-				(this._cellModel.isColumnHidden(fixedColumns - 1)
-					? 0.0
-					: this._cellModel.getColumnSize(fixedColumns - 1))
+				  (this._cellModel.isColumnHidden(fixedColumns - 1)
+						? 0.0
+						: this._cellModel.getColumnSize(fixedColumns - 1))
 				: 0;
 
 		const cellsInfo: ICellRenderContextCollection =
@@ -3426,33 +3609,33 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		return {
 			inFixedCorner: !!cellsInfo.fixedCornerCells
 				? this._calculateBorderInfo(
-					this._borderModel.getBorders(
-						cellsInfo.fixedCornerCells.cellRange
-					),
-					cellsInfo.fixedCornerCells.cellRange,
-					false,
-					false
-				)
+						this._borderModel.getBorders(
+							cellsInfo.fixedCornerCells.cellRange
+						),
+						cellsInfo.fixedCornerCells.cellRange,
+						false,
+						false
+				  )
 				: [],
 			inFixedColumns: !!cellsInfo.fixedColumnCells
 				? this._calculateBorderInfo(
-					this._borderModel.getBorders(
-						cellsInfo.fixedColumnCells.cellRange
-					),
-					cellsInfo.fixedColumnCells.cellRange,
-					false,
-					true
-				)
+						this._borderModel.getBorders(
+							cellsInfo.fixedColumnCells.cellRange
+						),
+						cellsInfo.fixedColumnCells.cellRange,
+						false,
+						true
+				  )
 				: [],
 			inFixedRows: !!cellsInfo.fixedRowCells
 				? this._calculateBorderInfo(
-					this._borderModel.getBorders(
-						cellsInfo.fixedRowCells.cellRange
-					),
-					cellsInfo.fixedRowCells.cellRange,
-					true,
-					false
-				)
+						this._borderModel.getBorders(
+							cellsInfo.fixedRowCells.cellRange
+						),
+						cellsInfo.fixedRowCells.cellRange,
+						true,
+						false
+				  )
 				: [],
 			inNonFixedArea: this._calculateBorderInfo(
 				this._borderModel.getBorders(cellsInfo.nonFixedCells.cellRange),
@@ -3956,7 +4139,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 			if (this._options.misc.debug) {
 				console.log(
-					`RENDERING: ${window.performance.now() - renderingTime
+					`RENDERING: ${
+						window.performance.now() - renderingTime
 					}ms, CREATING RENDERING CONTEXT: ${creatingRenderingContextTime}ms`
 				);
 			}
@@ -4138,12 +4322,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						);
 					let topOffset: number =
 						(upperCrossingBorderEnvironment.dominantBorderSide ===
-							border.right
+						border.right
 							? -1
 							: 1) *
 						(!!upperCrossingBorderEnvironment.dominantHorizontalSide
 							? upperCrossingBorderEnvironment
-								.dominantHorizontalSide.size / 2
+									.dominantHorizontalSide.size / 2
 							: 0);
 
 					const lowerCrossingBorderEnvironment =
@@ -4163,12 +4347,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						);
 					let bottomOffset: number =
 						(lowerCrossingBorderEnvironment.dominantBorderSide ===
-							border.right
+						border.right
 							? -1
 							: 1) *
 						(!!lowerCrossingBorderEnvironment.dominantHorizontalSide
 							? lowerCrossingBorderEnvironment
-								.dominantHorizontalSide.size / 2
+									.dominantHorizontalSide.size / 2
 							: 0);
 
 					CanvasRenderer._applyBorderStyle(ctx, border.right);
@@ -4204,12 +4388,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						);
 					let leftOffset: number =
 						(leftCrossingBorderEnvironment.dominantBorderSide ===
-							border.bottom
+						border.bottom
 							? -1
 							: 1) *
 						(!!leftCrossingBorderEnvironment.dominantVerticalSide
 							? leftCrossingBorderEnvironment.dominantVerticalSide
-								.size / 2
+									.size / 2
 							: 0);
 
 					const rightCrossingBorderEnvironment =
@@ -4229,12 +4413,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						);
 					let rightOffset: number =
 						(rightCrossingBorderEnvironment.dominantBorderSide ===
-							border.bottom
+						border.bottom
 							? -1
 							: 1) *
 						(!!rightCrossingBorderEnvironment.dominantVerticalSide
 							? rightCrossingBorderEnvironment
-								.dominantVerticalSide.size / 2
+									.dominantVerticalSide.size / 2
 							: 0);
 
 					CanvasRenderer._applyBorderStyle(ctx, border.bottom);
@@ -4302,7 +4486,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				} else if (
 					!side.isDefault &&
 					CanvasRenderer._calculateColorDensity(side.color) <
-					CanvasRenderer._calculateColorDensity(dominant.color)
+						CanvasRenderer._calculateColorDensity(dominant.color)
 				) {
 					dominant = side;
 				}
@@ -4446,7 +4630,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					context.focused
 						? context.selection.options.primary.backgroundColor
 						: context.selection.options.primary
-							.backgroundColorUnfocused
+								.backgroundColorUnfocused
 				);
 				ctx.strokeStyle = Colors.toStyleStr(
 					context.focused
@@ -4540,7 +4724,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						context.focused
 							? context.selection.options.primary.borderColor
 							: context.selection.options.primary
-								.borderColorUnfocused
+									.borderColorUnfocused
 					);
 					ctx.fillRect(
 						copyHandleX,
@@ -4563,13 +4747,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					context.focused
 						? context.selection.options.secondary.backgroundColor
 						: context.selection.options.secondary
-							.backgroundColorUnfocused
+								.backgroundColorUnfocused
 				);
 				ctx.strokeStyle = Colors.toStyleStr(
 					context.focused
 						? context.selection.options.secondary.borderColor
 						: context.selection.options.secondary
-							.borderColorUnfocused
+								.borderColorUnfocused
 				);
 			} else {
 				ctx.fillRect(
@@ -4647,15 +4831,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		const fixedRowsHeight: number =
 			!!this._lastRenderingContext &&
-				!!this._lastRenderingContext.cells.fixedRowCells
+			!!this._lastRenderingContext.cells.fixedRowCells
 				? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-					.height
+						.height
 				: 0;
 		const fixedColumnsWidth: number =
 			!!this._lastRenderingContext &&
-				!!this._lastRenderingContext.cells.fixedColumnCells
+			!!this._lastRenderingContext.cells.fixedColumnCells
 				? this._lastRenderingContext.cells.fixedColumnCells
-					.viewPortBounds.width
+						.viewPortBounds.width
 				: 0;
 
 		let top: number = overlay.bounds.top;
@@ -5298,4 +5482,9 @@ interface IndexRange {
 	 * Second index in the range.
 	 */
 	to: number;
+}
+
+interface IPreferredRowColumnSizeResult {
+	success: boolean;
+	preferredSize?: number;
 }

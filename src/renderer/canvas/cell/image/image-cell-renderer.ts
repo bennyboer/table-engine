@@ -1,6 +1,6 @@
 import { ICanvasCellRenderer } from '../canvas-cell-renderer';
 import { ICell } from '../../../../cell';
-import { IRectangle } from '../../../../util';
+import { IRectangle, ISize } from '../../../../util';
 import { TableEngine } from '../../../../table-engine';
 import { IRenderContext } from '../../canvas-renderer';
 import { ICellRendererEventListener } from '../../../cell';
@@ -255,6 +255,28 @@ export class ImageCellRenderer implements ICanvasCellRenderer {
 	 */
 	public onDisappearing(cell: ICell): void {
 		// Do nothing
+	}
+
+	estimatePreferredSize(cell: ICell): ISize | null {
+		if (!cell.value) {
+			return null;
+		}
+
+		const value: IImageCellRendererValue =
+			cell.value as IImageCellRendererValue;
+
+		const preferredSize: ISize = {
+			width: 0,
+			height: 0,
+		};
+		if (value.width !== undefined && value.width !== null) {
+			preferredSize.width = value.width;
+		}
+		if (value.height !== undefined && value.height !== null) {
+			preferredSize.height = value.height;
+		}
+
+		return preferredSize;
 	}
 }
 

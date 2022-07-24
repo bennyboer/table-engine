@@ -14,6 +14,7 @@ import {
 	IColor,
 	IPoint,
 	IRectangle,
+	ISize,
 	VerticalAlignment,
 } from '../../../../util';
 import { ICheckboxCellRendererValue } from './checkbox-cell-renderer-value';
@@ -186,6 +187,7 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 
 		const value: ICheckboxCellRendererValue =
 			CheckboxCellRenderer._value(cell);
+		const cache: ICheckboxViewportCache = CheckboxCellRenderer._cache(cell);
 
 		// Derive options
 		let size: number = this._defaultOptions.size;
@@ -193,6 +195,7 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 			this._defaultOptions.labelCheckboxSpacing;
 		let cellSpacing: number = this._defaultOptions.cellSpacing;
 		let labelColor: IColor = this._defaultOptions.labelTextColor;
+		let fontSize: number = this._defaultOptions.labelFontSize;
 		if (!!value.options) {
 			if (
 				value.options.size !== undefined &&
@@ -222,7 +225,7 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 					value.options.labelFontSize !== null) ||
 				!!value.options.labelFontFamily
 			) {
-				const fontSize: number =
+				fontSize =
 					value.options.labelFontSize !== undefined &&
 					value.options.labelFontSize !== null
 						? value.options.labelFontSize
@@ -240,6 +243,10 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 			}
 		}
 
+		let preferredSize: ISize = {
+			width: 0,
+			height: 0,
+		};
 		if (!!value.label) {
 			// Render label and checkbox
 			const labelWidth: number = ctx.measureText(value.label).width;
@@ -270,7 +277,7 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 				);
 			}
 
-			CheckboxCellRenderer._renderCheckbox(
+			const checkboxBounds = CheckboxCellRenderer._renderCheckbox(
 				ctx,
 				bounds,
 				cell,
@@ -290,9 +297,12 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 					),
 				bounds.top + Math.round(bounds.height / 2)
 			);
+
+			preferredSize.width = totalWidth;
+			preferredSize.height = Math.max(checkboxBounds.height, fontSize);
 		} else {
 			// Only render checkbox
-			CheckboxCellRenderer._renderCheckbox(
+			const checkboxBounds = CheckboxCellRenderer._renderCheckbox(
 				ctx,
 				bounds,
 				cell,
@@ -301,7 +311,13 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 				value,
 				this._defaultOptions
 			);
+
+			preferredSize.width = checkboxBounds.width;
+			preferredSize.height = Math.max(checkboxBounds.height, fontSize);
 		}
+
+		// Save preferred size to viewport cache
+		cache.preferredSize = preferredSize;
 
 		if (isContextSaved) {
 			ctx.restore();
@@ -326,7 +342,7 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 		size: number,
 		value: ICheckboxCellRendererValue,
 		defaultOptions: ICheckboxCellRendererOptions
-	): void {
+	): IRectangle {
 		const center: IPoint = {
 			x: bounds.left + offset,
 			y: bounds.top + Math.round(bounds.height / 2),
@@ -452,6 +468,17 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 		}
 
 		cache.checkboxBounds = rect;
+
+		return rect;
+	}
+
+	estimatePreferredSize(cell: ICell): ISize | null {
+		const cache: ICheckboxViewportCache = CheckboxCellRenderer._cache(cell);
+		if (!!cache.preferredSize) {
+			return cache.preferredSize;
+		} else {
+			return null;
+		}
 	}
 }
 
@@ -465,4 +492,9 @@ interface ICheckboxViewportCache {
 	 * Bounds of the checkbox.
 	 */
 	checkboxBounds?: IRectangle;
+
+	/**
+	 * Preferred size of the checkbox.
+	 */
+	preferredSize?: ISize;
 }
