@@ -1174,7 +1174,266 @@ describe('Subtract selections', () => {
 	});
 });
 
-describe('[SelectionModel.moveSelection]', () => {
+describe('Modify selection', () => {
+	test('modify selection that is already in the model', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection
+		const selection = {
+			initial: {
+				row: 2,
+				column: 2,
+			},
+			range: {
+				startRow: 2,
+				endRow: 2,
+				startColumn: 2,
+				endColumn: 2,
+			},
+		};
+		selectionModel.addSelection(selection, false, false);
+
+		// when: the selection is modified (range changes)
+		selectionModel.modifySelection(
+			selection,
+			{
+				startRow: 2,
+				endRow: 3,
+				startColumn: 2,
+				endColumn: 3,
+			},
+			{
+				row: 2,
+				column: 2,
+			},
+			false,
+			false
+		);
+
+		// then: the selection is changed according to the passed new range
+		expect(selectionModel.getPrimary()).toStrictEqual({
+			initial: {
+				row: 2,
+				column: 2,
+			},
+			range: {
+				startRow: 2,
+				endRow: 3,
+				startColumn: 2,
+				endColumn: 3,
+			},
+		});
+
+		// and: there is still only one selection in the model
+		expect(selectionModel.getSelections().length).toBe(1);
+	});
+	test('modify selection with validation', () => {
+		// given: A simple cell model with a merged cell
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+		cellModel.mergeCells({
+			startRow: 2,
+			endRow: 3,
+			startColumn: 2,
+			endColumn: 3,
+		});
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection
+		const selection = {
+			initial: {
+				row: 1,
+				column: 2,
+			},
+			range: {
+				startRow: 1,
+				endRow: 1,
+				startColumn: 2,
+				endColumn: 2,
+			},
+		};
+		selectionModel.addSelection(selection, true, false);
+
+		// when: the selection is modified to span over a merged cell that is not completely contained in the given range
+		selectionModel.modifySelection(
+			selection,
+			{
+				startRow: 1,
+				endRow: 2,
+				startColumn: 2,
+				endColumn: 2,
+			},
+			{
+				row: 1,
+				column: 2,
+			},
+			true,
+			false
+		);
+
+		// then: the selection now contains the whole merged cell
+		expect(selectionModel.getPrimary()).toStrictEqual({
+			initial: {
+				row: 1,
+				column: 2,
+			},
+			range: {
+				startRow: 1,
+				endRow: 3,
+				startColumn: 2,
+				endColumn: 3,
+			},
+		});
+
+		// and: there is still only one selection in the model
+		expect(selectionModel.getSelections().length).toBe(1);
+	});
+	test('modify selection with subtraction', () => {
+		// given: A simple cell model with a merged cell
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection of a cell range
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 4,
+				},
+			},
+			true,
+			false
+		);
+
+		// and: a selection range to modify that is contained in the cell range
+		const selectionToModify = {
+			initial: {
+				row: 2,
+				column: 2,
+			},
+			range: {
+				startRow: 2,
+				endRow: 2,
+				startColumn: 2,
+				endColumn: 2,
+			},
+		};
+		selectionModel.addSelection(selectionToModify, true, false);
+
+		// when: the selection is modified to form the center of the initial selection
+		selectionModel.modifySelection(
+			selectionToModify,
+			{
+				startRow: 2,
+				endRow: 3,
+				startColumn: 2,
+				endColumn: 3,
+			},
+			{
+				row: 2,
+				column: 2,
+			},
+			true,
+			true
+		);
+
+		// then: the initial and the modified selection have been subtracted and now 4 selections are in the model forming the border of the initial selection
+		expect(selectionModel.getSelections().length).toBe(4);
+		expect(selectionModel.getSelections()[0]).toStrictEqual({
+			initial: {
+				row: 1,
+				column: 1,
+			},
+			range: {
+				startRow: 1,
+				endRow: 1,
+				startColumn: 1,
+				endColumn: 4,
+			},
+		});
+		expect(selectionModel.getSelections()[1]).toStrictEqual({
+			range: {
+				startRow: 2,
+				endRow: 3,
+				startColumn: 1,
+				endColumn: 1,
+			},
+		});
+		expect(selectionModel.getSelections()[2]).toStrictEqual({
+			range: {
+				startRow: 2,
+				endRow: 3,
+				startColumn: 4,
+				endColumn: 4,
+			},
+		});
+		expect(selectionModel.getSelections()[3]).toStrictEqual({
+			range: {
+				startRow: 4,
+				endRow: 4,
+				startColumn: 1,
+				endColumn: 4,
+			},
+		});
+	});
+});
+
+describe('Move selection', () => {
 	describe('Normal selection movement', () => {
 		test('to the right', () => {
 			// given: A simple cell model without merged cells
@@ -2610,7 +2869,7 @@ describe('[SelectionModel.moveSelection]', () => {
 	});
 });
 
-describe('[SelectionModel.extendSelection]', () => {
+describe('Extend selection', () => {
 	describe('normal extend without merged cells', () => {
 		test('to the top', () => {
 			// given: A simple cell model without merged cells
@@ -5582,6 +5841,700 @@ describe('Selection modes', () => {
 					endColumn: 4,
 				},
 			});
+		});
+	});
+});
+
+describe('Move initial in selections', () => {
+	test('move to the right', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection range
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 3,
+					column: 2,
+				},
+				range: {
+					startRow: 2,
+					endRow: 3,
+					startColumn: 2,
+					endColumn: 3,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: the initial cell is moved to the right
+		selectionModel.moveInitial(1, 0);
+
+		// then: the initial cell is at row 3 and column 3
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 3,
+			column: 3,
+		});
+
+		// and: the cell range is still the same
+		expect(selectionModel.getPrimary().range).toStrictEqual({
+			startRow: 2,
+			endRow: 3,
+			startColumn: 2,
+			endColumn: 3,
+		});
+	});
+	test('move to the left', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection range
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 3,
+					column: 3,
+				},
+				range: {
+					startRow: 2,
+					endRow: 3,
+					startColumn: 2,
+					endColumn: 3,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: the initial cell is moved to the left
+		selectionModel.moveInitial(-1, 0);
+
+		// then: the initial cell is at row 3 and column 2
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 3,
+			column: 2,
+		});
+
+		// and: the cell range is still the same
+		expect(selectionModel.getPrimary().range).toStrictEqual({
+			startRow: 2,
+			endRow: 3,
+			startColumn: 2,
+			endColumn: 3,
+		});
+	});
+	test('move up', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection range
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 3,
+					column: 3,
+				},
+				range: {
+					startRow: 2,
+					endRow: 3,
+					startColumn: 2,
+					endColumn: 3,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: the initial cell is moved up
+		selectionModel.moveInitial(0, -1);
+
+		// then: the initial cell is at row 2 and column 3
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 2,
+			column: 3,
+		});
+
+		// and: the cell range is still the same
+		expect(selectionModel.getPrimary().range).toStrictEqual({
+			startRow: 2,
+			endRow: 3,
+			startColumn: 2,
+			endColumn: 3,
+		});
+	});
+	test('move down', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection range
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 2,
+					column: 3,
+				},
+				range: {
+					startRow: 2,
+					endRow: 3,
+					startColumn: 2,
+					endColumn: 3,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: the initial cell is moved down
+		selectionModel.moveInitial(0, 1);
+
+		// then: the initial cell is at row 3 and column 3
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 3,
+			column: 3,
+		});
+
+		// and: the cell range is still the same
+		expect(selectionModel.getPrimary().range).toStrictEqual({
+			startRow: 2,
+			endRow: 3,
+			startColumn: 2,
+			endColumn: 3,
+		});
+	});
+	test('move over merged cell', () => {
+		// given: A simple cell model with a merged cell
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+		cellModel.mergeCells({
+			startRow: 2,
+			endRow: 3,
+			startColumn: 2,
+			endColumn: 3,
+		});
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection range over the merged cell
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 2,
+					column: 1,
+				},
+				range: {
+					startRow: 2,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 3,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: the initial cell is moved right
+		selectionModel.moveInitial(1, 0);
+
+		// then: the initial cell is at the first row and column of the merged cell
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 2,
+			column: 2,
+		});
+
+		// and: the cell range is still the same
+		expect(selectionModel.getPrimary().range).toStrictEqual({
+			startRow: 2,
+			endRow: 4,
+			startColumn: 1,
+			endColumn: 3,
+		});
+
+		// when: the initial cell is moved twice more to the right
+		selectionModel.moveInitial(1, 0);
+		selectionModel.moveInitial(1, 0);
+
+		// then: the initial cell is at the second row and first column of the merged cell
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 3,
+			column: 2,
+		});
+	});
+	test('skip to next selection range', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: two selections
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 5,
+					column: 5,
+				},
+				range: {
+					startRow: 5,
+					endRow: 5,
+					startColumn: 5,
+					endColumn: 5,
+				},
+			},
+			false,
+			false
+		);
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 2,
+					endRow: 3,
+					startColumn: 2,
+					endColumn: 3,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: the initial cell is moved right four times
+		selectionModel.moveInitial(1, 0);
+		selectionModel.moveInitial(1, 0);
+		selectionModel.moveInitial(1, 0);
+		selectionModel.moveInitial(1, 0);
+
+		// then: the primary selection is now the selection range with the single cell
+		expect(selectionModel.getPrimary()).toStrictEqual({
+			initial: {
+				row: 5,
+				column: 5,
+			},
+			range: {
+				startRow: 5,
+				endRow: 5,
+				startColumn: 5,
+				endColumn: 5,
+			},
+		});
+
+		// when: moving left
+		selectionModel.moveInitial(-1, 0);
+
+		// then: the primary selection is again the second selection range
+		expect(selectionModel.getPrimary()).toStrictEqual({
+			initial: {
+				row: 3,
+				column: 3,
+			},
+			range: {
+				startRow: 2,
+				endRow: 3,
+				startColumn: 2,
+				endColumn: 3,
+			},
+		});
+	});
+	test('skip to beginning of only selection range when at the end', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection range
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 2,
+					endRow: 3,
+					startColumn: 2,
+					endColumn: 3,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: the initial cell is moved right four times
+		selectionModel.moveInitial(1, 0);
+		selectionModel.moveInitial(1, 0);
+		selectionModel.moveInitial(1, 0);
+		selectionModel.moveInitial(1, 0);
+
+		// then: the initial selection is at row 2 and column 2 again
+		expect(selectionModel.getPrimary()).toStrictEqual({
+			initial: {
+				row: 2,
+				column: 2,
+			},
+			range: {
+				startRow: 2,
+				endRow: 3,
+				startColumn: 2,
+				endColumn: 3,
+			},
+		});
+
+		// when: moving up
+		selectionModel.moveInitial(0, -1);
+
+		// then: the initial row is again at row 3 and column 3
+		expect(selectionModel.getPrimary()).toStrictEqual({
+			initial: {
+				row: 3,
+				column: 3,
+			},
+			range: {
+				startRow: 2,
+				endRow: 3,
+				startColumn: 2,
+				endColumn: 3,
+			},
+		});
+	});
+	test('complex example', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(10, 10),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+		cellModel.mergeCells({
+			startRow: 8,
+			endRow: 9,
+			startColumn: 7,
+			endColumn: 9,
+		});
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: some selection ranges
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 1,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 4,
+				},
+			},
+			false,
+			false
+		);
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 2,
+					endRow: 3,
+					startColumn: 2,
+					endColumn: 3,
+				},
+			},
+			true,
+			true
+		);
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 7,
+					column: 6,
+				},
+				range: {
+					startRow: 7,
+					endRow: 9,
+					startColumn: 6,
+					endColumn: 9,
+				},
+			},
+			true,
+			false
+		);
+
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 7,
+			column: 6,
+		});
+		selectionModel.moveInitial(1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 7,
+			column: 7,
+		});
+		selectionModel.moveInitial(1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 7,
+			column: 8,
+		});
+		selectionModel.moveInitial(1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 7,
+			column: 9,
+		});
+		selectionModel.moveInitial(1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 8,
+			column: 6,
+		});
+		selectionModel.moveInitial(1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 8,
+			column: 7,
+		});
+		selectionModel.moveInitial(0, 1);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 7,
+			column: 8,
+		});
+		selectionModel.moveInitial(0, 1);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 8,
+			column: 8,
+		});
+		selectionModel.moveInitial(0, 1);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 7,
+			column: 9,
+		});
+		selectionModel.moveInitial(0, 1);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 8,
+			column: 9,
+		});
+		selectionModel.moveInitial(0, 1);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 1,
+			column: 1,
+		});
+		selectionModel.moveInitial(0, 1);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 1,
+			column: 2,
+		});
+		selectionModel.moveInitial(1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 1,
+			column: 3,
+		});
+		selectionModel.moveInitial(1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 1,
+			column: 4,
+		});
+		selectionModel.moveInitial(1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 2,
+			column: 1,
+		});
+		selectionModel.moveInitial(1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 3,
+			column: 1,
+		});
+		selectionModel.moveInitial(1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 2,
+			column: 4,
+		});
+		selectionModel.moveInitial(1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 3,
+			column: 4,
+		});
+		selectionModel.moveInitial(0, 1);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 4,
+			column: 1,
+		});
+		selectionModel.moveInitial(0, 1);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 4,
+			column: 2,
+		});
+		selectionModel.moveInitial(0, 1);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 4,
+			column: 3,
+		});
+		selectionModel.moveInitial(0, 1);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 4,
+			column: 4,
+		});
+		selectionModel.moveInitial(0, 1);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 7,
+			column: 6,
+		});
+		selectionModel.moveInitial(0, 1);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 8,
+			column: 6,
+		});
+		selectionModel.moveInitial(-1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 7,
+			column: 9,
+		});
+		selectionModel.moveInitial(-1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 7,
+			column: 8,
+		});
+		selectionModel.moveInitial(0, -1);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 9,
+			column: 7,
+		});
+		selectionModel.moveInitial(0, -1);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 7,
+			column: 7,
+		});
+		selectionModel.moveInitial(-1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 7,
+			column: 6,
+		});
+		selectionModel.moveInitial(-1, 0);
+		expect(selectionModel.getPrimary().initial).toStrictEqual({
+			row: 4,
+			column: 4,
 		});
 	});
 });
