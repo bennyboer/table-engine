@@ -1,12 +1,18 @@
-<mat-toolbar class="toolbar">
+<mat-toolbar class='toolbar'>
   <button mat-icon-button>
     <mat-icon>menu</mat-icon>
   </button>
+  <img src='assets/logo.svg' height='48'>
   <span>Table Engine Documentation</span>
 </mat-toolbar>
 
-<mat-drawer-container class="drawer-container">
-  <mat-drawer mode="side" opened>Drawer content</mat-drawer>
+<mat-drawer-container class='drawer-container'>
+  <mat-drawer mode='side' opened>
+    <mat-action-list>
+      <button mat-list-item>Introduction</button>
+      <button mat-list-item>Examples</button>
+    </mat-action-list>
+  </mat-drawer>
   <mat-drawer-content>Main content</mat-drawer-content>
 </mat-drawer-container>
 
