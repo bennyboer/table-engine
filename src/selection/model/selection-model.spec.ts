@@ -4155,15 +4155,15 @@ describe('[SelectionModel.extendSelection]', () => {
 			// then: the selection should have been changed
 			expect(changed).toBeTruthy();
 
-			// and: the new selection cell range should only contain the initial cell
+			// and: the new selection cell range should only contain the column of the initial cell
 			expect(selectionModel.getPrimary()).toStrictEqual({
 				initial: {
 					row: 2,
 					column: 2,
 				},
 				range: {
-					startRow: 2,
-					endRow: 2,
+					startRow: 1,
+					endRow: 3,
 					startColumn: 2,
 					endColumn: 2,
 				},
@@ -4226,15 +4226,15 @@ describe('[SelectionModel.extendSelection]', () => {
 			// then: the selection should have been changed
 			expect(changed).toBeTruthy();
 
-			// and: the new selection cell range should only contain the initial cell
+			// and: the new selection cell range should only contain the column of the initial cell
 			expect(selectionModel.getPrimary()).toStrictEqual({
 				initial: {
 					row: 2,
 					column: 5,
 				},
 				range: {
-					startRow: 2,
-					endRow: 2,
+					startRow: 1,
+					endRow: 3,
 					startColumn: 5,
 					endColumn: 5,
 				},
@@ -4297,7 +4297,7 @@ describe('[SelectionModel.extendSelection]', () => {
 			// then: the selection should have been changed
 			expect(changed).toBeTruthy();
 
-			// and: the new selection cell range should only contain the initial cell
+			// and: the new selection cell range should only contain the row of the initial cell
 			expect(selectionModel.getPrimary()).toStrictEqual({
 				initial: {
 					row: 4,
@@ -4306,8 +4306,8 @@ describe('[SelectionModel.extendSelection]', () => {
 				range: {
 					startRow: 4,
 					endRow: 4,
-					startColumn: 2,
-					endColumn: 2,
+					startColumn: 1,
+					endColumn: 3,
 				},
 			});
 		});
@@ -4368,7 +4368,7 @@ describe('[SelectionModel.extendSelection]', () => {
 			// then: the selection should have been changed
 			expect(changed).toBeTruthy();
 
-			// and: the new selection cell range should only include the initial cell
+			// and: the new selection cell range should only include the row of the initial cell
 			expect(selectionModel.getPrimary()).toStrictEqual({
 				initial: {
 					row: 1,
@@ -4377,8 +4377,292 @@ describe('[SelectionModel.extendSelection]', () => {
 				range: {
 					startRow: 1,
 					endRow: 1,
+					startColumn: 1,
+					endColumn: 3,
+				},
+			});
+		});
+		test('shrink to the left where initial cell is not in same row as merged cell', () => {
+			// given: A simple cell model with merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+			cellModel.mergeCells({
+				startRow: 1,
+				endRow: 3,
+				startColumn: 3,
+				endColumn: 4,
+			});
+
+			// and: a selection model with an initial selection at row 5 and column 1 + merged cell
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 5,
+						column: 2,
+					},
+					range: {
+						startRow: 1,
+						endRow: 5,
+						startColumn: 2,
+						endColumn: 4,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is shrunken to the left
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				-1,
+				0,
+				false
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should only contain the column of the initial cell
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 5,
+					column: 2,
+				},
+				range: {
+					startRow: 1,
+					endRow: 5,
 					startColumn: 2,
 					endColumn: 2,
+				},
+			});
+		});
+		test('shrink to the right where initial cell is not in same row as merged cell', () => {
+			// given: A simple cell model with merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+			cellModel.mergeCells({
+				startRow: 1,
+				endRow: 3,
+				startColumn: 3,
+				endColumn: 4,
+			});
+
+			// and: a selection model with an initial selection at row 5 and column 1 + merged cell
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 5,
+						column: 5,
+					},
+					range: {
+						startRow: 1,
+						endRow: 5,
+						startColumn: 3,
+						endColumn: 5,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is shrunken to the right
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				1,
+				0,
+				false
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should only contain the column of the initial cell
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 5,
+					column: 5,
+				},
+				range: {
+					startRow: 1,
+					endRow: 5,
+					startColumn: 5,
+					endColumn: 5,
+				},
+			});
+		});
+		test('shrink to the bottom where initial cell is not in same row as merged cell', () => {
+			// given: A simple cell model with merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+			cellModel.mergeCells({
+				startRow: 1,
+				endRow: 3,
+				startColumn: 3,
+				endColumn: 4,
+			});
+
+			// and: a selection model with an initial selection at row 5 and column 1 + merged cell
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 5,
+						column: 5,
+					},
+					range: {
+						startRow: 1,
+						endRow: 5,
+						startColumn: 3,
+						endColumn: 5,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is shrunken to the bottom
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				0,
+				1,
+				false
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should only contain the column of the initial cell
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 5,
+					column: 5,
+				},
+				range: {
+					startRow: 4,
+					endRow: 5,
+					startColumn: 3,
+					endColumn: 5,
+				},
+			});
+		});
+		test('shrink to the top where initial cell is not in same row as merged cell', () => {
+			// given: A simple cell model with merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+			cellModel.mergeCells({
+				startRow: 1,
+				endRow: 3,
+				startColumn: 3,
+				endColumn: 4,
+			});
+
+			// and: a selection model with an initial selection at row 5 and column 1 + merged cell
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 0,
+						column: 2,
+					},
+					range: {
+						startRow: 0,
+						endRow: 3,
+						startColumn: 2,
+						endColumn: 5,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is shrunken to the top
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				0,
+				-1,
+				false
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should only contain the row of the initial cell
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 0,
+					column: 2,
+				},
+				range: {
+					startRow: 0,
+					endRow: 0,
+					startColumn: 2,
+					endColumn: 5,
 				},
 			});
 		});

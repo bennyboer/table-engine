@@ -16,7 +16,20 @@
 		"type": "git",
 		"url": "git+https://github.com/bennyboer/table-engine.git"
 	},
-	"keywords": [],
+	"keywords": [
+		"table",
+		"library",
+		"canvas",
+		"performance",
+		"data",
+		"big-data",
+		"web",
+		"browser",
+		"fast",
+		"speed",
+		"grid",
+		"render"
+	],
 	"author": "Benjamin Eder",
 	"license": "MIT",
 	"bugs": {

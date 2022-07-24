@@ -474,110 +474,19 @@ export class SelectionModel implements ISelectionModel {
 		xDiff: number,
 		yDiff: number,
 		jump: boolean
-	) {
+	): boolean {
 		if (xDiff !== 0) {
 			if (xDiff < 0) {
 				if (selection.initial.column < selection.range.endColumn) {
-					// Iterate over the next columns
-					// When a column is invisible continue with the next one
-					// When a column is visible check each cell
-					// When a cells end column is higher than the current column continue with the next higher column (cell.range.endColumn + 1)
-					// If that is not the case, check the next row
-					// Finish when all rows in a column are OK!
-
-					// Shrink the selection
-					const newColumn = jump
-						? selection.initial.column
-						: this._findColumnOfPreviousVisibleCell(
-								selection.range.endColumn,
-								selection.initial.row,
-								false
-						  );
-					if (newColumn === -1) {
-						return false;
-					}
-
-					const oldValue = selection.range.endColumn;
-					selection.range.endColumn = newColumn;
-					if (!this._transformSelection(selection, true)) {
-						selection.range.endColumn = oldValue; // Set old value
-						return false;
-					}
-
-					return true;
+					return this._shrinkSelectionFromRight(selection, jump);
 				} else {
-					// Extend the selection
-					const newColumn = jump
-						? this._findColumnOfNextVisibleCell(
-								-1,
-								selection.initial.row,
-								false
-						  )
-						: this._findColumnOfPreviousVisibleCell(
-								selection.range.startColumn,
-								selection.initial.row,
-								false
-						  );
-					if (newColumn === -1) {
-						return false;
-					}
-
-					const oldValue = selection.range.startColumn;
-					selection.range.startColumn = newColumn;
-					if (!this._transformSelection(selection, true)) {
-						selection.range.startColumn = oldValue; // Set old value
-						return false;
-					}
-
-					return true;
+					return this._extendSelectionToLeft(selection, jump);
 				}
 			} else {
 				if (selection.initial.column > selection.range.startColumn) {
-					// Shrink the selection
-					const newColumn = jump
-						? selection.initial.column
-						: this._findColumnOfNextVisibleCell(
-								selection.range.startColumn,
-								selection.initial.row,
-								false
-						  );
-					if (newColumn === -1) {
-						return false;
-					}
-
-					const oldValue = selection.range.startColumn;
-					selection.range.startColumn = newColumn;
-					if (!this._transformSelection(selection, true)) {
-						selection.range.startColumn = oldValue; // Set old value
-						return false;
-					}
-
-					return true;
+					return this._shrinkSelectionFromLeft(selection, jump);
 				} else {
-					// Extend the selection
-					const newColumn = jump
-						? this._findColumnOfPreviousVisibleCell(
-								this._cellModel.getColumnCount(),
-								selection.initial.row,
-								false
-						  )
-						: this._findColumnOfNextVisibleCell(
-								selection.range.endColumn,
-								selection.initial.row,
-								false
-						  );
-					if (newColumn === -1) {
-						return false;
-					}
-
-					const oldValue = selection.range.endColumn;
-					selection.range.endColumn = newColumn;
-					if (!this._transformSelection(selection, true)) {
-						selection.range.endColumn = oldValue; // Set old value
-						return false;
-					}
-
-					return true;
+					return this._extendSelectionToRight(selection, jump);
 				}
 			}
 		}
@@ -585,104 +494,240 @@ export class SelectionModel implements ISelectionModel {
 		if (yDiff !== 0) {
 			if (yDiff < 0) {
 				if (selection.initial.row < selection.range.endRow) {
-					// Shrink the selection
-					const newRow = jump
-						? selection.initial.row
-						: this._findRowOfPreviousVisibleCell(
-								selection.range.endRow,
-								selection.initial.column,
-								false
-						  );
-					if (newRow === -1) {
-						return false;
-					}
-
-					const oldValue = selection.range.endRow;
-					selection.range.endRow = newRow;
-					if (!this._transformSelection(selection, true)) {
-						selection.range.endRow = oldValue; // Set old value
-						return false;
-					}
-
-					return true;
+					return this._shrinkSelectionFromBottom(selection, jump);
 				} else {
-					// Extend the selection
-					const newRow = jump
-						? this._findRowOfNextVisibleCell(
-								-1,
-								selection.initial.column,
-								false
-						  )
-						: this._findRowOfPreviousVisibleCell(
-								selection.range.startRow,
-								selection.initial.column,
-								false
-						  );
-					if (newRow === -1) {
-						return false;
-					}
-
-					const oldValue = selection.range.startRow;
-					selection.range.startRow = newRow;
-					if (!this._transformSelection(selection, true)) {
-						selection.range.startRow = oldValue; // Set old value
-						return false;
-					}
-
-					return true;
+					return this._extendSelectionToTop(selection, jump);
 				}
 			} else {
 				if (selection.initial.row > selection.range.startRow) {
-					// Shrink the selection
-					const newRow = jump
-						? selection.initial.row
-						: this._findRowOfNextVisibleCell(
-								selection.range.startRow,
-								selection.initial.column,
-								false
-						  );
-					if (newRow === -1) {
-						return false;
-					}
-
-					const oldValue = selection.range.startRow;
-					selection.range.startRow = newRow;
-					if (!this._transformSelection(selection, true)) {
-						selection.range.startRow = oldValue; // Set old value
-						return false;
-					}
-
-					return true;
+					return this._shrinkSelectionFromTop(selection, jump);
 				} else {
-					// Extend the selection
-					const newRow = jump
-						? this._findRowOfPreviousVisibleCell(
-								this._cellModel.getRowCount(),
-								selection.initial.column,
-								false
-						  )
-						: this._findRowOfNextVisibleCell(
-								selection.range.endRow,
-								selection.initial.column,
-								false
-						  );
-					if (newRow === -1) {
-						return false;
-					}
-
-					const oldValue = selection.range.endRow;
-					selection.range.endRow = newRow;
-					if (!this._transformSelection(selection, true)) {
-						selection.range.endRow = oldValue; // Set old value
-						return false;
-					}
-
-					return true;
+					return this._extendSelectionToBottom(selection, jump);
 				}
 			}
 		}
 
 		return false;
+	}
+
+	private _shrinkSelectionFromLeft(
+		selection: ISelection,
+		jump: boolean
+	): boolean {
+		const nextColumnShrinkableTo =
+			this._findNextShrinkableColumnFromLeftForSelection(selection);
+
+		const isShrinkable = nextColumnShrinkableTo > -1;
+		if (!isShrinkable) {
+			// Extend the selection in the opposite direction instead
+			return this._extendSelectionToRight(selection, jump);
+		}
+
+		const newColumn = jump
+			? selection.initial.column
+			: nextColumnShrinkableTo;
+
+		const oldValue = selection.range.startColumn;
+		selection.range.startColumn = newColumn;
+		if (!this._transformSelection(selection, true)) {
+			selection.range.startColumn = oldValue; // Set old value
+			return false;
+		}
+
+		return true;
+	}
+
+	private _shrinkSelectionFromRight(
+		selection: ISelection,
+		jump: boolean
+	): boolean {
+		const nextColumnShrinkableTo =
+			this._findNextShrinkableColumnFromRightForSelection(selection);
+
+		const isShrinkable = nextColumnShrinkableTo > -1;
+		if (!isShrinkable) {
+			// Extend the selection in the opposite direction instead
+			return this._extendSelectionToLeft(selection, jump);
+		}
+
+		const newColumn = jump
+			? selection.initial.column
+			: nextColumnShrinkableTo;
+
+		const oldValue = selection.range.endColumn;
+		selection.range.endColumn = newColumn;
+		if (!this._transformSelection(selection, true)) {
+			selection.range.endColumn = oldValue; // Set old value
+			return false;
+		}
+
+		return true;
+	}
+
+	private _shrinkSelectionFromTop(
+		selection: ISelection,
+		jump: boolean
+	): boolean {
+		const nextRowShrinkableTo =
+			this._findNextShrinkableRowFromTopForSelection(selection);
+
+		const isShrinkable = nextRowShrinkableTo > -1;
+		if (!isShrinkable) {
+			// Extend the selection in the opposite direction instead
+			return this._extendSelectionToBottom(selection, jump);
+		}
+
+		const newRow = jump ? selection.initial.row : nextRowShrinkableTo;
+
+		const oldValue = selection.range.startRow;
+		selection.range.startRow = newRow;
+		if (!this._transformSelection(selection, true)) {
+			selection.range.startRow = oldValue; // Set old value
+			return false;
+		}
+
+		return true;
+	}
+
+	private _shrinkSelectionFromBottom(
+		selection: ISelection,
+		jump: boolean
+	): boolean {
+		const nextRowShrinkableTo =
+			this._findNextShrinkableRowFromBottomForSelection(selection);
+
+		const isShrinkable = nextRowShrinkableTo > -1;
+		if (!isShrinkable) {
+			// Extend the selection in the opposite direction instead
+			return this._extendSelectionToTop(selection, jump);
+		}
+
+		const newRow = jump ? selection.initial.row : nextRowShrinkableTo;
+
+		const oldValue = selection.range.endRow;
+		selection.range.endRow = newRow;
+		if (!this._transformSelection(selection, true)) {
+			selection.range.endRow = oldValue; // Set old value
+			return false;
+		}
+
+		return true;
+	}
+
+	private _extendSelectionToLeft(
+		selection: ISelection,
+		jump: boolean
+	): boolean {
+		const newColumn = jump
+			? this._findColumnOfNextVisibleCell(
+					-1,
+					selection.initial.row,
+					false
+			  )
+			: this._findColumnOfPreviousVisibleCell(
+					selection.range.startColumn,
+					selection.initial.row,
+					false
+			  );
+		if (newColumn === -1) {
+			return false;
+		}
+
+		const oldValue = selection.range.startColumn;
+		selection.range.startColumn = newColumn;
+		if (!this._transformSelection(selection, true)) {
+			selection.range.startColumn = oldValue; // Set old value
+			return false;
+		}
+
+		return true;
+	}
+
+	private _extendSelectionToRight(
+		selection: ISelection,
+		jump: boolean
+	): boolean {
+		const newColumn = jump
+			? this._findColumnOfPreviousVisibleCell(
+					this._cellModel.getColumnCount(),
+					selection.initial.row,
+					false
+			  )
+			: this._findColumnOfNextVisibleCell(
+					selection.range.endColumn,
+					selection.initial.row,
+					false
+			  );
+		if (newColumn === -1) {
+			return false;
+		}
+
+		const oldValue = selection.range.endColumn;
+		selection.range.endColumn = newColumn;
+		if (!this._transformSelection(selection, true)) {
+			selection.range.endColumn = oldValue; // Set old value
+			return false;
+		}
+
+		return true;
+	}
+
+	private _extendSelectionToTop(
+		selection: ISelection,
+		jump: boolean
+	): boolean {
+		const newRow = jump
+			? this._findRowOfNextVisibleCell(
+					-1,
+					selection.initial.column,
+					false
+			  )
+			: this._findRowOfPreviousVisibleCell(
+					selection.range.startRow,
+					selection.initial.column,
+					false
+			  );
+		if (newRow === -1) {
+			return false;
+		}
+
+		const oldValue = selection.range.startRow;
+		selection.range.startRow = newRow;
+		if (!this._transformSelection(selection, true)) {
+			selection.range.startRow = oldValue; // Set old value
+			return false;
+		}
+
+		return true;
+	}
+
+	private _extendSelectionToBottom(
+		selection: ISelection,
+		jump: boolean
+	): boolean {
+		const newRow = jump
+			? this._findRowOfPreviousVisibleCell(
+					this._cellModel.getRowCount(),
+					selection.initial.column,
+					false
+			  )
+			: this._findRowOfNextVisibleCell(
+					selection.range.endRow,
+					selection.initial.column,
+					false
+			  );
+		if (newRow === -1) {
+			return false;
+		}
+
+		const oldValue = selection.range.endRow;
+		selection.range.endRow = newRow;
+		if (!this._transformSelection(selection, true)) {
+			selection.range.endRow = oldValue; // Set old value
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
@@ -1366,6 +1411,194 @@ export class SelectionModel implements ISelectionModel {
 		);
 
 		return previousVisibleColumn;
+	}
+
+	/**
+	 * Find the next column of the given selection to shrink to from the right.
+	 * Can return -1 if no such column may be found.
+	 * @param selection to shrink
+	 * @private
+	 */
+	private _findNextShrinkableColumnFromRightForSelection(
+		selection: ISelection
+	): number {
+		outer: for (
+			let column = selection.range.endColumn;
+			column > selection.initial.column;
+			column--
+		) {
+			// Check if column is visible -> otherwise continue
+			if (this._cellModel.isColumnHidden(column)) {
+				continue;
+			}
+
+			// Iterate over cells in the columns
+			for (
+				let row = selection.range.startRow;
+				row <= selection.range.endRow;
+				row++
+			) {
+				// Check if row is visible -> otherwise continue
+				if (this._cellModel.isRowHidden(row)) {
+					continue;
+				}
+
+				// Check if cell has startColumn that is lower than the current column
+				const cell = this._cellModel.getCell(row, column);
+				if (!!cell) {
+					const range = cell.range;
+					if (range.startColumn < column) {
+						column = range.startColumn + 1;
+						continue outer;
+					}
+				}
+			}
+
+			return column - 1;
+		}
+
+		return -1;
+	}
+
+	/**
+	 * Find the next column of the given selection to shrink to from the left.
+	 * Can return -1 if no such column may be found.
+	 * @param selection to shrink
+	 * @private
+	 */
+	private _findNextShrinkableColumnFromLeftForSelection(
+		selection: ISelection
+	): number {
+		outer: for (
+			let column = selection.range.startColumn;
+			column < selection.initial.column;
+			column++
+		) {
+			// Check if column is visible -> otherwise continue
+			if (this._cellModel.isColumnHidden(column)) {
+				continue;
+			}
+
+			// Iterate over cells in the columns
+			for (
+				let row = selection.range.startRow;
+				row <= selection.range.endRow;
+				row++
+			) {
+				// Check if row is visible -> otherwise continue
+				if (this._cellModel.isRowHidden(row)) {
+					continue;
+				}
+
+				// Check if cell has endColumn that is higher than the current column
+				const cell = this._cellModel.getCell(row, column);
+				if (!!cell) {
+					const range = cell.range;
+					if (range.endColumn > column) {
+						column = range.endColumn - 1;
+						continue outer;
+					}
+				}
+			}
+
+			return column + 1;
+		}
+
+		return -1;
+	}
+
+	/**
+	 * Find the next row of the given selection to shrink to from the bottom.
+	 * Can return -1 if no such row may be found.
+	 * @param selection to shrink
+	 * @private
+	 */
+	private _findNextShrinkableRowFromBottomForSelection(
+		selection: ISelection
+	): number {
+		outer: for (
+			let row = selection.range.endRow;
+			row > selection.initial.row;
+			row--
+		) {
+			// Check if row is visible -> otherwise continue
+			if (this._cellModel.isRowHidden(row)) {
+				continue;
+			}
+
+			// Iterate over cells in the column
+			for (
+				let column = selection.range.startColumn;
+				column <= selection.range.endColumn;
+				column++
+			) {
+				// Check if column is visible -> otherwise continue
+				if (this._cellModel.isColumnHidden(column)) {
+					continue;
+				}
+
+				// Check if cell has startRow that is lower than the current row
+				const cell = this._cellModel.getCell(row, column);
+				if (!!cell) {
+					const range = cell.range;
+					if (range.startRow < row) {
+						row = range.startRow + 1;
+						continue outer;
+					}
+				}
+			}
+
+			return row - 1;
+		}
+
+		return -1;
+	}
+
+	/**
+	 * Find the next row of the given selection to shrink to from the top.
+	 * Can return -1 if no such row may be found.
+	 * @param selection to shrink
+	 * @private
+	 */
+	private _findNextShrinkableRowFromTopForSelection(
+		selection: ISelection
+	): number {
+		outer: for (
+			let row = selection.range.startRow;
+			row < selection.initial.row;
+			row++
+		) {
+			// Check if row is visible -> otherwise continue
+			if (this._cellModel.isRowHidden(row)) {
+				continue;
+			}
+
+			// Iterate over cells in the column
+			for (
+				let column = selection.range.startColumn;
+				column <= selection.range.endColumn;
+				column++
+			) {
+				// Check if column is visible -> otherwise continue
+				if (this._cellModel.isColumnHidden(column)) {
+					continue;
+				}
+
+				// Check if cell has endRow that is higher than the current row
+				const cell = this._cellModel.getCell(row, column);
+				if (!!cell) {
+					const range = cell.range;
+					if (range.endRow > row) {
+						row = range.endRow - 1;
+						continue outer;
+					}
+				}
+			}
+
+			return row + 1;
+		}
+
+		return -1;
 	}
 
 	/**
