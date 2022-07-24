@@ -1,16 +1,34 @@
 :host {
+  display: block;
+  height: 100%;
+}
+
+.content-container {
   display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
-  flex-direction: column;
 }
 
 .toolbar {
   flex: 0 0 auto;
-
   display: flex;
   flex-direction: row;
+  align-items: center;
   gap: 10px;
+
+  &.is-mobile {
+    position: fixed;
+    z-index: 2;
+  }
+
+  & > .toolbar-spacer {
+    flex: 1 1 auto;
+  }
+
+  .toolbar-img-link {
+    line-height: 0.0;
+  }
 }
 
 .drawer-container {
@@ -19,4 +37,8 @@
 
 .navigation-list {
   width: 250px;
+}
+
+.main-content {
+  padding: 20px 30px;
 }
