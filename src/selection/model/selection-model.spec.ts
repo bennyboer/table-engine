@@ -145,6 +145,193 @@ describe('Primary selection management', () => {
 	});
 });
 
+describe('Check selected', () => {
+	test('check if a cell is selected - single cell selection', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 3,
+					column: 4,
+				},
+				range: {
+					startRow: 3,
+					endRow: 3,
+					startColumn: 4,
+					endColumn: 4,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: checking whether the cell at row 3 and column 4 is selected
+		const selected = selectionModel.isSelected(3, 4);
+
+		// then: the result is true
+		expect(selected).toBeTruthy();
+
+		// and: asking to the sides is false
+		expect(selectionModel.isSelected(2, 4)).toBeFalsy();
+		expect(selectionModel.isSelected(4, 4)).toBeFalsy();
+		expect(selectionModel.isSelected(3, 3)).toBeFalsy();
+		expect(selectionModel.isSelected(3, 5)).toBeFalsy();
+	});
+	test('check if a cell is selected - a single cell range selection', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: a selection
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 3,
+					column: 4,
+				},
+				range: {
+					startRow: 1,
+					endRow: 3,
+					startColumn: 4,
+					endColumn: 5,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: checking whether the cell at row 3 and column 4 is selected
+		const selected = selectionModel.isSelected(2, 5);
+
+		// then: the result is true
+		expect(selected).toBeTruthy();
+
+		// and: asking to the sides is false
+		expect(selectionModel.isSelected(1, 3)).toBeFalsy();
+		expect(selectionModel.isSelected(2, 3)).toBeFalsy();
+		expect(selectionModel.isSelected(3, 3)).toBeFalsy();
+
+		expect(selectionModel.isSelected(0, 4)).toBeFalsy();
+		expect(selectionModel.isSelected(0, 5)).toBeFalsy();
+
+		expect(selectionModel.isSelected(4, 4)).toBeFalsy();
+		expect(selectionModel.isSelected(4, 4)).toBeFalsy();
+	});
+	test('check if a cell is selected - multiple cell range selections', () => {
+		// given: A simple cell model
+		const cellModel = CellModel.generate(
+			[
+				{
+					range: CellRange.fromSingleRowColumn(5, 5),
+					rendererName: 'text',
+					value: 'Last cell',
+				},
+			],
+			(row, column) => row * column,
+			() => 'text',
+			() => 1,
+			() => 1,
+			new Set<number>(),
+			new Set<number>()
+		);
+
+		// and: a selection model
+		const selectionModel = new SelectionModel(cellModel, fillOptions({}));
+
+		// and: some selections
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 2,
+					column: 2,
+				},
+				range: {
+					startRow: 2,
+					endRow: 3,
+					startColumn: 2,
+					endColumn: 3,
+				},
+			},
+			false,
+			false
+		);
+		selectionModel.addSelection(
+			{
+				initial: {
+					row: 3,
+					column: 3,
+				},
+				range: {
+					startRow: 3,
+					endRow: 4,
+					startColumn: 3,
+					endColumn: 4,
+				},
+			},
+			false,
+			false
+		);
+
+		// when: checking whether the cell at row 2 and column 2 is selected
+		const selected = selectionModel.isSelected(2, 2);
+
+		// then: the result is true
+		expect(selected).toBeTruthy();
+
+		// and: asking to the sides is false
+		expect(selectionModel.isSelected(2, 1)).toBeFalsy();
+		expect(selectionModel.isSelected(2, 4)).toBeFalsy();
+
+		expect(selectionModel.isSelected(3, 1)).toBeFalsy();
+		expect(selectionModel.isSelected(3, 5)).toBeFalsy();
+
+		expect(selectionModel.isSelected(4, 2)).toBeFalsy();
+		expect(selectionModel.isSelected(4, 5)).toBeFalsy();
+
+		expect(selectionModel.isSelected(1, 2)).toBeFalsy();
+		expect(selectionModel.isSelected(1, 3)).toBeFalsy();
+
+		expect(selectionModel.isSelected(5, 3)).toBeFalsy();
+		expect(selectionModel.isSelected(5, 4)).toBeFalsy();
+	});
+});
+
 describe('Validate selections', () => {
 	test('validate invalid selection', () => {
 		// given: A simple cell model
@@ -4740,6 +4927,290 @@ describe('[SelectionModel.extendSelection]', () => {
 					endRow: 3,
 					startColumn: 1,
 					endColumn: 4,
+				},
+			});
+		});
+		test('extend to the left when not shrinkable from the right', () => {
+			// given: A simple cell model with merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+			cellModel.mergeCells({
+				startRow: 2,
+				endRow: 3,
+				startColumn: 2,
+				endColumn: 3,
+			});
+
+			// and: a selection model with an initial selection at row 5 and column 1 + merged cell
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 1,
+						column: 2,
+					},
+					range: {
+						startRow: 1,
+						endRow: 3,
+						startColumn: 2,
+						endColumn: 3,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is shrunken to the left
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				-1,
+				0,
+				false
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should contain one more column to the left
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 1,
+					column: 2,
+				},
+				range: {
+					startRow: 1,
+					endRow: 3,
+					startColumn: 1,
+					endColumn: 3,
+				},
+			});
+		});
+		test('extend to the right when not shrinkable from the left', () => {
+			// given: A simple cell model with merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+			cellModel.mergeCells({
+				startRow: 2,
+				endRow: 3,
+				startColumn: 2,
+				endColumn: 3,
+			});
+
+			// and: a selection model with an initial selection at row 5 and column 1 + merged cell
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 1,
+						column: 3,
+					},
+					range: {
+						startRow: 1,
+						endRow: 3,
+						startColumn: 2,
+						endColumn: 3,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is shrunken to the right
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				1,
+				0,
+				false
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should contain one more column to the right
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 1,
+					column: 3,
+				},
+				range: {
+					startRow: 1,
+					endRow: 3,
+					startColumn: 2,
+					endColumn: 4,
+				},
+			});
+		});
+		test('extend to the bottom when not shrinkable from the top', () => {
+			// given: A simple cell model with merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+			cellModel.mergeCells({
+				startRow: 2,
+				endRow: 3,
+				startColumn: 2,
+				endColumn: 3,
+			});
+
+			// and: a selection model with an initial selection at row 5 and column 1 + merged cell
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 2,
+						column: 1,
+					},
+					range: {
+						startRow: 2,
+						endRow: 3,
+						startColumn: 1,
+						endColumn: 3,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is shrunken from the top
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				0,
+				1,
+				false
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should contain one more row to the bottom
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 2,
+					column: 1,
+				},
+				range: {
+					startRow: 2,
+					endRow: 4,
+					startColumn: 1,
+					endColumn: 3,
+				},
+			});
+		});
+		test('extend to the top when not shrinkable from the bottom', () => {
+			// given: A simple cell model with merged cells
+			const cellModel = CellModel.generate(
+				[
+					{
+						range: CellRange.fromSingleRowColumn(5, 5),
+						rendererName: 'text',
+						value: 'Last cell',
+					},
+				],
+				(row, column) => row * column,
+				() => 'text',
+				() => 1,
+				() => 1,
+				new Set<number>(),
+				new Set<number>()
+			);
+			cellModel.mergeCells({
+				startRow: 2,
+				endRow: 3,
+				startColumn: 2,
+				endColumn: 3,
+			});
+
+			// and: a selection model with an initial selection at row 5 and column 1 + merged cell
+			const selectionModel = new SelectionModel(
+				cellModel,
+				fillOptions({})
+			);
+			selectionModel.addSelection(
+				{
+					initial: {
+						row: 3,
+						column: 1,
+					},
+					range: {
+						startRow: 2,
+						endRow: 3,
+						startColumn: 1,
+						endColumn: 3,
+					},
+				},
+				false,
+				false
+			);
+
+			// when: the selection is shrunken from the bottom
+			const changed = selectionModel.extendSelection(
+				selectionModel.getPrimary(),
+				0,
+				-1,
+				false
+			);
+
+			// then: the selection should have been changed
+			expect(changed).toBeTruthy();
+
+			// and: the new selection cell range should contain one more row to the top
+			expect(selectionModel.getPrimary()).toStrictEqual({
+				initial: {
+					row: 3,
+					column: 1,
+				},
+				range: {
+					startRow: 1,
+					endRow: 3,
+					startColumn: 1,
+					endColumn: 3,
 				},
 			});
 		});
