@@ -2339,7 +2339,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onKeyDown(event: KeyboardEvent): void {
-		const preventDefault: boolean =
+		const preventDefaultDueToCellRenderer: boolean =
 			!!this._focusedCellPosition &&
 			this._sendEventForPosition(
 				this._focusedCellPosition.row,
@@ -2353,7 +2353,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				}
 			);
 
-		if (preventDefault) {
+		if (preventDefaultDueToCellRenderer) {
 			event.preventDefault();
 			return;
 		}
@@ -2425,6 +2425,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			case 'ArrowLeft':
 			case 'ArrowRight':
 			case 'ArrowUp':
+				event.preventDefault(); // Prevent scrolling due to arrow key navigation
+
 				const extend: boolean = event.shiftKey;
 				const jump: boolean = event.ctrlKey;
 
