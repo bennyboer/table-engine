@@ -30,7 +30,7 @@ jobs:
         run: |
           cd docs/app
           yarn install --frozen-lockfile
-          npm run build -- --base-href=https://bennyboer.github.io/table-engine/docs
+          npm run build -- --base-href=https://bennyboer.github.io/table-engine/docs/
           mkdir ../../out/docs
           cp -R ./dist/app/* ../../out/docs
       - name: Deploy to GitHub pages
