@@ -146,6 +146,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _mouseMoveListener: (MouseEvent) => void;
 
 	/**
+	 * Registered listener to select start events on window.
+	 */
+	private _selectStartListener: (Event) => void;
+
+	/**
 	 * Registered listener to mouse up events.
 	 */
 	private _mouseUpListener: (MouseEvent) => void;
@@ -585,6 +590,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		this._mouseMoveListener = (event) => this._onMouseMove(event);
 		window.addEventListener('mousemove', this._mouseMoveListener);
 
+		this._selectStartListener = (event) => this._onSelectStart(event);
+		window.addEventListener('selectstart', this._selectStartListener);
+
 		this._mouseUpListener = (event) => this._onMouseUp(event);
 		window.addEventListener('mouseup', this._mouseUpListener);
 
@@ -684,6 +692,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 		if (!!this._mouseMoveListener) {
 			window.removeEventListener('mousemove', this._mouseMoveListener);
+		}
+		if (!!this._selectStartListener) {
+			window.removeEventListener(
+				'selectstart',
+				this._selectStartListener
+			);
 		}
 		if (!!this._mouseUpListener) {
 			window.removeEventListener('mouseup', this._mouseUpListener);
@@ -1222,6 +1236,29 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _resetCursor(): void {
 		if (this._container.style.cursor !== 'auto') {
 			this._container.style.cursor = 'auto';
+		}
+	}
+
+	/**
+	 * Called when a selection is started on window.
+	 * @param event that occurred
+	 */
+	private _onSelectStart(event: Event): void {
+		const isScrollBarDragging: boolean = !!this._scrollBarDragStart;
+		const isMouseDragging: boolean = !!this._mouseDragStart;
+		const isSelectionDragging: boolean = !!this._initialSelectionRange;
+		const isCopyHandleDragging: boolean = !!this._copyHandleDragStart;
+		const isResizerDragging: boolean = !!this._resizingDragStart;
+
+		const isDragging: boolean =
+			isScrollBarDragging ||
+			isMouseDragging ||
+			isSelectionDragging ||
+			isCopyHandleDragging ||
+			isResizerDragging;
+		if (isDragging) {
+			// Prevent text selection outside of table when currently dragging something in the table
+			event.preventDefault();
 		}
 	}
 
