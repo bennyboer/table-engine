@@ -1,0 +1,40 @@
+<div class="content-container">
+
+    <mat-toolbar class='toolbar' [class.is-mobile]="isMobile">
+      <button mat-icon-button (click)='drawer.toggle()'>
+        <mat-icon>menu</mat-icon>
+      </button>
+      <img src='/assets/logo.svg' height='48' alt='Table Engine Logo'>
+      <span *ngIf='!isMobile'>Table Engine Documentation</span>
+      <span *ngIf='isMobile'>Documentation</span>
+      <span class='toolbar-spacer'></span>
+      <a href='https://github.com/bennyboer/table-engine' target='_blank' class='toolbar-img-link'>
+        <img src='/assets/GitHub-Mark-32px.png' alt='GitHub Logo'>
+      </a>
+    </mat-toolbar>
+
+    <mat-sidenav-container class='drawer-container' [style.marginTop.px]="isMobile ? 56 : 0">
+      <mat-sidenav #drawer [mode]="isMobile ? 'over' : 'side'" [fixedInViewport]="isMobile" fixedTopGap="56" [opened]='!isMobile'>
+        <mat-nav-list>
+          <a mat-list-item routerLink='/guide/introduction'>1. Introduction</a>
+          <a mat-list-item routerLink='/guide/setup'>2. Setup</a>
+          <a mat-list-item routerLink='/guide/cell-renderer'>3. Cell renderer</a>
+          <a mat-list-item routerLink='/guide/selections'>4. Selections</a>
+          <a mat-list-item routerLink='/guide/borders'>5. Borders</a>
+
+          <mat-divider></mat-divider>
+          <div mat-subheader>Examples</div>
+
+          <a mat-list-item routerLink='/examples/minimal'>Minimal</a>
+          <a mat-list-item routerLink='/examples/row-column-headers'>Row/column headers</a>
+        </mat-nav-list>
+      </mat-sidenav>
+
+      <mat-sidenav-content class='main-content'>
+        <div class='content-wrapper'>
+          <router-outlet></router-outlet>
+        </div>
+      </mat-sidenav-content>
+    </mat-sidenav-container>
+
+</div>

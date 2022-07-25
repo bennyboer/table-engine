@@ -1,0 +1,46 @@
+<h1>1. Introduction</h1>
+<p>
+    The Table Engine is a JavaScript/TypeScript library to visualize any kind of table - that means you can use it to
+    create spreadsheets applications like Excel or visualizations for data (so-called data grids).
+    In contrast to other libraries, we do not focus on a particular use-case.
+    Additionally, since the rendering is not backed by the DOM but rather by a canvas element, it is comparatively
+    memory-efficient and fast.
+    Numerous features that you would only get for a lot of money at the competition, such as virtual scrolling for rows
+    and columns, are available out-of-the-box without any further configuration.
+    Since this library is open source licensed under the MIT-license, you can get it free of charge.
+</p>
+
+<h2>Small demo</h2>
+<p>
+    Below you'll find a small demonstration of the Table Library.
+    Keep in mind that the row and column headers are optional as is pretty much everything!
+    How your table looks like and what capabilities it will have is entirely up to you.
+</p>
+
+<div #tableContainer class='table-container'></div>
+
+<h2>What is a table?</h2>
+<p>
+    The goal of this library is to be able to render any kind of table with good performance - no matter the structure or data.
+    So, what exactly is a table? A table is data structured in rows and columns, often paired with a description of the row or column in the first row respectively column, called "headers".
+    Moreover, the individual data to be displayed in a single cell might span multiple rows and/or columns.
+    We call this a "merged cell".
+    Since only having data arranged in rows and columns does not make for a visual pleasing result, most tables have borders between adjacent rows and columns to separate them visually.
+    Save for some more advanced features, this is basically a table!
+    It sounds easy, but under the hood there are some pretty finicky algorithms needed to perform as you would expect it.
+    The Table Engine will ensure you can concentrate on the fun part.
+</p>
+
+<h2>Summary</h2>
+
+<p>
+    By now, we hope we could give you a clear impression of what the Table Engine is and what it can be used for.
+    You may continue with this guide by clicking on the button below to learn more about using the library.
+</p>
+
+<div class='actions'>
+    <button mat-raised-button routerLink='/guide/setup'>
+        <mat-icon>navigate_next</mat-icon>
+        Next section: Setup
+    </button>
+</div>
