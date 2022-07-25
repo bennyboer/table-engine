@@ -49,6 +49,7 @@ library builds around HTML5 canvas to draw the table from scratch, thus achievin
 ## Installation and usage
 
 Checkout the usage and installation file [here](docs/usage.md).
+Additionally, we have a documentation available [here](https://bennyboer.github.io/table-engine/docs).
 
 ## Getting started
 
