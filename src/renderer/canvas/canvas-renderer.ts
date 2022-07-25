@@ -325,6 +325,18 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _focusedCellPosition: IInitialPosition | null = null;
 
 	/**
+	 * Value of the bodys user select style property before
+	 * the selection scroll prevention is enabled.
+	 */
+	private _beforeSelectionScrollPreventionUserSelectPropertyValue: string =
+		'';
+
+	/**
+	 * Whether the selection scroll prevention is currently enabled.
+	 */
+	private _selectionScrollPreventionEnabled: boolean = false;
+
+	/**
 	 * Get the renderer-specific options.
 	 */
 	private get rendererOptions(): IRendererOptions {
@@ -895,6 +907,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				}
 			}
 		}
+
+		this._updateSelectionScrollPrevention();
 	}
 
 	/**
@@ -1244,19 +1258,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param event that occurred
 	 */
 	private _onSelectStart(event: Event): void {
-		const isScrollBarDragging: boolean = !!this._scrollBarDragStart;
-		const isMouseDragging: boolean = !!this._mouseDragStart;
-		const isSelectionDragging: boolean = !!this._initialSelectionRange;
-		const isCopyHandleDragging: boolean = !!this._copyHandleDragStart;
-		const isResizerDragging: boolean = !!this._resizingDragStart;
-
-		const isDragging: boolean =
-			isScrollBarDragging ||
-			isMouseDragging ||
-			isSelectionDragging ||
-			isCopyHandleDragging ||
-			isResizerDragging;
-		if (isDragging) {
+		if (this._isDragging()) {
 			// Prevent text selection outside of table when currently dragging something in the table
 			event.preventDefault();
 		}
@@ -2147,6 +2149,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			this._initialSelectionRange = null;
 			this._stopAutoScrolling(); // Stop automatic scrolling (when in progress)
 		}
+
+		this._updateSelectionScrollPrevention();
 	}
 
 	/**
@@ -4976,6 +4980,49 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 */
 	public getOverlays(): IOverlay[] {
 		return this._overlays;
+	}
+
+	/**
+	 * Update the selection scroll prevention.
+	 * Selection scroll prevention is used to prevent the page from scrolling
+	 * when the user drags (mouse down + mouse move) the cursor out of the
+	 * viewport. Normally the page would scroll in that direction which we
+	 * do not want when we are actually dragging something in the table around.
+	 */
+	private _updateSelectionScrollPrevention() {
+		const enablePrevention: boolean = this._isDragging();
+		const isCurrentlyEnabled: boolean =
+			this._selectionScrollPreventionEnabled;
+
+		if (enablePrevention && !isCurrentlyEnabled) {
+			this._beforeSelectionScrollPreventionUserSelectPropertyValue =
+				document.body.style.userSelect;
+			document.body.style.userSelect = 'none';
+			this._selectionScrollPreventionEnabled = true;
+		} else if (!enablePrevention && isCurrentlyEnabled) {
+			document.body.style.userSelect =
+				this._beforeSelectionScrollPreventionUserSelectPropertyValue;
+			this._selectionScrollPreventionEnabled = false;
+		}
+	}
+
+	/**
+	 * Check whether something is currently being dragged (mouse down + mouse move) inside the table.
+	 */
+	private _isDragging(): boolean {
+		const isScrollBarDragging: boolean = !!this._scrollBarDragStart;
+		const isMouseDragging: boolean = !!this._mouseDragStart;
+		const isSelectionDragging: boolean = !!this._initialSelectionRange;
+		const isCopyHandleDragging: boolean = !!this._copyHandleDragStart;
+		const isResizerDragging: boolean = !!this._resizingDragStart;
+
+		return (
+			isScrollBarDragging ||
+			isMouseDragging ||
+			isSelectionDragging ||
+			isCopyHandleDragging ||
+			isResizerDragging
+		);
 	}
 }
 
