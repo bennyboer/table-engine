@@ -40,5 +40,12 @@ export class AppComponent {
 				filter(([a, b]) => b && a instanceof NavigationEnd)
 			)
 			.subscribe((_) => this.drawer?.close());
+		router.events
+			.pipe(filter((event) => event instanceof NavigationEnd))
+			.subscribe(() =>
+				this.drawer._container.scrollable.scrollTo({
+					top: 0,
+				})
+			);
 	}
 }

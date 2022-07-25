@@ -21,8 +21,8 @@ $fontConfig: (
   display-1: mat.define-typography-level(34px, 40px, 400, 'Source Sans Pro', 0.0074em),
   headline: mat.define-typography-level(32px, 32px, 400, 'Source Serif Pro', 0.0000em),
   title: mat.define-typography-level(28px, 32px, 500, 'Source Serif Pro', 0.0054em),
-  subheading-2: mat.define-typography-level(16px, 28px, 400, 'Source Sans Pro', 0.0094em),
-  subheading-1: mat.define-typography-level(15px, 24px, 500, 'Source Sans Pro', 0.0067em),
+  subheading-2: mat.define-typography-level(18px, 28px, 400, 'Source Sans Pro', 0.0094em),
+  subheading-1: mat.define-typography-level(16px, 24px, 500, 'Source Sans Pro', 0.0067em),
   body-2: mat.define-typography-level(14px, 24px, 500, 'Source Sans Pro', 0.0179em),
   body-1: mat.define-typography-level(14px, 20px, 400, 'Source Sans Pro', 0.0179em),
   button: mat.define-typography-level(14px, 14px, 500, 'Source Sans Pro', 0.0893em),
@@ -270,4 +270,23 @@ html, body {
 
 p {
   margin-bottom: 25px!important;
+}
+
+pre, code {
+  border: 1px solid #EAEAEA;
+  background-color: #F8F8F8;
+  border-radius: 3px;
+}
+
+pre {
+  white-space: pre-wrap;
+  padding: 10px 20px;
+}
+
+iframe {
+  margin-bottom: 25px;
+  border: 2px dashed #999;
+  padding: 4px;
+  width: 100%;
+  height: 500px;
 }

@@ -1,5 +1,11 @@
 # Table Engine
 
+<hr>
+
+Quick links: [Documentation and guide](https://bennyboer.github.io/table-engine/docs) | [Example](https://bennyboer.github.io/table-engine/)
+
+<hr>
+
 <p align="center">
     <img src="docs/img/logo/logo.svg" width="256">
 </p>

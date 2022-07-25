@@ -1,13 +1,123 @@
 <h1>2. Setup</h1>
+<p>
+    In this chapter we will take a look at the installation and basic usage of the Table Engine.
+</p>
 
-<p>TODO</p>
+<h2>Installation</h2>
+<p>
+    For most users it is as simple as typing <code>npm install table-engine</code> since the Table Engine is available
+    at the npm registry.
+    Below are all the options currently available listed.
+</p>
+
+<h3>npm</h3>
+<pre>
+npm install table-engine
+</pre>
+
+<h3>yarn</h3>
+<pre>
+yarn add table-engine
+</pre>
+
+<h3>Other</h3>
+<p>
+    For any other use case we currently do not have options available.
+    If you still want to use the Table Engine, consider building it yourself the way you need it.
+</p>
+
+<h2>Basic usage</h2>
+<p>
+    When the library is installed you are good to go actually using it!
+</p>
+
+<h3>Find a home for the table</h3>
+<p>
+    First off you are going to need a HTML element the library is able to utilize as container to append its canvas to draw on in.
+    Make sure the element has the size you want the table to have.
+    In the following example the <code>div</code> element has a width of 100% and a height of 400px.
+</p>
+
+<pre>
+&lt;div id="my-container" style="height: 400px"&gt;&lt;/div&gt;
+</pre>
+
+<h3>Define what the tables contents are</h3>
+<p>
+    A table cannot exist without data to be shown in its rows and columns.
+    Thus we need to define a <code>CellModel</code> that is the Table Engines data structure responsible for managing the tables cells.
+    The recommended way to get your data into a cell model is by using the <code>CellModel.generate(...)</code> method.
+    It accepts a list of cells that you want to have displayed and offers additional configuration such as the row size of each row that is generated or which cell renderer is used by default.
+</p>
+
+<pre>
+const cellModel = CellModel.generate(
+    [
+        {{ "{" }}
+            range: {{ "{" }}
+                startRow: 2,
+                endRow: 4,
+                startColumn: 3,
+                endColumn: 5
+            {{ "}" }},
+            rendererName: TextCellRenderer.NAME,
+            value: "A merged cell!"
+        {{ "}" }},
+        {{ "{" }}
+            range: CellRange.fromSingleRowColumn(30, 5),
+            rendererName: TextCellRenderer.NAME,
+            value: "LAST CELL"
+        {{ "}" }}
+    ],
+    (row, column) => (row + 1) * (column + 1),
+    (row, column) => TextCellRenderer.NAME,
+    (row) => 25,
+    (column) => 120,
+    new Set(),
+    new Set()
+);
+</pre>
+
+<p>
+    For the above CellModel example we are passing two cell definitions: the first is a cell ranging from row 2 to 4 and column 3 to 5, which means it is a merged cell.
+    The second cell is a cell spanning only row 30 and column 5 with the text "LAST CELL".
+    Now you may ask yourself, what about the other cells in between?
+    Those are generated automatically using the parameters following the list of cells.
+    <code>(row, column) => (row + 1) * (column + 1)</code> is the generator for values of cells not specified in the list above.
+    Equally <code>(row, column) => TextCellRenderer.NAME</code> means that empty cells are to be rendered by the text cell renderer.
+    The next options <code>(row) => 25</code> and <code>(column) => 120</code> are giving the row and column sizes for each row and column generated.
+    The last two parameters <code>new Set()</code> are used when you want some rows or columns initially hidden - better ignore it for now.
+    Afterwards we get a CellModel that contains a cell matrix of the given cells as well as the generated ones, which is now ready to be consumed by the Table Engine.
+</p>
+
+<h3>Ignite the engine</h3>
+<p>
+    All that is left to do now to finally see your table is igniting the Table Engine.
+    That is done by using the TableEngine constructor with the container HTML element and the CellModel as parameters.
+    Additionally we want to use the text cell renderer in our example, that is why we need to tell our TableEngine instance to register it.
+    Finally we can call <code>TableEngine.initialize()</code> to fire the engine up and a table should appear when running the application.
+</p>
+
+<pre>
+const tableContainer = document.getElementById("my-container");
+
+const cellModel = ...; // See last step
+
+const engine = new TableEngine(tableContainer, cellModel);
+engine.registerCellRenderer(new TextCellRenderer());
+engine.initialize();
+</pre>
+
+<h3>Result</h3>
+
+<iframe src='https://stackblitz.com/edit/typescript-8xt2xd?embed=1&file=index.ts&hideExplorer=1&hideNavigation=1&theme=light&view=preview'></iframe>
 
 <div class='actions'>
-    <button mat-raised-button routerLink='/guide/introduction'>
+    <button mat-stroked-button routerLink='/guide/introduction'>
         <mat-icon>navigate_before</mat-icon>
         Previous section: Introduction
     </button>
-    <button mat-raised-button routerLink='/guide/cell-renderer'>
+    <button mat-stroked-button routerLink='/guide/cell-renderer'>
         <mat-icon>navigate_next</mat-icon>
         Next section: Cell renderer
     </button>
