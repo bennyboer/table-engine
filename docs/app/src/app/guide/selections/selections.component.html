@@ -1,6 +1,71 @@
 <h1>5. Selections</h1>
 
-<p>TODO</p>
+<p>
+    Selections are another vital part of many table applications - most importantly spreadsheets.
+    The Table Engines selection model is responsible for managing all selections in the current state.
+</p>
+
+<h2>What is a selection?</h2>
+
+<p>
+    A selection is a collections of cells that the user has selected.
+    With the Table Engine one can select either a single cell, a whole range of cells (multiple rows and columns) and even multiple ranges of cells (see selection modes below).
+    Selections play a vital part in being able to copy cell values for example using Ctrl+C.
+</p>
+
+<h2>Selection keyboard navigation</h2>
+
+<p>
+    You can alter a selection that has been created with the mouse using the keyboard.
+    When a range of cells is selected the user is able to jump between cells in the selection using the Tab and Enter key.
+    Additionally when pressing Shift simultaneously to the Tab or Enter key, they jump in the opposite direction.
+    The whole selection can be altered using the arrow keys (or alternatively Tab or Enter when only a single cell is selected).
+    When pressing Shift simultaneously to pressing the arrow key, the current selection is extended, when pressing Ctrl the selection is jumped to the very end of the table in the chosen direction.
+</p>
+
+<h2>Selection modes</h2>
+
+<p>
+    There are multiple selection modes you need to choose one from depending on your use-case:
+</p>
+
+<ul>
+    <li>
+        <strong>Multiple range selections (default):</strong>
+        By default the Table Engine will allow users to select and drag ranges of selections.
+        When pressing Ctrl and dragging another selection that selection is added as well - so the user is seeing multiple selected cell ranges.
+    </li>
+    <li>
+        <strong>Single range selections:</strong>
+        Only a single range selection is allowed.
+        When pressing Ctrl and trying to drag another selection, the old selection is replaced.
+        Enable this mode by setting <code>engine.getOptions().selection.allowMultiSelection</code> to <code>false</code> before initialization of the Table Engine.
+    </li>
+    <li>
+        <strong>Single cell selections:</strong>
+        Only a single cell is allowed to be selected.
+        Enable this mode by setting <code>engine.getOptions().selection.allowMultiSelection</code> and <code>engine.getOptions().selection.allowRangeSelection</code> to <code>false</code> before initialization of the Table Engine.
+    </li>
+    <li>
+        <strong>No selections:</strong>
+        Disable all selections by using a selection transform that just disallows any selection: <code>engine.getOptions().selection.selectionTransform = () => false</code>.
+    </li>
+</ul>
+
+<h2>Working directly with the selection model</h2>
+
+<p>
+    You can also work directly with the selection model when you want to select something programmatically for example.
+    Just fetch the <code>SelectionModel</code> by calling <code>TableEngine.getSelectionModel()</code>.
+    You may add a selection by calling <code>addSelection</code>, remove one with <code>removeSelection</code>, get all current selections with <code>getSelections</code> and many more operations that you can check in the source code or via auto-completion in your IDE.
+</p>
+
+<blockquote>
+    When working with the selection objects of type <code>ISelection</code> you may wonder what an "initial" cell is.
+    The initial cell is the cell you started dragging a selection from.
+    It is needed for the internal workings for the selection movement/extension algorithms of the selection model.
+    Only the current primary (focused) selection must have an initial cell set, but it doesn't hurt providing one anyway.
+</blockquote>
 
 <div class='actions'>
     <button mat-stroked-button routerLink='/guide/cell-model'>

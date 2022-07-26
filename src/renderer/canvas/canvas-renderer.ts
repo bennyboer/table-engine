@@ -2594,10 +2594,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			false
 		);
 
-		const primary: ISelection = this._selectionModel.getPrimary();
-		this._updateFocusedCell(primary.initial);
+		const primary: ISelection | null = this._selectionModel.getPrimary();
+		if (!!primary) {
+			this._updateFocusedCell(primary.initial);
 
-		this._repaintScheduler.next();
+			this._repaintScheduler.next();
+		}
 	}
 
 	/**
