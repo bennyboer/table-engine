@@ -152,6 +152,17 @@
     For more advanced examples you may want to check the source code of the predefined cell renderers in the Table Engine <a href='https://github.com/bennyboer/table-engine/tree/main/src/renderer/canvas/cell' target='_blank'>GitHub repository</a> - especially the <a href='https://github.com/bennyboer/table-engine/blob/main/src/renderer/canvas/cell/rating/rating-cell-renderer.ts' target='_blank'>rating cell renderer</a> is a recommended read!
 </p>
 
+<h2>Monitor cell renderer performance</h2>
+
+<p>
+    Especially when writing custom cell renderers you'll want to monitor the performance of the cell renderers when used.
+    One easy way to do this is by enabling the debug option of the Table Engine using <code>this.engine.getOptions().misc.debug = true</code>&nbsp;<strong>before initializing</strong> the engine.
+    That way you'll get logging on the console about the rendering speed of the table, which should always be in the low milliseconds.
+    If the rendering time is too high you might consider using the viewport cache explained above.
+    Also check that the table is not rendered all the time when not needed.
+    For example when writing a new cell renderer that is calling <code>TableEngine.repaint()</code> you might want to check whether the table is really only repainted when absolutely needed.
+</p>
+
 <div class='actions'>
     <button mat-stroked-button routerLink='/guide/setup'>
         <mat-icon>navigate_before</mat-icon>
