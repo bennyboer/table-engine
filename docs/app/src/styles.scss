@@ -274,13 +274,36 @@ p {
 
 pre, code {
   border: 1px solid #EAEAEA;
-  background-color: #F8F8F8;
+  background-color: white;
   border-radius: 3px;
 }
 
 pre {
-  white-space: pre-wrap;
-  padding: 10px 20px;
+  display: flex;
+  margin-top: 0;
+  margin-bottom: 25px;
+  word-wrap: break-word;
+  border: 2px dashed #999;
+  border-radius: 0;
+
+  code {
+    flex: 1;
+    line-height: 1.5em;
+    font-size: 14px;
+    min-height: 100%;
+    padding: 4px;
+    border: none;
+    border-radius: 0;
+
+    &.hljs-line-numbers {
+      padding: 0px !important;
+    }
+
+    .hljs-ln-n {
+      color: #AAA;
+      padding: 0 10px 0 5px;
+    }
+  }
 }
 
 iframe {

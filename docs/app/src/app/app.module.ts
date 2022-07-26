@@ -16,6 +16,7 @@ import { SetupComponent } from './guide/setup/setup.component';
 import { CellRendererComponent } from './guide/cell-renderer/cell-renderer.component';
 import { SelectionsComponent } from './guide/selections/selections.component';
 import { BordersComponent } from './guide/borders/borders.component';
+import { HIGHLIGHT_OPTIONS, HighlightModule } from 'ngx-highlightjs';
 
 @NgModule({
 	declarations: [
@@ -32,13 +33,30 @@ import { BordersComponent } from './guide/borders/borders.component';
 		BrowserModule,
 		AppRoutingModule,
 		BrowserAnimationsModule,
+		HighlightModule,
 		MatSidenavModule,
 		MatIconModule,
 		MatToolbarModule,
 		MatButtonModule,
 		MatListModule,
 	],
-	providers: [],
+	providers: [
+		{
+			provide: HIGHLIGHT_OPTIONS,
+			useValue: {
+				coreLibraryLoader: () => import('highlight.js/lib/core'),
+				lineNumbersLoader: () => import('highlightjs-line-numbers.js'),
+				languages: {
+					typescript: () =>
+						import('highlight.js/lib/languages/typescript'),
+					css: () => import('highlight.js/lib/languages/css'),
+					xml: () => import('highlight.js/lib/languages/xml'),
+					shell: () => import('highlight.js/lib/languages/shell'),
+				},
+				themePath: 'assets/github.css',
+			},
+		},
+	],
 	bootstrap: [AppComponent],
 })
 export class AppModule {}

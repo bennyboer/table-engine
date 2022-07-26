@@ -18,6 +18,7 @@
 		"@angular/platform-browser": "^14.1.0",
 		"@angular/platform-browser-dynamic": "^14.1.0",
 		"@angular/router": "^14.1.0",
+		"ngx-highlightjs": "^7.0.0",
 		"rxjs": "~7.5.0",
 		"table-engine": "^0.1.6",
 		"tslib": "^2.3.0",

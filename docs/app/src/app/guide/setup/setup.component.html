@@ -12,12 +12,12 @@
 
 <h3>npm</h3>
 <pre>
-npm install table-engine
+  <code [highlight]="codeSamples.npmInstall" [languages]="['shell']"></code>
 </pre>
 
 <h3>yarn</h3>
 <pre>
-yarn add table-engine
+  <code [highlight]="codeSamples.yarnAdd" [languages]="['shell']"></code>
 </pre>
 
 <h3>Other</h3>
@@ -39,7 +39,7 @@ yarn add table-engine
 </p>
 
 <pre>
-&lt;div id="my-container" style="height: 400px"&gt;&lt;/div&gt;
+  <code [highlight]="codeSamples.tableContainerHtml" [languages]="['xml']"></code>
 </pre>
 
 <h3>Define what the tables contents are</h3>
@@ -50,33 +50,7 @@ yarn add table-engine
     It accepts a list of cells that you want to have displayed and offers additional configuration such as the row size of each row that is generated or which cell renderer is used by default.
 </p>
 
-<pre>
-const cellModel = CellModel.generate(
-    [
-        {{ "{" }}
-            range: {{ "{" }}
-                startRow: 2,
-                endRow: 4,
-                startColumn: 3,
-                endColumn: 5
-            {{ "}" }},
-            rendererName: TextCellRenderer.NAME,
-            value: "A merged cell!"
-        {{ "}" }},
-        {{ "{" }}
-            range: CellRange.fromSingleRowColumn(30, 5),
-            rendererName: TextCellRenderer.NAME,
-            value: "LAST CELL"
-        {{ "}" }}
-    ],
-    (row, column) => (row + 1) * (column + 1),
-    (row, column) => TextCellRenderer.NAME,
-    (row) => 25,
-    (column) => 120,
-    new Set(),
-    new Set()
-);
-</pre>
+<pre><code [highlight]="codeSamples.generateCellModel" [languages]="['typescript']" [lineNumbers]='true'></code></pre>
 
 <p>
     For the above CellModel example we are passing two cell definitions: the first is a cell ranging from row 2 to 4 and column 3 to 5, which means it is a merged cell.
@@ -98,15 +72,7 @@ const cellModel = CellModel.generate(
     Finally we can call <code>TableEngine.initialize()</code> to fire the engine up and a table should appear when running the application.
 </p>
 
-<pre>
-const tableContainer = document.getElementById("my-container");
-
-const cellModel = ...; // See last step
-
-const engine = new TableEngine(tableContainer, cellModel);
-engine.registerCellRenderer(new TextCellRenderer());
-engine.initialize();
-</pre>
+<pre><code [highlight]="codeSamples.igniteEngine" [languages]="['typescript']" [lineNumbers]='true'></code></pre>
 
 <h3>Result</h3>
 
