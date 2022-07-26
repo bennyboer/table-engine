@@ -52,6 +52,12 @@
     </li>
 </ul>
 
+<p>
+    For more advanced selection modes or when you have complex selection rules, like for example the first row and column are not selectable, you can use a selection transform function that is assigned to <code>engine.getOptions().selection.selectionTransform</code>.
+    Every selection that is made or modifies is passed through that selection transform function.
+    If you're using the row/column header cell renderer in the first row and column of the table like shown in previous examples, you can use the predefined <code>ROW_COLUMN_HEADER_TRANSFORM</code> selection transform function to make the first row and column non-selectable.
+</p>
+
 <h2>Working directly with the selection model</h2>
 
 <p>
