@@ -1,6 +1,156 @@
 <h1>3. Cell renderer</h1>
+<p>
+    The Table Engine itself does not care at all what is displayed inside a cell.
+    It will only provide the constraints like the cell size, position and value.
+    To actually render the cells value however you like, we need another concept: <strong>Cell renderers</strong>.
+</p>
 
-<p>TODO</p>
+<h2>Predefined cell renderers</h2>
+<p>
+    There are a lot of common things to be displayed in a table.
+    You do not have to reinvent the wheel by using <strong>predefined</strong> cell renderers that are distributed with the Table Engine library.
+    We have listed some of the predefined renderers in the below table where you can interactively see what they are capable of.
+</p>
+
+<div #tableContainer class='table-container'></div>
+
+<blockquote>
+    A note of caution here regarding the <strong>DOM cell renderer</strong>.
+    The library is capable of rendering HTML elements of any kind inside cells of the table.
+    This works, but is to be used as a last resort since you are impeding rendering performance that way.
+    The library has been developed using a HTML5 canvas element instead of rendering a HTML table using the DOM and you should use it that way whenever possible to ensure best user experience.
+    So only use the DOM renderer if you are absolutely sure you cannot write a custom cell renderer that will do for your use-case.
+</blockquote>
+
+<p>
+    Most of the time you are good to go with the predefined cell renderers.
+    Only in extraordinary use-cases you might want to dive into writing your own cell renderer implementation.
+    If you feel like we missed a pretty common type of cell renderer, feel free to either open an issue in our <a href='https://github.com/bennyboer/table-engine' target='_blank'>GitHub repository</a> or try to implement it and open a pull request so we can review it and add to the Table Engine for general availability!
+    The same is valid for any kind of bug or strange behavior you encounter.
+    Even if you just feel like there is some configuration of the cell renderers missing that you would like to be configurable.
+</p>
+
+<h2>Registering a cell renderer</h2>
+<p>
+    Before you can use predefined or custom-made cell renderer you need to register it at the <code>TableEngine</code> instance, so that the Table Engine is aware of it.
+    This is done by simply calling <code>TableEngine.registerCellRenderer(...)</code> with your desired cell renderer instance as parameter as shown in the below example.
+</p>
+
+<pre><code [highlight]='codeSamples.registerCellRenderer' [languages]="['typescript']" [lineNumbers]='true'></code></pre>
+
+<p>
+    In the example we register a lot of predefined cell renderers.
+    The process is the same no matter if the renderer is predefined or custom-made.
+    For the first registered cell renderer, which is the text cell renderer, we pass centered horizontal alignment as default configuration.
+    That means, that every text cell renderer will render its text centered by default.
+    Passing default configuration is possible for any predefined cell renderer.
+</p>
+
+<h2>Using a cell renderer for a cell</h2>
+<p>
+    Using a cell renderer for a cell has mostly been covered.
+    When adding cells to the cell model, you are able to define the name of the cell renderer for each cell.
+    The predefined cell renderers have a constant name.
+    For example the text cell renderers name can be accessed using <code>TextCellRenderer.NAME</code>.
+    In the below code snippet you will find the code used to use the DOM cell renderer in the above table example.
+</p>
+
+<pre><code [highlight]='codeSamples.usingCellRenderer' [languages]="['typescript']" [lineNumbers]='true'></code></pre>
+
+<h2>Implementing a custom cell renderer</h2>
+<p>
+    Implementing a custom cell renderer is not really a difficult task, but you have a lot of responsibility because you can draw basically everywhere on the table.
+    The Table Engine will not really check after what your cell renderer is doing.
+</p>
+
+<p>
+    Start by implementing a new class for your cell renderer that will implement the <code>ICanvasCellRenderer</code> interface - we can call it <code>ExampleCellRenderer</code> for now!
+</p>
+
+<pre><code [highlight]='codeSamples.exampleCellRendererStart' [languages]="['typescript']" [lineNumbers]='true'></code></pre>
+
+<p>
+    Next we will go over what the different methods you need to implement have to do:
+</p>
+
+<ul>
+    <li>
+        <code>after</code>: this method is called when all cells that need to be rendered with this cell renderer have been rendered in a rendering cycle.
+        You don't need to do anything if there is nothing to be done.
+        This can be useful to clean up the canvas rendering context that you're using to render the cells content on the tables canvas.
+        For now leave the method body empty as it is.
+    </li>
+    <li>
+        <code>before</code>: similar to the <code>after</code> method this can be used to initialize the cell renderer for another rendering cycle - before rendering all cells that need to be rendered with the custom cell renderer.
+        You can leave it empty for now.
+    </li>
+    <li>
+        <code>cleanup</code>: the cleanup method is called when there are no more cells in the current viewport that can be rendered with the new cell renderer.
+        If you don't need to do something here - leave it empty.
+    </li>
+    <li>
+        <code>estimatePreferredSize</code>: when double-clicking row or column resizers (small space between row- and column-headers when having resizing enabled) the Table Engine is trying to estimate a row or column size that is fitting all visible content.
+        Each cell renderer can give a preferred size if there is any using this method.
+        If your cell renderer is for example just displaying something based on the size of the cell, you probably don't have a preferred size and can just return <code>null</code> here.
+        The checkbox cell renderer for example is responding with the size of the last rendered checkbox + label.
+        For now just return <code>null</code>.
+    </li>
+    <li>
+        <code>getCopyValue</code>: when the user is pressing Ctrl+C to copy the cell values of the currently selected cells, this method is called for each cell renderer that has a cell in the selection.
+        It is responsible for returning a string or a HTML string that is a suitable representation for the value to copy.
+        The text cell renderer for example is just responding with the cells text value, while the DOM cell renderer is returning the HTML to be displayed.
+        It is not essentials that this works and you can just for now return an empty string.
+    </li>
+    <li>
+        <code>getEventListener</code>: since the Table Engines cells are not elements in the DOM you cannot simply register an event listener on them.
+        Sometimes you need to react on events like the row/column header cell renderer when the mouse is hovered over a cell for example or the text cell renderer is double clicked to show an input field when editable.
+        This can be done by returning an instance of the <code>ICellRendererEventListener</code> interface.
+        We will use this later in the <code>ExampleCellRenderer</code> implementation - for now just return <code>null</code>.
+    </li>
+    <li>
+        <code>getName</code>: every cell renderer must have a name so that you can use it in the cell definition to assign a cell renderer to a cell.
+        Just return an unique value like <code>"EXAMPLE"</code>.
+    </li>
+    <li>
+        <code>initialize</code>: when the Table Engine is initialized, the cell renderes are supplied with the <code>TableEngine</code> instance here.
+        This is needed because cell renderers sometimes need to have access to the Table Engines properties, such as the cell model.
+        For example the row/column header cell renderer is changing a cells background color when the mouse is hovered above it and thus needs to trigger another Table repaint using <code>TableEngine.repaint()</code>.
+    </li>
+    <li>
+        <code>onDisappearing</code>: sometimes cell renderers use the so-called viewport cache to cache results from previous rendering cycles to speed up rendering.
+        For example the text cell renderer is caching the line wrap result so that is only needs to be recalculated once the width of the column changes.
+        To use the viewport cache each cell instance that is passed to the cell renderer has a <code>viewportCache</code> field of type <code>any</code>.
+        Every cell renderer is responsible for using and managing that property - no one else is allowed to tinker with it with one exception: the Table Engine will clear the viewport cache once the cell goes out of viewport and will not be rendered anymore - hence the name viewport cache.
+        The <code>onDisappearing</code> method will be called once a cell that is rendered with the cell renderer goes out of viewport.
+        Afterwards the viewport cache is cleared automatically by the Table Engine - you don't have to do that in the <code>onDisappearing</code> method.
+        For example the DOM cell renderer is using this method to remove the DOM element that it is rendering from the DOM.
+        For this example cell renderer we won't need to do anything here and can leave the body empty.
+    </li>
+    <li>
+        <code>render</code>: the render method is the core of any cell renderer.
+        It is responsible for actually rendering the cells value on the tables canvas.
+        Thus the <code>CanvasRenderingContext2D</code>, cell instance and cell bounds are passed as method parameters.
+    </li>
+</ul>
+
+<p>
+    For the example cell renderer we want to draw a simple rectangle in the cell.
+    In the following code block you'll find the render method.
+</p>
+
+<pre><code [highlight]='codeSamples.exampleCellRendererRenderMethod' [languages]="['typescript']" [lineNumbers]='true'></code></pre>
+
+<p>
+    Now you can use it to draw red rectangles in any cell!
+    Below you'll find the result when using the cell renderer in an example for the cell at row 2 and column 2.
+</p>
+
+<iframe src='https://stackblitz.com/edit/typescript-4nsp7z?embed=1&file=example-cell-renderer.ts&hideExplorer=1&hideNavigation=1&theme=light&view=preview'></iframe>
+
+<p>
+    You should by now be prepared to write custom cell renderers - probably more complex than the example cell renderer above!
+    For more advanced examples you may want to check the source code of the predefined cell renderers in the Table Engine <a href='https://github.com/bennyboer/table-engine/tree/main/src/renderer/canvas/cell' target='_blank'>GitHub repository</a> - especially the <a href='https://github.com/bennyboer/table-engine/blob/main/src/renderer/canvas/cell/rating/rating-cell-renderer.ts' target='_blank'>rating cell renderer</a> is a recommended read!
+</p>
 
 <div class='actions'>
     <button mat-stroked-button routerLink='/guide/setup'>
