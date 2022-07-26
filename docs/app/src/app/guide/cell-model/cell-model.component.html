@@ -1,0 +1,55 @@
+<h1>4. Cell model</h1>
+
+<p>
+    We have already dealt with the cell model in previous sections of this guide.
+    Now we want to give a more detailed look at it.
+</p>
+
+<p>
+    The Table Engine cell model is responsible for managing the row/column structure of a table and its integrity.
+    Additionally it provides a set of tools to modify a table:
+</p>
+
+<ul>
+    <li>
+        <strong>Inserting/deleting rows/columns:</strong>
+        With the methods <code>insertRows</code>, <code>insertColumns</code>, <code>deleteRows</code> and <code>deleteColumns</code> you're able to insert or delete rows or columns where you want.
+        The cell model is able to change merged cells accordingly - for example when row is inserted in between a merged cell.
+    </li>
+    <li>
+        <strong>Hiding/showing rows/columns:</strong>
+        For some use-cases you might want to hide rows/columns - for example when developing a spreadsheet application like Excel.
+        The Table Engines cell model has got you covered with the methods <code>hideRows</code>, <code>hideColumns</code>, <code>showRows</code>, <code>showColumns</code> and <code>showAll</code>.
+    </li>
+    <li>
+        <strong>Resizing rows/columns:</strong>
+        Maybe surprising, but the cell model also is responsible for resizing rows and columns using the methods <code>resizeRows</code> and <code>resizeColumns</code>.
+    </li>
+    <li>
+        <strong>Merging/splitting cells:</strong>
+        Using <code>mergeCells</code> and <code>splitCell</code> you can either merge a range of cells together or split a merged cell again into its parts.
+        You most likely know this kind of feature from spreadsheet applications like Excel.
+    </li>
+    <li>
+        <strong>Managing cell values and renderers:</strong>
+        If you want to change a cells value or its renderer you can use the methods <code>setValue</code> and <code>setRenderer</code>.
+    </li>
+</ul>
+
+<p>
+    Keep in mind that when using any of these methods the Table Engine is not automatically informed after initialization.
+    That means that when changing a cells value for example the Table Engine needs to be repainted using <code>TableEngine.repaint()</code>.
+    We've chosen a manual repainting approach because we cannot know whether the developer wants to perform a single or multiple actions on the cell model.
+    When performing multiple actions it would waste resources repainting the table after each action.
+</p>
+
+<div class='actions'>
+    <button mat-stroked-button routerLink='/guide/cell-renderer'>
+        <mat-icon>navigate_before</mat-icon>
+        Previous section: Cell renderer
+    </button>
+    <button mat-stroked-button routerLink='/guide/selections'>
+        <mat-icon>navigate_next</mat-icon>
+        Next section: Selections
+    </button>
+</div>

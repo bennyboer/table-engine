@@ -17,6 +17,7 @@ import { CellRendererComponent } from './guide/cell-renderer/cell-renderer.compo
 import { SelectionsComponent } from './guide/selections/selections.component';
 import { BordersComponent } from './guide/borders/borders.component';
 import { HIGHLIGHT_OPTIONS, HighlightModule } from 'ngx-highlightjs';
+import { CellModelComponent } from './guide/cell-model/cell-model.component';
 
 @NgModule({
 	declarations: [
@@ -24,6 +25,7 @@ import { HIGHLIGHT_OPTIONS, HighlightModule } from 'ngx-highlightjs';
 		IntroductionComponent,
 		SetupComponent,
 		CellRendererComponent,
+		CellModelComponent,
 		SelectionsComponent,
 		BordersComponent,
 		MinimalExampleComponent,

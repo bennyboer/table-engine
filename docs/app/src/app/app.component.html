@@ -16,15 +16,17 @@
     <mat-sidenav-container class='drawer-container' [style.marginTop.px]="isMobile ? 56 : 0">
       <mat-sidenav #drawer [mode]="isMobile ? 'over' : 'side'" [fixedInViewport]="isMobile" fixedTopGap="56" [opened]='!isMobile'>
         <mat-nav-list>
+          <div mat-subheader>Guide</div>
           <a mat-list-item routerLink='/guide/introduction'>1. Introduction</a>
           <a mat-list-item routerLink='/guide/setup'>2. Setup</a>
           <a mat-list-item routerLink='/guide/cell-renderer'>3. Cell renderer</a>
-          <a mat-list-item routerLink='/guide/selections'>4. Selections</a>
-          <a mat-list-item routerLink='/guide/borders'>5. Borders</a>
+          <a mat-list-item routerLink='/guide/cell-model'>4. Cell model</a>
+          <a mat-list-item routerLink='/guide/selections'>5. Selections</a>
+          <a mat-list-item routerLink='/guide/borders'>6. Borders</a>
 
           <mat-divider></mat-divider>
-          <div mat-subheader>Examples</div>
 
+          <div mat-subheader>Features by example</div>
           <a mat-list-item routerLink='/examples/minimal'>Minimal</a>
           <a mat-list-item routerLink='/examples/row-column-headers'>Row/column headers</a>
         </mat-nav-list>
