@@ -1,10 +1,39 @@
 <h1>6. Borders</h1>
 
-<p>TODO</p>
+<p>
+    If there is a cell model and a selection model, might there even be a border model for managing borders in the table?
+    Yes, absolutely!
+</p>
+
+<h2>What is a border?</h2>
+
+<p>
+    A border is a colorful line that is used to visually separate cells.
+    You can choose between different border sizes (or thicknesses), colors and styles (solid, dotted, dashed).
+    What is important: borders only have a visual effect, they do not affect row/column or cell sizes.
+</p>
+
+<h2>Setting a border</h2>
+
+<p>
+    You can access the <code>BorderModel</code> using <code>TableEngine.getBorderModel</code>.
+    There are basically two options available: Either set a border to a whole cell range with <code>setBorder</code>, or use the easier method <code>setBorderLine</code> to set a single border line to a cell based on a mask like in the following example.
+</p>
+
+<pre><code [highlight]='codeSamples.setBorderLine' [languages]="['typescript']" [lineNumbers]='true'></code></pre>
+
+<p>
+    In the above example we set a dotted border of size (or thickness) 3 with the given color at row 10 and column 2 at the top and bottom.
+    That is pretty much everything that is to say about the border model at a high level.
+</p>
 
 <div class='actions'>
     <button mat-stroked-button routerLink='/guide/selections'>
         <mat-icon>navigate_before</mat-icon>
         Previous section: Selections
+    </button>
+    <button mat-stroked-button routerLink='/guide/theming'>
+        <mat-icon>navigate_next</mat-icon>
+        Next section: Theming
     </button>
 </div>

@@ -8,6 +8,7 @@ import { CellRendererComponent } from './guide/cell-renderer/cell-renderer.compo
 import { SelectionsComponent } from './guide/selections/selections.component';
 import { BordersComponent } from './guide/borders/borders.component';
 import { CellModelComponent } from './guide/cell-model/cell-model.component';
+import { ThemingComponent } from './guide/theming/theming.component';
 
 const routes: Routes = [
 	{
@@ -36,6 +37,10 @@ const routes: Routes = [
 			{
 				path: 'borders',
 				component: BordersComponent,
+			},
+			{
+				path: 'theming',
+				component: ThemingComponent,
 			},
 		],
 	},
