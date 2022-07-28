@@ -19,6 +19,7 @@ import { BordersComponent } from './guide/borders/borders.component';
 import { HIGHLIGHT_OPTIONS, HighlightModule } from 'ngx-highlightjs';
 import { CellModelComponent } from './guide/cell-model/cell-model.component';
 import { ThemingComponent } from './guide/theming/theming.component';
+import { NextComponent } from './guide/next/next.component';
 
 @NgModule({
 	declarations: [
@@ -30,6 +31,7 @@ import { ThemingComponent } from './guide/theming/theming.component';
 		SelectionsComponent,
 		BordersComponent,
 		ThemingComponent,
+		NextComponent,
 		MinimalExampleComponent,
 		RowColumnHeadersComponent,
 	],

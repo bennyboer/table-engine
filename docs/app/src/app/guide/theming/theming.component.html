@@ -1,10 +1,40 @@
 <h1>7. Theming</h1>
 
-<p>TODO</p>
+<p>
+    Changing the look and feel of the Table Engine is called theming.
+</p>
+
+<h2>General theming</h2>
+
+<p>
+    Since we draw the table on a canvas element, you cannot simply used CSS to style the component.
+    You have to defined the style in the Table Engine options before launching the engine like in the following example.
+</p>
+
+<pre><code [highlight]='sampleCode.themingExample' [languages]="['typescript']" [lineNumbers]='true'></code></pre>
+
+<p>
+    In the below preview you'll find the result that theming will produce.
+</p>
+
+<iframe src='https://stackblitz.com/edit/typescript-2sdg2l?embed=1&file=index.ts&hideExplorer=1&hideNavigation=1&theme=light&view=preview'></iframe>
+
+<h2>Cell renderer theming</h2>
+
+<p>
+    For each cell renderer you'll need to pass theming options just like above, for example when calling <code>TableEngine.registerCellRender</code> or in the cells value.
+    Check the <a href='https://github.com/bennyboer/table-engine/tree/main/src/renderer/canvas/cell' target='_blank'>source code</a> of each individual cell renderer to see its options.
+</p>
+
+<pre><code [highlight]='sampleCode.cellRendererThemingExample' [languages]="['typescript']" [lineNumbers]='true'></code></pre>
 
 <div class='actions'>
     <button mat-stroked-button routerLink='/guide/borders'>
         <mat-icon>navigate_before</mat-icon>
         Previous section: Borders
+    </button>
+    <button mat-stroked-button routerLink='/guide/next'>
+        <mat-icon>navigate_next</mat-icon>
+        Next section: Next steps
     </button>
 </div>

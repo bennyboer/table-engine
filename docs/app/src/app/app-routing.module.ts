@@ -9,6 +9,7 @@ import { SelectionsComponent } from './guide/selections/selections.component';
 import { BordersComponent } from './guide/borders/borders.component';
 import { CellModelComponent } from './guide/cell-model/cell-model.component';
 import { ThemingComponent } from './guide/theming/theming.component';
+import { NextComponent } from './guide/next/next.component';
 
 const routes: Routes = [
 	{
@@ -41,6 +42,10 @@ const routes: Routes = [
 			{
 				path: 'theming',
 				component: ThemingComponent,
+			},
+			{
+				path: 'next',
+				component: NextComponent,
 			},
 		],
 	},
