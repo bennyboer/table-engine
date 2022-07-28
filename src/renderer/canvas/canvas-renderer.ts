@@ -1953,15 +1953,27 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		const [x, y] = this._getMouseOffset(event);
 
-		const resizerInfo: IResizerInfo = this._isMouseOverResizingSpace(x, y);
-		if (resizerInfo.isMouseOver) {
-			// Double click on resizer detected
-			this._performDoubleClickResizerAction(
-				resizerInfo.index,
-				resizerInfo.overRow
+		let sendEventToCellListener: boolean = true;
+
+		const isResizingEnabled: boolean =
+			this._options.renderer.canvas.rowColumnResizing.allowResizing;
+		if (isResizingEnabled) {
+			const resizerInfo: IResizerInfo = this._isMouseOverResizingSpace(
+				x,
+				y
 			);
-		} else {
-			// Send event to cell renderer for the cell on the current position
+			if (resizerInfo.isMouseOver) {
+				// Double click on resizer detected
+				this._performDoubleClickResizerAction(
+					resizerInfo.index,
+					resizerInfo.overRow
+				);
+
+				sendEventToCellListener = false;
+			}
+		}
+
+		if (sendEventToCellListener) {
 			const range: ICellRange | null = this._getCellRangeAtPoint(
 				x,
 				y,
