@@ -10,27 +10,7 @@ export const ROW_COLUMN_HEADER_TRANSFORM: (
 	cellModel: ICellModel,
 	causedByMove: boolean
 ) => boolean = (selection, cellModel, causedByMove: boolean) => {
-	if (causedByMove) {
-		// Prevent selection of the first row and column by move (keyboard navigation).
-		if (selection.initial.row === 0) {
-			selection.initial.row = 1;
-		}
-		if (selection.initial.column === 0) {
-			selection.initial.column = 1;
-		}
-		if (selection.range.startRow === 0) {
-			selection.range.startRow = 1;
-		}
-		if (selection.range.endRow === 0) {
-			selection.range.endRow = 1;
-		}
-		if (selection.range.startColumn === 0) {
-			selection.range.startColumn = 1;
-		}
-		if (selection.range.endColumn === 0) {
-			selection.range.endColumn = 1;
-		}
-	} else {
+	if (!causedByMove) {
 		// Select a whole row/column or when clicking on corner cell select everything
 		if (selection.initial.row === 0 && selection.initial.column === 0) {
 			// Select all cells
@@ -69,6 +49,26 @@ export const ROW_COLUMN_HEADER_TRANSFORM: (
 				column: 1,
 			};
 		}
+	}
+
+	// Validate that the first row and column is not selected
+	if (selection.initial.row === 0) {
+		selection.initial.row = 1;
+	}
+	if (selection.initial.column === 0) {
+		selection.initial.column = 1;
+	}
+	if (selection.range.startRow === 0) {
+		selection.range.startRow = 1;
+	}
+	if (selection.range.endRow === 0) {
+		selection.range.endRow = 1;
+	}
+	if (selection.range.startColumn === 0) {
+		selection.range.startColumn = 1;
+	}
+	if (selection.range.endColumn === 0) {
+		selection.range.endColumn = 1;
 	}
 
 	return true; // All other selections are allowed and do not need modification
