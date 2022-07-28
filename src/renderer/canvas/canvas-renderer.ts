@@ -3026,7 +3026,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			this._scrollOffset.x = Math.round(maxOffset);
 			return changed;
 		} else {
-			const newOffset: number = Math.round(offset);
+			const newOffset: number = offset;
 			if (newOffset !== this._scrollOffset.x) {
 				this._scrollOffset.x = newOffset;
 				return true;
@@ -3083,7 +3083,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			this._scrollOffset.y = Math.round(maxOffset);
 			return changed;
 		} else {
-			const newOffset: number = Math.round(offset);
+			const newOffset: number = offset;
 			if (newOffset !== this._scrollOffset.y) {
 				this._scrollOffset.y = newOffset;
 				return true;
