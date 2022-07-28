@@ -5488,10 +5488,10 @@ symbol-observable@4.0.0:
   resolved "https://registry.yarnpkg.com/symbol-observable/-/symbol-observable-4.0.0.tgz#5b425f192279e87f2f9b937ac8540d1984b39205"
   integrity sha512-b19dMThMV4HVFynSAM1++gBHAbk2Tc/osgLIBZMKsyqh34jb2e8Os7T6ZW/Bt3pJFdBTd2JwAnAAEQV7rSNvcQ==
 
-table-engine@^0.1.6:
-  version "0.1.6"
-  resolved "https://registry.yarnpkg.com/table-engine/-/table-engine-0.1.6.tgz#68031fdb26b2bb35b90cb907d8c43ac9e257a9f4"
-  integrity sha512-y3cRt4xqyjLSMa0ArqjOL0eVaz6F8UjPSoQUyi2+T27xFdQzacF/+pjf3fP6gWU7x+poFWDs6svQPn7UYEFs9g==
+table-engine@^0.1.7:
+  version "0.1.7"
+  resolved "https://registry.yarnpkg.com/table-engine/-/table-engine-0.1.7.tgz#4c26dc4779648b36b2334e969b831a0100c2f095"
+  integrity sha512-S8yYXpq+Gd5cSqkKALZ8Lt7JngKA4GCzrSluyjDng0DE0lcahN1bkneVhTkNMdHmhziWHMd9yWIyu/xhDWGJ3A==
   dependencies:
     rxjs "^7.4.0"
 
