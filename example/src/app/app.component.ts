@@ -39,6 +39,9 @@ import {
 import { environment } from '../environments/environment';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DebugCellRenderer } from './renderer/debug-cell-renderer';
+import { ProgressCellRenderer } from '../../../src/renderer/canvas/cell/progress/progress-cell-renderer';
+import { IProgressCellRendererValue } from '../../../src/renderer/canvas/cell/progress/progress-cell-renderer-value';
+import { ProgressCellRendererStyle } from '../../../src/renderer/canvas/cell/progress/progress-cell-renderer-style';
 
 @Component({
 	selector: 'app-root',
@@ -614,6 +617,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 				})
 			);
 			this.engine.registerCellRenderer(new ComboBoxCellRenderer());
+			this.engine.registerCellRenderer(new ProgressCellRenderer());
 
 			// Set an example border
 			this.engine.getBorderModel().setBorder(
@@ -827,6 +831,54 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 							duck: { label: 'Quack' },
 						},
 					} as IComboBoxCellRendererValue,
+				},
+				{
+					range: CellRange.fromSingleRowColumn(13, 2),
+					rendererName: ProgressCellRenderer.NAME,
+					value: 0.4,
+				},
+				{
+					range: CellRange.fromSingleRowColumn(14, 2),
+					rendererName: ProgressCellRenderer.NAME,
+					value: {
+						progress: 0.0,
+						options: {
+							indeterminate: true,
+						},
+					} as IProgressCellRendererValue,
+				},
+				{
+					range: CellRange.fromSingleRowColumn(15, 2),
+					rendererName: ProgressCellRenderer.NAME,
+					value: {
+						progress: 0.6,
+						options: {
+							indeterminate: false,
+							style: ProgressCellRendererStyle.LINEAR,
+							editable: true,
+						},
+					} as IProgressCellRendererValue,
+				},
+				{
+					range: CellRange.fromSingleRowColumn(16, 2),
+					rendererName: ProgressCellRenderer.NAME,
+					value: {
+						progress: 0.0,
+						options: {
+							indeterminate: true,
+							style: ProgressCellRendererStyle.LINEAR,
+						},
+					} as IProgressCellRendererValue,
+				},
+				{
+					range: CellRange.fromSingleRowColumn(17, 2),
+					rendererName: ProgressCellRenderer.NAME,
+					value: {
+						progress: 0.75,
+						options: {
+							editable: true,
+						},
+					} as IProgressCellRendererValue,
 				},
 			],
 			(row, column) => row * column,
