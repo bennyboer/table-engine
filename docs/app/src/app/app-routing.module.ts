@@ -1,6 +1,5 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { MinimalExampleComponent } from './examples/minimal/minimal-example.component';
 import { IntroductionComponent } from './guide/introduction/introduction.component';
 import { RowColumnHeadersComponent } from './examples/row-column-headers/row-column-headers.component';
 import { SetupComponent } from './guide/setup/setup.component';
@@ -52,10 +51,6 @@ const routes: Routes = [
 	{
 		path: 'examples',
 		children: [
-			{
-				path: 'minimal',
-				component: MinimalExampleComponent,
-			},
 			{
 				path: 'row-column-headers',
 				component: RowColumnHeadersComponent,

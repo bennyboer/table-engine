@@ -1,3 +1,37 @@
 <h1>Row/column headers</h1>
 
-<p>TODO</p>
+<p>
+    Row and column headers are a kind of cell content that describe a row/column.
+    In the context of a spreadsheet-application columns may be labeled alphabetically with "A", "B", ..., "Z", ..., "AA", ... while rows are simply increasing numbers.
+    When developing a table as data visualization rows and column headers need to convey more meaning to the rows or columns data they are heading.
+    For example when visualizing a customer database where each customer has a name, a phone number, a mail address, etc.
+    Those are exactly the column headers you'll want to give.
+</p>
+
+<p>
+    So far so good. Now, how to do these things with the Table Engine.
+    The library does not really care for what you want to display - you simply can display anything you want.
+    For row/column headers in the context of a spreadsheet-application there is already a predefined cell renderer called the <code>RowColumnHeaderRenderer</code> that will number columns alphabetically and rows numerically (See example A).
+    When using the Table Engine to develop a data visualization where you can filter and sort using row/column headers, you'll want to check out example B.
+</p>
+
+<h2>Example A: spreadsheet-like headers</h2>
+
+<p>
+    For spreadsheet-like row/column headers we are going to use the predefined <code>RowColumnHeaderRenderer</code>.
+    Normally when scrolling the row/column headers would not disappear but rather stay fixed at their position so you can even see them when scrolling to the end of the table.
+    To fix that behavior we can use fixed rows/columns by setting the option <code>engine.getOptions().renderer.view.fixedRows</code> and <code>engine.getOptions().renderer.view.fixedColumns</code> to <code>1</code> before initializing the Table Engine.
+    Additionally since only using the cell renderer would not change selection logic, we can still select the row/column headers without the whole row or column selected as well - like we probably are used to when already having used Excel or another spreadsheet application.
+    To change selection behavior we can use a predefined selection transform <code>ROW_COLUMN_HEADER_TRANSFORM</code> that can be assigned to <code>engine.getOptions().selection.selectionTransform</code>.
+    The result can be seen below!
+</p>
+
+<iframe src="https://stackblitz.com/edit/typescript-g1zy5k?embed=1&file=index.ts&hideExplorer=1&hideNavigation=1&theme=light&view=preview"></iframe>
+
+<h2>Example B: data visualization headers</h2>
+
+<p>
+    The cell renderer for this is not yet developed.
+    You may consider developing one yourself.
+    Check out the <a routerLink='/guide/cell-renderer'>guide about cell renderers</a> for more details on how to write your own cell renderer.
+</p>

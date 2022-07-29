@@ -9,7 +9,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
-import { MinimalExampleComponent } from './examples/minimal/minimal-example.component';
 import { IntroductionComponent } from './guide/introduction/introduction.component';
 import { RowColumnHeadersComponent } from './examples/row-column-headers/row-column-headers.component';
 import { SetupComponent } from './guide/setup/setup.component';
@@ -32,7 +31,6 @@ import { NextComponent } from './guide/next/next.component';
 		BordersComponent,
 		ThemingComponent,
 		NextComponent,
-		MinimalExampleComponent,
 		RowColumnHeadersComponent,
 	],
 	imports: [
