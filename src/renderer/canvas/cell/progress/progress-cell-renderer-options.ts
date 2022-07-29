@@ -17,6 +17,11 @@ const DEFAULT_BACKGROUND_COLOR: IColor = {
 	alpha: 1.0,
 };
 const DEFAULT_COLOR: IColor = Colors.CORAL;
+const DEFAULT_INDETERMINATE_PERIOD_DURATION: number = 1000;
+const DEFAULT_SHOW_LABEL: boolean = true;
+const DEFAULT_LABEL_FONT_SIZE: number = 10;
+const DEFAULT_LABEL_FONT_FAMILY: string = 'sans-serif';
+const DEFAULT_LABEL_COLOR: IColor = Colors.DARKGRAY;
 
 export interface IProgressCellRendererOptions {
 	onChanged?: (cell: ICell) => void;
@@ -26,6 +31,21 @@ export interface IProgressCellRendererOptions {
 	padding?: number;
 	color?: IColor;
 	backgroundColor?: IColor;
+
+	/**
+	 * Duration of a period in indeterminate mode (in milliseconds).
+	 */
+	indeterminatePeriodDuration?: number;
+
+	/**
+	 * Whether to show the progress label.
+	 */
+	showLabel?: boolean;
+
+	labelFontSize?: number;
+	labelFontFamily?: string;
+	labelColor?: IColor;
+
 	radial?: IRadialProgressStyle;
 	linear?: ILinearProgressStyle;
 }
@@ -66,6 +86,30 @@ export const fillOptions = (options?: IProgressCellRendererOptions) => {
 
 	if (!options.backgroundColor) {
 		options.backgroundColor = DEFAULT_BACKGROUND_COLOR;
+	}
+
+	if (
+		options.indeterminatePeriodDuration === undefined ||
+		options.indeterminatePeriodDuration === null
+	) {
+		options.indeterminatePeriodDuration =
+			DEFAULT_INDETERMINATE_PERIOD_DURATION;
+	}
+
+	if (options.showLabel === undefined || options.showLabel === null) {
+		options.showLabel = DEFAULT_SHOW_LABEL;
+	}
+
+	if (options.labelFontSize === undefined || options.labelFontSize === null) {
+		options.labelFontSize = DEFAULT_LABEL_FONT_SIZE;
+	}
+
+	if (!options.labelFontFamily) {
+		options.labelFontFamily = DEFAULT_LABEL_FONT_FAMILY;
+	}
+
+	if (!options.labelColor) {
+		options.labelColor = DEFAULT_LABEL_COLOR;
 	}
 
 	options.radial = fillRadialOptions(options.radial);

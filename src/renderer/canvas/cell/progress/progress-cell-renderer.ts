@@ -15,6 +15,7 @@ import { Colors, IColor, IPoint, IRectangle, ISize } from '../../../../util';
 import { ProgressCellRendererStyle } from './progress-cell-renderer-style';
 import { IProgressCellRendererValue } from './progress-cell-renderer-value';
 import { IRenderContext } from '../../canvas-renderer';
+import { timestamp } from 'rxjs';
 
 export class ProgressCellRenderer implements ICanvasCellRenderer {
 	static readonly NAME: string = 'progress';
@@ -26,6 +27,8 @@ export class ProgressCellRenderer implements ICanvasCellRenderer {
 	private _eventListener: ICellRendererEventListener = {
 		onDoubleClick: (event) => this._onDoubleClick(event),
 	};
+
+	private _timestamp: number = 0;
 
 	constructor(options?: IProgressCellRendererOptions) {
 		this._options = fillOptions(options);
@@ -40,7 +43,9 @@ export class ProgressCellRenderer implements ICanvasCellRenderer {
 		if (isSpecialValue) {
 			const value: IProgressCellRendererValue = cell.value;
 
-			if (value.progress > 1.0) {
+			if (value.progress === undefined || value.progress === null) {
+				value.progress = 0.0;
+			} else if (value.progress > 1.0) {
 				value.progress = 1.0;
 			} else if (value.progress < 0.0) {
 				value.progress = 0.0;
@@ -68,6 +73,8 @@ export class ProgressCellRenderer implements ICanvasCellRenderer {
 	before(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
 		ctx.lineJoin = 'round';
 		ctx.lineCap = 'butt';
+
+		this._timestamp = window.performance.now();
 	}
 
 	cleanup(): void {
@@ -106,23 +113,15 @@ export class ProgressCellRenderer implements ICanvasCellRenderer {
 			this._deriveOptions(value);
 
 		if (options.style === ProgressCellRendererStyle.RADIAL) {
-			ProgressCellRenderer._renderRadial(
-				ctx,
-				bounds,
-				value,
-				options,
-				options.radial
-			);
+			this._renderRadial(ctx, bounds, value, options, options.radial);
 		} else if (options.style === ProgressCellRendererStyle.LINEAR) {
-			ProgressCellRenderer._renderLinear(
-				ctx,
-				bounds,
-				value,
-				options,
-				options.linear
-			);
+			this._renderLinear(ctx, bounds, value, options, options.linear);
 		} else {
 			throw new Error('Unsupported progress cell renderer style');
+		}
+
+		if (options.indeterminate) {
+			this._engine.repaint();
 		}
 	}
 
@@ -138,6 +137,12 @@ export class ProgressCellRenderer implements ICanvasCellRenderer {
 		let linear: ILinearProgressStyle = this._options.linear;
 		let color: IColor = this._options.color;
 		let backgroundColor: IColor = this._options.backgroundColor;
+		let indeterminatePeriodDuration: number =
+			this._options.indeterminatePeriodDuration;
+		let showLabel: boolean = this._options.showLabel;
+		let labelFontSize: number = this._options.labelFontSize;
+		let labelFontFamily: string = this._options.labelFontFamily;
+		let labelColor: IColor = this._options.labelColor;
 
 		if (!!value.options) {
 			if (!!value.options.onChanged) {
@@ -176,6 +181,31 @@ export class ProgressCellRenderer implements ICanvasCellRenderer {
 			if (!!value.options.radial) {
 				radial = value.options.radial;
 			}
+			if (
+				value.options.indeterminatePeriodDuration !== undefined &&
+				value.options.indeterminatePeriodDuration !== null
+			) {
+				indeterminatePeriodDuration =
+					value.options.indeterminatePeriodDuration;
+			}
+			if (
+				value.options.showLabel !== undefined &&
+				value.options.showLabel !== null
+			) {
+				showLabel = value.options.showLabel;
+			}
+			if (
+				value.options.labelFontSize !== undefined &&
+				value.options.labelFontSize !== null
+			) {
+				labelFontSize = value.options.labelFontSize;
+			}
+			if (!!value.options.labelFontFamily) {
+				labelFontFamily = value.options.labelFontFamily;
+			}
+			if (!!value.options.labelColor) {
+				labelColor = value.options.labelColor;
+			}
 		}
 
 		return {
@@ -188,6 +218,11 @@ export class ProgressCellRenderer implements ICanvasCellRenderer {
 			linear,
 			color,
 			backgroundColor,
+			indeterminatePeriodDuration,
+			showLabel,
+			labelFontSize,
+			labelFontFamily,
+			labelColor,
 		};
 	}
 
@@ -208,7 +243,7 @@ export class ProgressCellRenderer implements ICanvasCellRenderer {
 		return null; // Renderer does not have a preferred size
 	}
 
-	private static _renderRadial(
+	private _renderRadial(
 		ctx: CanvasRenderingContext2D,
 		bounds: IRectangle,
 		value: IProgressCellRendererValue,
@@ -225,13 +260,31 @@ export class ProgressCellRenderer implements ICanvasCellRenderer {
 				maxThickness) /
 				2
 		);
-		const center: IPoint = {
+		let center: IPoint = {
 			x: Math.round(bounds.left + bounds.width / 2),
 			y: Math.round(bounds.top + bounds.height / 2),
 		};
 
-		// Draw background first (if needed)
+		const label: string = `${Math.round(value.progress * 100)}%`;
+		const labelFitsInCircle: boolean =
+			0.6 * radius >= options.labelFontSize;
+		if (options.showLabel && !options.indeterminate) {
+			if (!labelFitsInCircle) {
+				ctx.textAlign = 'left';
+				ctx.textBaseline = 'middle';
+				ctx.font = `${options.labelFontSize}px ${options.labelFontFamily}`;
+
+				const labelWidth = ctx.measureText(label).width;
+				const totalWidth =
+					labelWidth + 2 * radius + options.padding + maxThickness;
+				center.x = Math.round(
+					bounds.left + (bounds.width - totalWidth) / 2
+				);
+			}
+		}
+
 		const shouldDrawBackground: boolean =
+			options.indeterminate ||
 			value.progress < 1.0 ||
 			(value.progress === 1.0 &&
 				style.foregroundThickness <= style.foregroundThickness);
@@ -243,11 +296,25 @@ export class ProgressCellRenderer implements ICanvasCellRenderer {
 			ctx.stroke();
 		}
 
-		// Draw foreground second (if needed)
-		const shouldDrawForeground: boolean = value.progress !== 0.0;
+		const shouldDrawForeground: boolean =
+			options.indeterminate || value.progress !== 0.0;
 		if (shouldDrawForeground) {
-			const startAngle: number = -0.5 * Math.PI;
-			const endAngle: number = startAngle + 2 * Math.PI * value.progress;
+			let startAngle: number = -0.5 * Math.PI;
+			let endAngle: number = startAngle + 2 * Math.PI * value.progress;
+			if (options.indeterminate) {
+				startAngle =
+					(this._timestamp / options.indeterminatePeriodDuration) *
+					(Math.PI * 2);
+
+				const meanSize = (Math.PI / 4) * 3;
+				const sizeDeviation = Math.PI / 4;
+				const currentDeviation =
+					Math.sin(
+						this._timestamp /
+							(options.indeterminatePeriodDuration / 4)
+					) * sizeDeviation;
+				endAngle = startAngle + meanSize + currentDeviation;
+			}
 
 			ctx.lineWidth = style.foregroundThickness;
 			ctx.strokeStyle = Colors.toStyleStr(options.color);
@@ -255,15 +322,96 @@ export class ProgressCellRenderer implements ICanvasCellRenderer {
 			ctx.arc(center.x, center.y, radius, startAngle, endAngle);
 			ctx.stroke();
 		}
+
+		if (options.showLabel && !options.indeterminate) {
+			ctx.fillStyle = Colors.toStyleStr(options.labelColor);
+
+			if (labelFitsInCircle) {
+				ctx.textAlign = 'center';
+				ctx.fillText(label, center.x, center.y);
+			} else {
+				ctx.fillText(
+					label,
+					center.x + radius + maxThickness / 2 + options.padding,
+					center.y
+				);
+			}
+		}
 	}
 
-	private static _renderLinear(
+	private _renderLinear(
 		ctx: CanvasRenderingContext2D,
 		bounds: IRectangle,
 		value: IProgressCellRendererValue,
 		options: IProgressCellRendererOptions,
 		style: ILinearProgressStyle
 	): void {
-		// TODO
+		const width = bounds.width - options.padding * 2;
+		let offset: IPoint = {
+			x: bounds.left + options.padding,
+			y: bounds.top + Math.round(bounds.height / 2),
+		};
+
+		if (options.showLabel && !options.indeterminate) {
+			const labelHeight = options.labelFontSize;
+			const totalHeight = labelHeight + style.thickness;
+			offset.y =
+				bounds.top + Math.round((bounds.height - totalHeight) / 2);
+		}
+
+		ctx.lineWidth = style.thickness;
+
+		const shouldDrawBackground: boolean =
+			options.indeterminate || value.progress < 1.0;
+		if (shouldDrawBackground) {
+			ctx.strokeStyle = Colors.toStyleStr(options.backgroundColor);
+			ctx.beginPath();
+			ctx.moveTo(offset.x, offset.y);
+			ctx.lineTo(offset.x + width, offset.y);
+			ctx.stroke();
+		}
+
+		const shouldDrawForeground: boolean =
+			options.indeterminate || value.progress > 0.0;
+		if (shouldDrawForeground) {
+			let startX: number = offset.x;
+			let endX: number = offset.x + value.progress * width;
+			if (options.indeterminate) {
+				const indeterminateProgress =
+					(this._timestamp % options.indeterminatePeriodDuration) /
+					options.indeterminatePeriodDuration;
+				startX = startX - width + width * 3 * indeterminateProgress;
+
+				const meanSize = width / 2;
+				const sizeDeviation = meanSize / 2;
+				const currentDeviation =
+					Math.sin(
+						this._timestamp /
+							(options.indeterminatePeriodDuration / 4)
+					) * sizeDeviation;
+				endX = startX + meanSize + currentDeviation;
+
+				startX = Math.max(offset.x, Math.min(offset.x + width, startX));
+				endX = Math.max(offset.x, Math.min(offset.x + width, endX));
+			}
+
+			ctx.strokeStyle = Colors.toStyleStr(options.color);
+			ctx.beginPath();
+			ctx.moveTo(startX, offset.y);
+			ctx.lineTo(endX, offset.y);
+			ctx.stroke();
+		}
+
+		if (options.showLabel && !options.indeterminate) {
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'top';
+			ctx.fillStyle = Colors.toStyleStr(options.labelColor);
+			ctx.font = `${options.labelFontSize}px ${options.labelFontFamily}`;
+			ctx.fillText(
+				`${Math.round(value.progress * 100)}%`,
+				bounds.left + Math.round(bounds.width / 2),
+				offset.y + options.padding
+			);
+		}
 	}
 }

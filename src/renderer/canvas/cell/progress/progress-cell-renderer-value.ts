@@ -4,7 +4,7 @@ export interface IProgressCellRendererValue {
 	/**
 	 * Progress is a number in range [0.0; 1.0].
 	 */
-	progress: number;
+	progress?: number;
 
 	options?: IProgressCellRendererOptions;
 }
