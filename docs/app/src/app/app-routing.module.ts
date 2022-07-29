@@ -9,6 +9,7 @@ import { BordersComponent } from './guide/borders/borders.component';
 import { CellModelComponent } from './guide/cell-model/cell-model.component';
 import { ThemingComponent } from './guide/theming/theming.component';
 import { NextComponent } from './guide/next/next.component';
+import { FixedRowsColumnsComponent } from './examples/fixed-rows-columns/fixed-rows-columns.component';
 
 const routes: Routes = [
 	{
@@ -54,6 +55,10 @@ const routes: Routes = [
 			{
 				path: 'row-column-headers',
 				component: RowColumnHeadersComponent,
+			},
+			{
+				path: 'fixed-rows-columns',
+				component: FixedRowsColumnsComponent,
 			},
 		],
 	},

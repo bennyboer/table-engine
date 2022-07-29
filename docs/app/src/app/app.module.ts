@@ -19,6 +19,7 @@ import { HIGHLIGHT_OPTIONS, HighlightModule } from 'ngx-highlightjs';
 import { CellModelComponent } from './guide/cell-model/cell-model.component';
 import { ThemingComponent } from './guide/theming/theming.component';
 import { NextComponent } from './guide/next/next.component';
+import { FixedRowsColumnsComponent } from './examples/fixed-rows-columns/fixed-rows-columns.component';
 
 @NgModule({
 	declarations: [
@@ -32,6 +33,7 @@ import { NextComponent } from './guide/next/next.component';
 		ThemingComponent,
 		NextComponent,
 		RowColumnHeadersComponent,
+		FixedRowsColumnsComponent,
 	],
 	imports: [
 		BrowserModule,
