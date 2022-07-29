@@ -1,5 +1,10 @@
 <h1>Fixed rows/columns</h1>
 
 <p>
-    TODO
+    The Table Engine currently supports fixing rows and columns to the left and top.
+    Fixed rows or columns will always be visible, no matter where the user is scrolling in the table.
+    You can enabled fixed rows or columns by setting <code>engine.getOptions().renderer.view.fixedRows</code> and/or <code>engine.getOptions().renderer.view.fixedColumns</code> to a non-negative number.
+    In the below example two rows and one column are fixed and stay visible all the time when scrolling.
 </p>
+
+<iframe src='https://stackblitz.com/edit/typescript-rjzhop?embed=1&file=index.ts&hideExplorer=1&hideNavigation=1&theme=light&view=preview'></iframe>
