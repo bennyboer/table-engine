@@ -278,7 +278,7 @@ export class ProgressCellRenderer implements ICanvasCellRenderer {
 				const totalWidth =
 					labelWidth + 2 * radius + options.padding + maxThickness;
 				center.x = Math.round(
-					bounds.left + (bounds.width - totalWidth) / 2
+					bounds.left + (bounds.width - totalWidth) / 2 + radius
 				);
 			}
 		}
@@ -328,6 +328,7 @@ export class ProgressCellRenderer implements ICanvasCellRenderer {
 
 			if (labelFitsInCircle) {
 				ctx.textAlign = 'center';
+				ctx.textBaseline = 'middle';
 				ctx.fillText(label, center.x, center.y);
 			} else {
 				ctx.fillText(
