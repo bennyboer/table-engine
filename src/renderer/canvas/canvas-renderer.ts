@@ -1919,12 +1919,20 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				if (isRow) {
 					this._cellModel.resizeRows(
 						[index],
-						estimationResult.preferredSize
+						Math.max(
+							estimationResult.preferredSize,
+							this._options.renderer.canvas.rowColumnResizing
+								.minRowSize
+						)
 					);
 				} else {
 					this._cellModel.resizeColumns(
 						[index],
-						estimationResult.preferredSize
+						Math.max(
+							estimationResult.preferredSize,
+							this._options.renderer.canvas.rowColumnResizing
+								.minColumnSize
+						)
 					);
 				}
 			} else {
