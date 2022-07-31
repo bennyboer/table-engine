@@ -234,8 +234,7 @@ export class ProgressCellRenderer implements ICanvasCellRenderer {
 			this._deriveOptions(value);
 
 		if (options.editable) {
-			// TODO Open editor when editable
-			console.log('TODO: Open editor when editable');
+			// TODO To be done when the cell renderer/editor refactoring is done
 		}
 	}
 
