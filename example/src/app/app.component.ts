@@ -837,49 +837,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 					rendererName: ProgressCellRenderer.NAME,
 					value: 0.4,
 				},
-				{
-					range: CellRange.fromSingleRowColumn(14, 2),
-					rendererName: ProgressCellRenderer.NAME,
-					value: {
-						progress: 0.0,
-						options: {
-							indeterminate: true,
-						},
-					} as IProgressCellRendererValue,
-				},
-				{
-					range: CellRange.fromSingleRowColumn(15, 2),
-					rendererName: ProgressCellRenderer.NAME,
-					value: {
-						progress: 0.6,
-						options: {
-							indeterminate: false,
-							style: ProgressCellRendererStyle.LINEAR,
-							editable: true,
-						},
-					} as IProgressCellRendererValue,
-				},
-				{
-					range: CellRange.fromSingleRowColumn(16, 2),
-					rendererName: ProgressCellRenderer.NAME,
-					value: {
-						progress: 0.0,
-						options: {
-							indeterminate: true,
-							style: ProgressCellRendererStyle.LINEAR,
-						},
-					} as IProgressCellRendererValue,
-				},
-				{
-					range: CellRange.fromSingleRowColumn(17, 2),
-					rendererName: ProgressCellRenderer.NAME,
-					value: {
-						progress: 0.75,
-						options: {
-							editable: true,
-						},
-					} as IProgressCellRendererValue,
-				},
 			],
 			(row, column) => row * column,
 			(row, column) => {
