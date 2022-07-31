@@ -42,6 +42,11 @@ import { DebugCellRenderer } from './renderer/debug-cell-renderer';
 import { ProgressCellRenderer } from '../../../src/renderer/canvas/cell/progress/progress-cell-renderer';
 import { IProgressCellRendererValue } from '../../../src/renderer/canvas/cell/progress/progress-cell-renderer-value';
 import { ProgressCellRendererStyle } from '../../../src/renderer/canvas/cell/progress/progress-cell-renderer-style';
+import {
+	ButtonCellRenderer,
+	IButtonCellRendererOptions,
+	IButtonCellRendererValue,
+} from '../../../src/renderer/canvas/cell/button';
 
 @Component({
 	selector: 'app-root',
@@ -618,6 +623,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			);
 			this.engine.registerCellRenderer(new ComboBoxCellRenderer());
 			this.engine.registerCellRenderer(new ProgressCellRenderer());
+			this.engine.registerCellRenderer(new ButtonCellRenderer());
 
 			// Set an example border
 			this.engine.getBorderModel().setBorder(
@@ -836,6 +842,13 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 					range: CellRange.fromSingleRowColumn(13, 2),
 					rendererName: ProgressCellRenderer.NAME,
 					value: 0.4,
+				},
+				{
+					range: CellRange.fromSingleRowColumn(14, 2),
+					rendererName: ButtonCellRenderer.NAME,
+					value: {
+						label: 'Test',
+					} as IButtonCellRendererValue,
 				},
 			],
 			(row, column) => row * column,
