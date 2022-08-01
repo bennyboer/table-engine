@@ -46,12 +46,18 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 
 			if (editable) {
 				// Check whether a star is hovered
-				let hoveredStar: number = this._getHoveredStar(
+				const hoveredStar: number = this._getHoveredStar(
 					event.offset,
 					event.cell
 				);
+				const hasHoveredStar = hoveredStar !== -1;
 				if (hoveredStar !== cache.hoveredStar) {
 					cache.hoveredStar = hoveredStar;
+					if (hasHoveredStar) {
+						this._engine.setCursor('pointer');
+					} else {
+						this._engine.resetCursor();
+					}
 					this._engine.repaint();
 				}
 			}
@@ -59,8 +65,13 @@ export class RatingCellRenderer implements ICanvasCellRenderer {
 		onMouseOut: (event) => {
 			const cache: IRatingCellRendererViewportCache =
 				RatingCellRenderer._cache(event.cell);
-			if (cache.hoveredStar !== undefined && cache.hoveredStar > -1) {
+
+			const hasHoveredStar =
+				cache.hoveredStar !== undefined && cache.hoveredStar > -1;
+			if (hasHoveredStar) {
 				this._engine.repaint();
+			} else {
+				this._engine.resetCursor();
 			}
 		},
 		onMouseUp: (event) => {

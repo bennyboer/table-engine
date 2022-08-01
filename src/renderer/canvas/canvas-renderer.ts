@@ -337,6 +337,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _selectionScrollPreventionEnabled: boolean = false;
 
 	/**
+	 * Whether the cursor has been set externally and not internally
+	 * from within the canvas renderer.
+	 */
+	private _cursorSetExternally: boolean = false;
+
+	/**
 	 * Get the renderer-specific options.
 	 */
 	private get rendererOptions(): IRendererOptions {
@@ -1236,19 +1242,34 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		};
 	}
 
+	resetCursor(): void {
+		this._resetCursor();
+		this._cursorSetExternally = false;
+	}
+
+	setCursor(cursorName: string): void {
+		this._setCursor(cursorName);
+		this._cursorSetExternally = true;
+	}
+
 	/**
 	 * Set the cursor to show.
 	 * @param cursor name to show
 	 */
 	private _setCursor(cursor: string): void {
-		this._container.style.cursor = cursor;
+		if (!this._cursorSetExternally) {
+			this._container.style.cursor = cursor;
+		}
 	}
 
 	/**
 	 * Reset the cursor to show.
 	 */
 	private _resetCursor(): void {
-		if (this._container.style.cursor !== 'auto') {
+		if (
+			!this._cursorSetExternally &&
+			this._container.style.cursor !== 'auto'
+		) {
 			this._container.style.cursor = 'auto';
 		}
 	}

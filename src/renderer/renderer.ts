@@ -85,4 +85,15 @@ export interface ITableEngineRenderer extends IOverlayManager {
 	 * @param column to scroll to
 	 */
 	scrollTo(row: number, column: number): void;
+
+	/**
+	 * Set the cursor to currently display when hovering the render container.
+	 * @param cursorName to display
+	 */
+	setCursor(cursorName: string): void;
+
+	/**
+	 * Reset the cursor that is currently displayed when hovering the render container.
+	 */
+	resetCursor(): void;
 }

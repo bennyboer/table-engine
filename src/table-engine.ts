@@ -146,6 +146,21 @@ export class TableEngine {
 	}
 
 	/**
+	 * Set the cursor to currently display when hovering the render container.
+	 * @param cursorName to display
+	 */
+	public setCursor(cursorName: string): void {
+		this._renderer.setCursor(cursorName);
+	}
+
+	/**
+	 * Reset the cursor that is currently displayed when hovering the render container.
+	 */
+	public resetCursor(): void {
+		this._renderer.resetCursor();
+	}
+
+	/**
 	 * Get the current zoom level of the table (1.0 = 100%).
 	 */
 	public getZoom(): number {
