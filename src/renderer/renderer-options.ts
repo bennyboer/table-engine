@@ -50,18 +50,6 @@ export interface IRendererOptions {
  */
 export interface IViewOptions {
 	/**
-	 * Number of fixed rows.
-	 * @deprecated
-	 */
-	fixedRows?: number; // TODO Marked for removal - use fixedAreas option instead
-
-	/**
-	 * Number of fixed columns.
-	 * @deprecated
-	 */
-	fixedColumns?: number; // TODO Marked for removal - use fixedAreas option instead
-
-	/**
 	 * Options regarding fixed areas of a table.
 	 * A fixed area is a part of a table that is always visible and does not scroll.
 	 */
@@ -150,14 +138,6 @@ const fillFixedAreasOptions = (options?: IFixedAreasOptions) => {
 const fillViewOptions = (options?: IViewOptions) => {
 	if (!options) {
 		options = {};
-	}
-
-	if (options.fixedRows === undefined || options.fixedRows === null) {
-		options.fixedRows = 0;
-	}
-
-	if (options.fixedColumns === undefined || options.fixedColumns === null) {
-		options.fixedColumns = 0;
 	}
 
 	if (
