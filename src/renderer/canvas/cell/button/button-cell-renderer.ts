@@ -7,6 +7,10 @@ import {
 } from './button-cell-renderer-options';
 import { IButtonCellRendererValue } from './button-cell-renderer-value';
 import { CanvasUtil } from '../../../util';
+import {
+	CellRendererEventListenerType,
+	ICellRendererMouseEvent,
+} from '../../../cell';
 
 export class ButtonCellRenderer extends AbstractCanvasCellRenderer<
 	IButtonCellRendererValue,
@@ -17,6 +21,23 @@ export class ButtonCellRenderer extends AbstractCanvasCellRenderer<
 
 	constructor(options?: IButtonCellRendererOptions) {
 		super(ButtonCellRenderer.NAME, fillOptions(options));
+
+		this.registerEventListener(
+			CellRendererEventListenerType.MOUSE_MOVE,
+			(event) => this._onMouseMove(event as ICellRendererMouseEvent)
+		);
+		this.registerEventListener(
+			CellRendererEventListenerType.MOUSE_OUT,
+			(event) => this._onMouseOut(event as ICellRendererMouseEvent)
+		);
+		this.registerEventListener(
+			CellRendererEventListenerType.MOUSE_DOWN,
+			(event) => this._onMouseDown(event as ICellRendererMouseEvent)
+		);
+		this.registerEventListener(
+			CellRendererEventListenerType.MOUSE_UP,
+			(event) => this._onMouseUp(event as ICellRendererMouseEvent)
+		);
 	}
 
 	render(
@@ -42,7 +63,11 @@ export class ButtonCellRenderer extends AbstractCanvasCellRenderer<
 		);
 
 		// Background
-		ctx.fillStyle = Colors.toStyleStr(options.background.color);
+		ctx.fillStyle = Colors.toStyleStr(
+			cache.hovered
+				? options.background.hovered
+				: options.background.color
+		);
 		ctx.fill();
 
 		// Border
@@ -123,12 +148,17 @@ export class ButtonCellRenderer extends AbstractCanvasCellRenderer<
 		cellOptions: IButtonCellRendererOptions
 	): IButtonCellRendererOptions {
 		return {
+			onClick: cellOptions?.onClick ?? defaultOptions.onClick,
 			margin: cellOptions?.margin ?? defaultOptions.margin,
 			padding: cellOptions?.padding ?? defaultOptions.padding,
+			hoverCursor: cellOptions?.hoverCursor ?? defaultOptions.hoverCursor,
 			background: {
 				color:
 					cellOptions.background?.color ??
 					defaultOptions.background.color,
+				hovered:
+					cellOptions.background?.hovered ??
+					defaultOptions.background.hovered,
 			},
 			border: {
 				color: cellOptions.border?.color ?? defaultOptions.border.color,
@@ -147,8 +177,55 @@ export class ButtonCellRenderer extends AbstractCanvasCellRenderer<
 			},
 		};
 	}
+
+	private _onMouseMove(event: ICellRendererMouseEvent): void {
+		const cache = this.cache(event.cell);
+		const options = this.options(event.cell);
+
+		if (!cache.hovered) {
+			cache.hovered = true;
+			this.setCursor(options.hoverCursor);
+
+			this.repaint();
+		}
+	}
+
+	private _onMouseOut(event: ICellRendererMouseEvent): void {
+		const cache = this.cache(event.cell);
+
+		if (cache.hovered) {
+			cache.hovered = false;
+			this.resetCursor();
+
+			this.repaint();
+		}
+	}
+
+	private _onMouseDown(event: ICellRendererMouseEvent): void {
+		const cache = this.cache(event.cell);
+		cache.mousePressedOnButton = true;
+	}
+
+	private _onMouseUp(event: ICellRendererMouseEvent): void {
+		const cache = this.cache(event.cell);
+		const isClick = cache.mousePressedOnButton;
+		if (isClick) {
+			this._onClick(event);
+		}
+
+		cache.mousePressedOnButton = false;
+	}
+
+	private _onClick(event: ICellRendererMouseEvent): void {
+		const options = this.options(event.cell);
+		if (!!options.onClick) {
+			options.onClick(event.cell);
+		}
+	}
 }
 
 interface IViewportCache {
 	preferredSize?: ISize;
+	hovered?: boolean;
+	mousePressedOnButton?: boolean;
 }

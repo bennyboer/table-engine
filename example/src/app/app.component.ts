@@ -848,6 +848,10 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 					rendererName: ButtonCellRenderer.NAME,
 					value: {
 						label: 'Test',
+						options: {
+							onClick: (cell) =>
+								alert("You pressed the 'Test' button!"),
+						},
 					} as IButtonCellRendererValue,
 				},
 			],

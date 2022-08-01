@@ -41,6 +41,18 @@ export class Colors {
 		blue: 192,
 		alpha: 1.0,
 	};
+	public static readonly LIGHTER_GRAY: IColor = {
+		red: 220,
+		green: 220,
+		blue: 220,
+		alpha: 1.0,
+	};
+	public static readonly LIGHTEST_GRAY: IColor = {
+		red: 240,
+		green: 240,
+		blue: 240,
+		alpha: 1.0,
+	};
 
 	public static readonly CORAL: IColor = {
 		red: 255,

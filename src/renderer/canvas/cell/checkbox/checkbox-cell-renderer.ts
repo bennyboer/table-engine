@@ -55,6 +55,11 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 
 				if (isHovered !== cache.isHovered) {
 					cache.isHovered = isHovered;
+					if (isHovered) {
+						this._engine.setCursor('pointer');
+					} else {
+						this._engine.resetCursor();
+					}
 					this._engine.repaint();
 				}
 			}
@@ -65,6 +70,7 @@ export class CheckboxCellRenderer implements ICanvasCellRenderer {
 			);
 			if (cache.isHovered) {
 				cache.isHovered = false;
+				this._engine.resetCursor();
 				this._engine.repaint();
 			}
 		},

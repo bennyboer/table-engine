@@ -1,6 +1,8 @@
 import { Colors, IColor } from '../../../../util';
+import { ICell } from '../../../../cell';
 
 const DEFAULT_BACKGROUND_COLOR: IColor = Colors.WHITE;
+const DEFAULT_HOVER_BACKGROUND_COLOR: IColor = Colors.LIGHTEST_GRAY;
 const DEFAULT_BORDER_COLOR: IColor = Colors.LIGHTGRAY;
 const DEFAULT_BORDER_SIZE: number = 1;
 const DEFAULT_BORDER_RADIUS: number = 2;
@@ -9,10 +11,13 @@ const DEFAULT_LABEL_FONT_SIZE: number = 12;
 const DEFAULT_LABEL_FONT_FAMILY: string = 'sans-serif';
 const DEFAULT_MARGIN: number = 4;
 const DEFAULT_PADDING: number = 4;
+const DEFAULT_HOVER_CURSOR: string = 'pointer';
 
 export interface IButtonCellRendererOptions {
+	onClick?: (cell: ICell) => void;
 	margin?: number;
 	padding?: number;
+	hoverCursor?: string;
 	background?: IButtonBackgroundOptions;
 	border?: IButtonBorderOptions;
 	label?: IButtonLabelOptions;
@@ -20,6 +25,7 @@ export interface IButtonCellRendererOptions {
 
 export interface IButtonBackgroundOptions {
 	color?: IColor;
+	hovered?: IColor;
 }
 
 export interface IButtonBorderOptions {
@@ -47,6 +53,10 @@ export const fillOptions = (options?: IButtonCellRendererOptions) => {
 		options.padding = DEFAULT_PADDING;
 	}
 
+	if (!options.hoverCursor) {
+		options.hoverCursor = DEFAULT_HOVER_CURSOR;
+	}
+
 	options.background = fillBackgroundOptions(options.background);
 	options.border = fillBorderOptions(options.border);
 	options.label = fillLabelOptions(options.label);
@@ -61,6 +71,10 @@ const fillBackgroundOptions = (options?: IButtonBackgroundOptions) => {
 
 	if (!options.color) {
 		options.color = DEFAULT_BACKGROUND_COLOR;
+	}
+
+	if (!options.hovered) {
+		options.hovered = DEFAULT_HOVER_BACKGROUND_COLOR;
 	}
 
 	return options;

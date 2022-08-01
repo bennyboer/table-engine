@@ -466,6 +466,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 
 		if (editable && !cache.hovered) {
 			cache.hovered = true;
+			this._engine.setCursor('pointer');
 			this._engine.repaint();
 		}
 	}
@@ -474,6 +475,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		const cache: IViewportCache = ComboBoxCellRenderer._cache(event.cell);
 		if (cache.hovered) {
 			cache.hovered = false;
+			this._engine.resetCursor();
 			this._engine.repaint();
 		}
 	}

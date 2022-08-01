@@ -2,14 +2,19 @@ import { ICanvasCellRenderer } from './canvas-cell-renderer';
 import { IRenderContext } from '../canvas-renderer';
 import { IRectangle, ISize } from '../../../util';
 import { ICell } from '../../../cell';
-import { ICellRendererEventListener } from '../../cell';
+import {
+	CellRendererEventListenerType,
+	ICellRendererEvent,
+	ICellRendererEventListener,
+} from '../../cell';
 import { TableEngine } from '../../../table-engine';
-import { IButtonCellRendererValue } from './button';
 
 export abstract class AbstractCanvasCellRenderer<V, O, C>
 	implements ICanvasCellRenderer
 {
 	private _engine: TableEngine;
+
+	private _eventListener: ICellRendererEventListener | null = null;
 
 	protected constructor(
 		private readonly _name: string,
@@ -39,6 +44,59 @@ export abstract class AbstractCanvasCellRenderer<V, O, C>
 		return this._defaultOptions;
 	}
 
+	protected registerEventListener(
+		eventType: CellRendererEventListenerType,
+		callback: (event: ICellRendererEvent) => void
+	): void {
+		if (!this._eventListener) {
+			this._eventListener = {};
+		}
+
+		AbstractCanvasCellRenderer._assignEventListenerCallback(
+			eventType,
+			this._eventListener,
+			callback
+		);
+	}
+
+	private static _assignEventListenerCallback(
+		eventType: CellRendererEventListenerType,
+		eventListener: ICellRendererEventListener,
+		callback: (event: ICellRendererEvent) => void
+	): void {
+		switch (eventType) {
+			case CellRendererEventListenerType.MOUSE_DOWN:
+				eventListener.onMouseDown = callback;
+				break;
+			case CellRendererEventListenerType.MOUSE_MOVE:
+				eventListener.onMouseMove = callback;
+				break;
+			case CellRendererEventListenerType.MOUSE_OUT:
+				eventListener.onMouseOut = callback;
+				break;
+			case CellRendererEventListenerType.DOUBLE_CLICK:
+				eventListener.onDoubleClick = callback;
+				break;
+			case CellRendererEventListenerType.MOUSE_UP:
+				eventListener.onMouseUp = callback;
+				break;
+			case CellRendererEventListenerType.KEY_DOWN:
+				eventListener.onKeyDown = callback;
+				break;
+			case CellRendererEventListenerType.KEY_UP:
+				eventListener.onKeyUp = callback;
+				break;
+			case CellRendererEventListenerType.FOCUS:
+				eventListener.onFocus = callback;
+				break;
+			case CellRendererEventListenerType.BLUR:
+				eventListener.onBlur = callback;
+				break;
+			default:
+				throw new Error('Event type unsupported');
+		}
+	}
+
 	abstract getOptionsFromCell(cell: ICell): O | null;
 
 	abstract mergeOptions(defaultOptions: O, cellOptions: O): O;
@@ -60,7 +118,7 @@ export abstract class AbstractCanvasCellRenderer<V, O, C>
 	}
 
 	getEventListener(): ICellRendererEventListener | null {
-		return null;
+		return this._eventListener;
 	}
 
 	getName(): string {
@@ -78,4 +136,20 @@ export abstract class AbstractCanvasCellRenderer<V, O, C>
 		cell: ICell,
 		bounds: IRectangle
 	): void;
+
+	protected repaint(): void {
+		this.engine.repaint();
+	}
+
+	protected setCursor(cursorName: string): void {
+		this.engine.setCursor(cursorName);
+	}
+
+	protected resetCursor(): void {
+		this.engine.resetCursor();
+	}
+
+	get engine(): TableEngine {
+		return this._engine;
+	}
 }
