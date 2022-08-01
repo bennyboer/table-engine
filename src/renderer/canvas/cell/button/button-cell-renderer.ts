@@ -28,7 +28,7 @@ export class ButtonCellRenderer extends AbstractCanvasCellRenderer<
 		const options = this.options(cell);
 		const cache = this.cache(cell);
 
-		const paddingAppliedRect: IRectangle = {
+		const marginAppliedRect: IRectangle = {
 			top: bounds.top + options.margin,
 			left: bounds.left + options.margin,
 			width: bounds.width - options.margin * 2,
@@ -37,7 +37,7 @@ export class ButtonCellRenderer extends AbstractCanvasCellRenderer<
 
 		CanvasUtil.makeRoundRectPath(
 			ctx,
-			paddingAppliedRect,
+			marginAppliedRect,
 			options.border.radius
 		);
 
@@ -55,19 +55,55 @@ export class ButtonCellRenderer extends AbstractCanvasCellRenderer<
 		ctx.font = `${options.label.fontSize}px ${options.label.fontFamily}`;
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
-		const labelWidth: number = ctx.measureText(value.label).width;
+
+		const additionalSizePerSide: number =
+			options.padding + options.margin + options.border.size;
+		const additionalSizePerAxis: number = 2 * additionalSizePerSide;
+
+		const labelSize: ISize = {
+			width: ctx.measureText(value.label).width,
+			height: options.label.fontSize,
+		};
+		const maxLabelSize: ISize = {
+			width: marginAppliedRect.width - additionalSizePerAxis,
+			height: marginAppliedRect.height - additionalSizePerAxis,
+		};
+
+		cache.preferredSize = {
+			width: labelSize.width + additionalSizePerAxis,
+			height: labelSize.height + additionalSizePerAxis,
+		};
+
+		const isOverflow: boolean =
+			labelSize.width > maxLabelSize.width ||
+			labelSize.height > maxLabelSize.height;
+		if (isOverflow) {
+			const additionalSizePerSideWithoutPadding =
+				additionalSizePerSide - options.padding;
+			const additionalSizePerAxisWithoutPadding =
+				additionalSizePerAxis - options.padding * 2;
+
+			const clippingRegion = new Path2D();
+			clippingRegion.rect(
+				bounds.left + additionalSizePerSideWithoutPadding,
+				bounds.top + additionalSizePerSideWithoutPadding,
+				bounds.width - additionalSizePerAxisWithoutPadding,
+				bounds.height - additionalSizePerAxisWithoutPadding
+			);
+
+			ctx.save();
+			ctx.clip(clippingRegion);
+		}
+
 		ctx.fillText(
 			value.label,
-			paddingAppliedRect.left + paddingAppliedRect.width / 2,
-			paddingAppliedRect.top + paddingAppliedRect.height / 2
+			marginAppliedRect.left + marginAppliedRect.width / 2,
+			marginAppliedRect.top + marginAppliedRect.height / 2
 		);
 
-		const additionalSizePerAxis: number =
-			options.padding * 2 + options.margin * 2 + options.border.size * 2;
-		this.cache(cell).preferredSize = {
-			width: labelWidth + additionalSizePerAxis,
-			height: options.label.fontSize + additionalSizePerAxis,
-		};
+		if (isOverflow) {
+			ctx.restore();
+		}
 	}
 
 	estimatePreferredSize(cell: ICell): ISize | null {
