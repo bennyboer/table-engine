@@ -45,6 +45,12 @@ import { ITableEngineOptions } from '../../options';
 import { IRendererOptions } from '../renderer-options';
 import { IViewportScroller, ViewportScroller } from './scroll';
 import { FixedAreaUtil, IFixedAreaInfos } from './fixed-area-util';
+import { IErrorOptions } from './options';
+import {
+	ILineWrapper,
+	IParagraph,
+	TrivialLineWrapper,
+} from './cell/text/line-wrap';
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
 type CellRendererEventListenerFunctionSupplier = (
@@ -3586,7 +3592,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	/**
 	 * Create the rendering context for the current state.
 	 */
-	private _createRenderingContext(): IRenderContext {
+	private _createRenderingContext(): IRenderContext | null {
 		// Check if size of the table changed compared to the last rendering cycle
 		if (!!this._lastRenderingContext) {
 			const lastSize: ISize = this._lastRenderingContext.tableSize;
@@ -3619,8 +3625,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				this._cellModel
 			);
 
-		const cellsInfo: ICellRenderContextCollection =
+		const cellsInfo: ICellRenderContextCollection | null =
 			this._createCellRenderingInfo(viewPort, fixedAreaInfos);
+		if (!cellsInfo) {
+			return null; // No cells to display
+		}
+
 		const scrollBarContext: IScrollBarRenderContext =
 			this._calculateScrollBarContext(viewPort, fixedAreaInfos);
 		const selectionContext: ISelectionRenderContext =
@@ -3843,7 +3853,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _createCellRenderingInfo(
 		viewPort: IRectangle,
 		fixedAreaInfos: IFixedAreaInfos
-	): ICellRenderContextCollection {
+	): ICellRenderContextCollection | null {
 		/*
 		We group cells to render per renderer name to improve rendering
 		performance, as one renderer must only prepare once instead of
@@ -3852,7 +3862,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const currentScrollOffset = this._viewportScroller.getScrollOffset();
 
 		// Fetch cell range to paint for the current viewport
-		const nonFixedCellsRange: ICellRange = this._cellModel.getRangeForRect({
+		let nonFixedCellsRange: ICellRange = this._cellModel.getRangeForRect({
 			left: viewPort.left + fixedAreaInfos.left.size,
 			top: viewPort.top + fixedAreaInfos.top.size,
 			width:
@@ -3864,6 +3874,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				fixedAreaInfos.top.size -
 				fixedAreaInfos.bottom.size,
 		});
+
+		const rowCount: number = Math.max(
+			0,
+			nonFixedCellsRange.endRow - nonFixedCellsRange.startRow
+		);
+		const columnCount: number = Math.max(
+			0,
+			nonFixedCellsRange.endColumn - nonFixedCellsRange.startColumn
+		);
+		const cellCount: number = rowCount * columnCount;
+		if (cellCount === 0) {
+			return null; // There are no displayable scrollable cells -> error state
+		}
 
 		const usedCellRendererNames: Set<string> = new Set<string>();
 
@@ -4377,7 +4400,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 */
 	private _render(): void {
 		let creatingRenderingContextTime = window.performance.now();
-		const renderingContext: IRenderContext = this._createRenderingContext();
+		const renderingContext: IRenderContext | null =
+			this._createRenderingContext();
 		creatingRenderingContextTime =
 			window.performance.now() - creatingRenderingContextTime;
 
@@ -4389,7 +4413,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		this._requestAnimationFrameID = window.requestAnimationFrame(() => {
 			this._requestAnimationFrameID = null; // Mark as executed
 
-			if (!!this._lastRenderingContext) {
+			if (!!this._lastRenderingContext && !!renderingContext) {
 				this._cleanupCellViewportCaches(
 					this._lastRenderingContext.cells,
 					renderingContext.cells
@@ -4413,99 +4437,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			 */
 			ctx.translate(0.5, 0.5);
 
-			// Render "normal" (non-fixed) cells first
-			CanvasRenderer._renderArea(
-				ctx,
-				renderingContext,
-				renderingContext.cells.nonFixedCells,
-				renderingContext.borders.inNonFixedArea,
-				renderingContext.selection?.inNonFixedArea,
-				true
-			);
-
-			// Then render fixed cells (if any).
-			if (!!renderingContext.cells.fixedCells) {
-				const fixedCells = renderingContext.cells.fixedCells;
-
-				if (!!fixedCells.left) {
-					CanvasRenderer._renderArea(
-						ctx,
-						renderingContext,
-						fixedCells.left,
-						renderingContext.borders.inFixedAreas.left,
-						renderingContext.selection?.inFixedArea?.left
-					);
-				}
-				if (!!fixedCells.top) {
-					CanvasRenderer._renderArea(
-						ctx,
-						renderingContext,
-						fixedCells.top,
-						renderingContext.borders.inFixedAreas.top,
-						renderingContext.selection?.inFixedArea?.top
-					);
-				}
-				if (!!fixedCells.right) {
-					CanvasRenderer._renderArea(
-						ctx,
-						renderingContext,
-						fixedCells.right,
-						renderingContext.borders.inFixedAreas.right,
-						renderingContext.selection?.inFixedArea?.right
-					);
-				}
-				if (!!fixedCells.bottom) {
-					CanvasRenderer._renderArea(
-						ctx,
-						renderingContext,
-						fixedCells.bottom,
-						renderingContext.borders.inFixedAreas.bottom,
-						renderingContext.selection?.inFixedArea?.bottom
-					);
-				}
-				if (!!fixedCells.leftTop) {
-					CanvasRenderer._renderArea(
-						ctx,
-						renderingContext,
-						fixedCells.leftTop,
-						renderingContext.borders.inFixedAreas.leftTop,
-						renderingContext.selection?.inFixedArea?.leftTop
-					);
-				}
-				if (!!fixedCells.rightTop) {
-					CanvasRenderer._renderArea(
-						ctx,
-						renderingContext,
-						fixedCells.rightTop,
-						renderingContext.borders.inFixedAreas.rightTop,
-						renderingContext.selection?.inFixedArea?.rightTop
-					);
-				}
-				if (!!fixedCells.leftBottom) {
-					CanvasRenderer._renderArea(
-						ctx,
-						renderingContext,
-						fixedCells.leftBottom,
-						renderingContext.borders.inFixedAreas.leftBottom,
-						renderingContext.selection?.inFixedArea?.leftBottom
-					);
-				}
-				if (!!fixedCells.rightBottom) {
-					CanvasRenderer._renderArea(
-						ctx,
-						renderingContext,
-						fixedCells.rightBottom,
-						renderingContext.borders.inFixedAreas.rightBottom,
-						renderingContext.selection?.inFixedArea?.rightBottom
-					);
-				}
+			if (!!renderingContext) {
+				CanvasRenderer._renderTable(ctx, renderingContext);
+			} else {
+				CanvasRenderer._renderError(
+					ctx,
+					this.getViewportSize(),
+					this._options.renderer.canvas.error
+				);
 			}
-
-			// Render scrollbars
-			CanvasRenderer._renderScrollBars(ctx, renderingContext);
-
-			// Render resizing visualization (if currently resizing)
-			CanvasRenderer._renderResizerVisualization(ctx, renderingContext);
 
 			if (this._options.misc.debug) {
 				console.log(
@@ -4521,6 +4461,166 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				this._updateOverlays();
 			}
 		});
+	}
+
+	private static _renderError(
+		ctx: CanvasRenderingContext2D,
+		viewportSize: ISize,
+		errorOptions: IErrorOptions
+	): void {
+		const bounds: IRectangle = {
+			left: errorOptions.padding,
+			top: errorOptions.padding,
+			width: viewportSize.width - errorOptions.padding * 2,
+			height: viewportSize.height - errorOptions.padding * 2,
+		};
+
+		ctx.font = `${errorOptions.fontSize}px ${errorOptions.fontFamily}`;
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+
+		// Layout paragraph
+		const paragraph: IParagraph = errorOptions.lineWrapper.wrap(
+			errorOptions.tooSmallViewportMessage,
+			bounds.width,
+			errorOptions.lineHeight * errorOptions.fontSize,
+			(str) => ctx.measureText(str).width
+		);
+		const paragraphHeight: number =
+			paragraph.lines.length * paragraph.lineHeight;
+
+		// Fill background
+		ctx.fillStyle = Colors.toStyleStr(errorOptions.backgroundColor);
+		ctx.fillRect(0, 0, viewportSize.width, viewportSize.height);
+
+		// Draw error message
+		const isOverflowing: boolean = paragraphHeight > bounds.height;
+		if (isOverflowing) {
+			const clippingRegion = new Path2D();
+			clippingRegion.rect(
+				bounds.left,
+				bounds.top,
+				bounds.width,
+				bounds.height
+			);
+
+			ctx.save();
+			ctx.clip(clippingRegion);
+		}
+
+		const xOffset: number = bounds.left + bounds.width / 2;
+		let yOffset: number =
+			bounds.top + (bounds.height - paragraphHeight) / 2;
+
+		ctx.fillStyle = Colors.toStyleStr(errorOptions.textColor);
+		for (const line of paragraph.lines) {
+			ctx.fillText(line.text, xOffset, yOffset);
+
+			yOffset += paragraph.lineHeight;
+		}
+
+		if (isOverflowing) {
+			ctx.restore();
+		}
+	}
+
+	private static _renderTable(
+		ctx: CanvasRenderingContext2D,
+		renderingContext: IRenderContext
+	): void {
+		// Render "normal" (non-fixed) cells first
+		CanvasRenderer._renderArea(
+			ctx,
+			renderingContext,
+			renderingContext.cells.nonFixedCells,
+			renderingContext.borders.inNonFixedArea,
+			renderingContext.selection?.inNonFixedArea,
+			true
+		);
+
+		// Then render fixed cells (if any).
+		if (!!renderingContext.cells.fixedCells) {
+			const fixedCells = renderingContext.cells.fixedCells;
+
+			if (!!fixedCells.left) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.left,
+					renderingContext.borders.inFixedAreas.left,
+					renderingContext.selection?.inFixedArea?.left
+				);
+			}
+			if (!!fixedCells.top) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.top,
+					renderingContext.borders.inFixedAreas.top,
+					renderingContext.selection?.inFixedArea?.top
+				);
+			}
+			if (!!fixedCells.right) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.right,
+					renderingContext.borders.inFixedAreas.right,
+					renderingContext.selection?.inFixedArea?.right
+				);
+			}
+			if (!!fixedCells.bottom) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.bottom,
+					renderingContext.borders.inFixedAreas.bottom,
+					renderingContext.selection?.inFixedArea?.bottom
+				);
+			}
+			if (!!fixedCells.leftTop) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.leftTop,
+					renderingContext.borders.inFixedAreas.leftTop,
+					renderingContext.selection?.inFixedArea?.leftTop
+				);
+			}
+			if (!!fixedCells.rightTop) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.rightTop,
+					renderingContext.borders.inFixedAreas.rightTop,
+					renderingContext.selection?.inFixedArea?.rightTop
+				);
+			}
+			if (!!fixedCells.leftBottom) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.leftBottom,
+					renderingContext.borders.inFixedAreas.leftBottom,
+					renderingContext.selection?.inFixedArea?.leftBottom
+				);
+			}
+			if (!!fixedCells.rightBottom) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.rightBottom,
+					renderingContext.borders.inFixedAreas.rightBottom,
+					renderingContext.selection?.inFixedArea?.rightBottom
+				);
+			}
+		}
+
+		// Render scrollbars
+		CanvasRenderer._renderScrollBars(ctx, renderingContext);
+
+		// Render resizing visualization (if currently resizing)
+		CanvasRenderer._renderResizerVisualization(ctx, renderingContext);
 	}
 
 	/**

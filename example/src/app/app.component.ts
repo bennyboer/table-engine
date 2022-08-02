@@ -568,10 +568,10 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
 			// Set initial state of fixed rows/columns
 			this.engine.getOptions().renderer.view.fixedAreas = {
-				top: 1,
-				left: 1,
-				bottom: 1,
-				right: 1,
+				top: 2,
+				left: 2,
+				bottom: 2,
+				right: 2,
 			};
 
 			// Set notification service
