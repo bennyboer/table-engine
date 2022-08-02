@@ -563,8 +563,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			};
 
 			// Set row/column header selection transform
-			this.engine.getOptions().selection.selectionTransform =
-				ROW_COLUMN_HEADER_TRANSFORM;
+			// this.engine.getOptions().selection.selectionTransform =
+			// 	ROW_COLUMN_HEADER_TRANSFORM;
 
 			// Set initial state of fixed rows/columns
 			this.engine.getOptions().renderer.view.fixedAreas = {
