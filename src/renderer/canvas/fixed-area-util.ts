@@ -36,18 +36,21 @@ export class FixedAreaUtil {
 		cellModel: ICellModel
 	): IFixedAreaInfo {
 		const count: number = Math.min(optionsCount, cellModel.getRowCount());
-		const index: number = count - 1;
+		const endIndex: number = count - 1;
 		const size: number =
 			count > 0
-				? cellModel.getRowOffset(index) +
-				  (cellModel.isRowHidden(index)
+				? cellModel.getRowOffset(endIndex) +
+				  (cellModel.isRowHidden(endIndex)
 						? 0.0
-						: cellModel.getRowSize(index))
+						: cellModel.getRowSize(endIndex))
 				: 0;
 
 		return {
 			count,
-			index,
+			startIndex: 0,
+			endIndex,
+			startOffset: 0,
+			endOffset: size,
 			size,
 		};
 	}
@@ -57,15 +60,17 @@ export class FixedAreaUtil {
 		cellModel: ICellModel
 	): IFixedAreaInfo {
 		const count: number = Math.min(optionsCount, cellModel.getRowCount());
-		const index = cellModel.getRowCount() - count;
-		const size: number =
-			count > 0
-				? cellModel.getHeight() - cellModel.getRowOffset(index)
-				: 0;
+		const startIndex = cellModel.getRowCount() - count;
+		const startOffset = cellModel.getRowOffset(startIndex);
+		const endOffset = cellModel.getHeight();
+		const size: number = count > 0 ? endOffset - startOffset : 0;
 
 		return {
 			count,
-			index,
+			startIndex,
+			endIndex: cellModel.getRowCount() - 1,
+			startOffset,
+			endOffset,
 			size,
 		};
 	}
@@ -78,18 +83,21 @@ export class FixedAreaUtil {
 			optionsCount,
 			cellModel.getColumnCount()
 		);
-		const index: number = count - 1;
+		const endIndex: number = count - 1;
 		const size: number =
 			count > 0
-				? cellModel.getColumnOffset(index) +
-				  (cellModel.isColumnHidden(index)
+				? cellModel.getColumnOffset(endIndex) +
+				  (cellModel.isColumnHidden(endIndex)
 						? 0.0
-						: cellModel.getColumnSize(index))
+						: cellModel.getColumnSize(endIndex))
 				: 0;
 
 		return {
 			count,
-			index,
+			startIndex: 0,
+			endIndex,
+			startOffset: 0,
+			endOffset: size,
 			size,
 		};
 	}
@@ -102,15 +110,17 @@ export class FixedAreaUtil {
 			optionsCount,
 			cellModel.getColumnCount()
 		);
-		const index: number = cellModel.getColumnCount() - count;
-		const size: number =
-			count > 0
-				? cellModel.getWidth() - cellModel.getColumnOffset(index)
-				: 0;
+		const startIndex: number = cellModel.getColumnCount() - count;
+		const startOffset = cellModel.getColumnOffset(startIndex);
+		const endOffset = cellModel.getWidth();
+		const size: number = count > 0 ? endOffset - startOffset : 0;
 
 		return {
 			count,
-			index,
+			startIndex,
+			endIndex: cellModel.getColumnCount() - 1,
+			startOffset,
+			endOffset,
 			size,
 		};
 	}
@@ -130,11 +140,24 @@ export interface IFixedAreaInfo {
 	count: number;
 
 	/**
-	 * Row or column index the area starts or ends.
-	 * For example for the left fixed area this is the index of the last column in the left fixed area.
-	 * When having the right fixed area, this represents the index of the first column in the right fixed area.
+	 * Row or column index the area starts at.
 	 */
-	index: number;
+	startIndex: number;
+
+	/**
+	 * Row or column index the area starts at.
+	 */
+	endIndex: number;
+
+	/**
+	 * Offset the row or column starts at.
+	 */
+	startOffset: number;
+
+	/**
+	 * Offset the row or column ends at.
+	 */
+	endOffset: number;
 
 	/**
 	 * The width/height of the area.

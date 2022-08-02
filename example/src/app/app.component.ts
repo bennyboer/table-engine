@@ -490,7 +490,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 				cellModel
 			);
 
-			this.engine.getOptions().misc.debug = false; // Enable/Disable debug mode
+			this.engine.getOptions().misc.debug = true; // Enable/Disable debug mode
 
 			// Setup row/column resizing
 			this.engine.getOptions().renderer.canvas.rowColumnResizing.allowResizing =

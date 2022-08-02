@@ -55,8 +55,8 @@ export class ViewportScroller implements IViewportScroller {
 		scrollableViewportSize: ISize
 	): boolean {
 		const isColumnInFixedArea =
-			column <= fixedAreaInfos.left.index ||
-			column >= fixedAreaInfos.right.index;
+			column <= fixedAreaInfos.left.endIndex ||
+			column >= fixedAreaInfos.right.startIndex;
 
 		if (isColumnInFixedArea) {
 			return false;
@@ -95,8 +95,8 @@ export class ViewportScroller implements IViewportScroller {
 		scrollableViewportSize: ISize
 	): boolean {
 		const isRowInFixedArea =
-			row <= fixedAreaInfos.top.index ||
-			row >= fixedAreaInfos.bottom.index;
+			row <= fixedAreaInfos.top.endIndex ||
+			row >= fixedAreaInfos.bottom.startIndex;
 
 		if (isRowInFixedArea) {
 			return false;

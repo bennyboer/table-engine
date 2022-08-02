@@ -332,11 +332,15 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 
 		// Determine height available to the top and bottom of the given cell range
 		const viewport = this._engine.getViewport();
-		const fixedRowsHeight: number = this._engine.getFixedRowsHeight();
+		const fixedAreaInfos = this._engine.getFixedAreaInfos();
 		const availableHeightToTheTop =
-			cellBounds.top - (viewport.top + fixedRowsHeight);
+			cellBounds.top - (viewport.top + fixedAreaInfos.top.size);
 		const availableHeightToTheBottom =
-			viewport.top + viewport.height - cellBounds.height - cellBounds.top;
+			viewport.top +
+			viewport.height -
+			fixedAreaInfos.bottom.size -
+			cellBounds.height -
+			cellBounds.top;
 
 		const overlayElement: HTMLElement = document.createElement('div');
 		overlayElement.className = this._options.dropdown.overlayClassName;

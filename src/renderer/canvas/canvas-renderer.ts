@@ -44,7 +44,6 @@ import { IOverlay } from '../../overlay';
 import { ITableEngineOptions } from '../../options';
 import { IRendererOptions } from '../renderer-options';
 import { IViewportScroller, ViewportScroller } from './scroll';
-import { IViewportManager } from '../viewport-manager';
 import { FixedAreaUtil, IFixedAreaInfos } from './fixed-area-util';
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
@@ -55,7 +54,7 @@ type CellRendererEventListenerFunctionSupplier = (
 /**
  * Table-engine renderer using the HTML5 canvas.
  */
-export class CanvasRenderer implements ITableEngineRenderer, IViewportManager {
+export class CanvasRenderer implements ITableEngineRenderer {
 	/**
 	 * Maximum zoom level.
 	 */
@@ -376,7 +375,7 @@ export class CanvasRenderer implements ITableEngineRenderer, IViewportManager {
 		engine: TableEngine,
 		options: ITableEngineOptions
 	): Promise<void> {
-		this._container = this._createTableContainer(container);
+		this._container = CanvasRenderer._createTableContainer(container);
 		this._engine = engine;
 		this._cellModel = engine.getCellModel();
 		this._selectionModel = engine.getSelectionModel();
@@ -400,7 +399,9 @@ export class CanvasRenderer implements ITableEngineRenderer, IViewportManager {
 	 * Create a container Element in which the canvas and html view will later be injected.
 	 * @param parentContainer the container defined by the user
 	 */
-	private _createTableContainer(parentContainer: HTMLElement): HTMLElement {
+	private static _createTableContainer(
+		parentContainer: HTMLElement
+	): HTMLElement {
 		const div = document.createElement('div');
 		// full size in parent
 		div.style.width = '100%';
@@ -974,39 +975,41 @@ export class CanvasRenderer implements ITableEngineRenderer, IViewportManager {
 		y: number,
 		allowOverflow: boolean = true
 	): ICellRange | null {
-		const fixedRowsHeight: number =
-			!!this._lastRenderingContext &&
-			!!this._lastRenderingContext.cells.fixedRowCells
-				? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-						.height
-				: 0;
-		const fixedColumnWidth: number =
-			!!this._lastRenderingContext &&
-			!!this._lastRenderingContext.cells.fixedColumnCells
-				? this._lastRenderingContext.cells.fixedColumnCells
-						.viewPortBounds.width
-				: 0;
+		const fixedAreaInfos = this.getFixedAreaInfos();
+		const viewportSize = this.getViewportSize();
+		const currentScrollOffset = this._viewportScroller.getScrollOffset();
 
 		if (!allowOverflow) {
-			const viewPortWidth: number = !!this._lastRenderingContext
-				? this._lastRenderingContext.viewPort.width
-				: 0;
-			const viewPortHeight: number = !!this._lastRenderingContext
-				? this._lastRenderingContext.viewPort.height
-				: 0;
-
 			// Check if we are in viewport bounds -> if not return null
-			if (x < 0 || y < 0 || x > viewPortWidth || y > viewPortHeight) {
+			if (
+				x < 0 ||
+				y < 0 ||
+				x > viewportSize.width ||
+				y > viewportSize.height
+			) {
 				return null;
 			}
 		}
 
-		const currentScrollOffset = this._viewportScroller.getScrollOffset();
-		if (x > fixedColumnWidth) {
-			x += currentScrollOffset.x;
-		}
-		if (y > fixedRowsHeight) {
+		const isInTopFixedArea: boolean = y <= fixedAreaInfos.top.size;
+		const isInLeftFixedArea: boolean = x <= fixedAreaInfos.left.size;
+		const isInBottomFixedArea: boolean =
+			y > viewportSize.height - fixedAreaInfos.bottom.size;
+		const isInRightFixedArea: boolean =
+			x > viewportSize.width - fixedAreaInfos.right.size;
+
+		if (isInBottomFixedArea) {
+			y -= viewportSize.height - fixedAreaInfos.bottom.size;
+			y += fixedAreaInfos.bottom.startOffset;
+		} else if (!isInTopFixedArea) {
 			y += currentScrollOffset.y;
+		}
+
+		if (isInRightFixedArea) {
+			x -= viewportSize.width - fixedAreaInfos.right.size;
+			x += fixedAreaInfos.right.startOffset;
+		} else if (!isInLeftFixedArea) {
+			x += currentScrollOffset.x;
 		}
 
 		const cell = this._cellModel.getCellAtOffset(x, y);
@@ -2835,22 +2838,6 @@ export class CanvasRenderer implements ITableEngineRenderer, IViewportManager {
 		return this._getViewPort();
 	}
 
-	public getFixedRowsHeight(): number {
-		return !!this._lastRenderingContext &&
-			!!this._lastRenderingContext.cells.fixedRowCells
-			? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-					.height
-			: 0;
-	}
-
-	public getFixedColumnsWidth(): number {
-		return !!this._lastRenderingContext &&
-			!!this._lastRenderingContext.cells.fixedColumnCells
-			? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds
-					.width
-			: 0;
-	}
-
 	/**
 	 * Scroll to the cell at the given row and column (if not already in the current view).
 	 * @param row to scroll to
@@ -3518,37 +3505,7 @@ export class CanvasRenderer implements ITableEngineRenderer, IViewportManager {
 	private _calculateBorderContext(
 		cellsInfo: ICellRenderContextCollection
 	): IBorderRenderContext {
-		return {
-			inFixedCorner: !!cellsInfo.fixedCornerCells
-				? this._calculateBorderInfo(
-						this._borderModel.getBorders(
-							cellsInfo.fixedCornerCells.cellRange
-						),
-						cellsInfo.fixedCornerCells.cellRange,
-						false,
-						false
-				  )
-				: [],
-			inFixedColumns: !!cellsInfo.fixedColumnCells
-				? this._calculateBorderInfo(
-						this._borderModel.getBorders(
-							cellsInfo.fixedColumnCells.cellRange
-						),
-						cellsInfo.fixedColumnCells.cellRange,
-						false,
-						true
-				  )
-				: [],
-			inFixedRows: !!cellsInfo.fixedRowCells
-				? this._calculateBorderInfo(
-						this._borderModel.getBorders(
-							cellsInfo.fixedRowCells.cellRange
-						),
-						cellsInfo.fixedRowCells.cellRange,
-						true,
-						false
-				  )
-				: [],
+		const result: IBorderRenderContext = {
 			inNonFixedArea: this._calculateBorderInfo(
 				this._borderModel.getBorders(cellsInfo.nonFixedCells.cellRange),
 				cellsInfo.nonFixedCells.cellRange,
@@ -3556,6 +3513,84 @@ export class CanvasRenderer implements ITableEngineRenderer, IViewportManager {
 				true
 			),
 		};
+
+		if (!!cellsInfo.fixedCells) {
+			const fixedCells = cellsInfo.fixedCells;
+			const fixedArea: IFixedAreaBorderRenderContext = {};
+
+			if (!!fixedCells.leftTop) {
+				fixedArea.leftTop = this._calculateBorderInfo(
+					this._borderModel.getBorders(fixedCells.leftTop.cellRange),
+					fixedCells.leftTop.cellRange,
+					false,
+					false
+				);
+			}
+			if (!!fixedCells.rightTop) {
+				fixedArea.rightTop = this._calculateBorderInfo(
+					this._borderModel.getBorders(fixedCells.rightTop.cellRange),
+					fixedCells.rightTop.cellRange,
+					false,
+					false
+				);
+			}
+			if (!!fixedCells.leftBottom) {
+				fixedArea.leftBottom = this._calculateBorderInfo(
+					this._borderModel.getBorders(
+						fixedCells.leftBottom.cellRange
+					),
+					fixedCells.leftBottom.cellRange,
+					false,
+					false
+				);
+			}
+			if (!!fixedCells.rightBottom) {
+				fixedArea.rightBottom = this._calculateBorderInfo(
+					this._borderModel.getBorders(
+						fixedCells.rightBottom.cellRange
+					),
+					fixedCells.rightBottom.cellRange,
+					false,
+					false
+				);
+			}
+			if (!!fixedCells.left) {
+				fixedArea.left = this._calculateBorderInfo(
+					this._borderModel.getBorders(fixedCells.left.cellRange),
+					fixedCells.left.cellRange,
+					false,
+					true
+				);
+			}
+			if (!!fixedCells.top) {
+				fixedArea.top = this._calculateBorderInfo(
+					this._borderModel.getBorders(fixedCells.top.cellRange),
+					fixedCells.top.cellRange,
+					true,
+					false
+				);
+			}
+			if (!!fixedCells.right) {
+				fixedArea.right = this._calculateBorderInfo(
+					this._borderModel.getBorders(fixedCells.right.cellRange),
+					fixedCells.right.cellRange,
+					false,
+					true
+				);
+			}
+			if (!!fixedCells.bottom) {
+				fixedArea.bottom = this._calculateBorderInfo(
+					this._borderModel.getBorders(fixedCells.bottom.cellRange),
+					fixedCells.bottom.cellRange,
+					true,
+					false
+				);
+			}
+
+			result.inFixedAreas = fixedArea;
+		}
+
+		return result;
 	}
 
 	/**
@@ -3694,21 +3729,77 @@ export class CanvasRenderer implements ITableEngineRenderer, IViewportManager {
 			nonFixedCells,
 		};
 
-		// Fill left fixed columns (if any)
-		if (fixedAreaInfos.left.count > 0) {
-			result.fixedColumnCells = this._createCellRenderArea(
+		const fixedCells: IFixedCellAreaRenderContext = {};
+		let hasFixedAreas: boolean = false;
+
+		// Fill top fixed rows (if any)
+		if (fixedAreaInfos.top.count > 0) {
+			hasFixedAreas = true;
+			fixedCells.top = this._createCellRenderArea(
 				{
-					startRow:
-						nonFixedCellsRange.startRow - fixedAreaInfos.top.count,
-					endRow: nonFixedCellsRange.endRow,
-					startColumn: 0,
-					endColumn: fixedAreaInfos.left.index,
+					startRow: fixedAreaInfos.top.startIndex,
+					endRow: fixedAreaInfos.top.endIndex,
+					startColumn: nonFixedCellsRange.startColumn,
+					endColumn: nonFixedCellsRange.endColumn,
 				},
 				{
-					left: 0,
+					left: fixedAreaInfos.left.size,
+					top: fixedAreaInfos.top.startOffset,
+					width:
+						viewPort.width -
+						fixedAreaInfos.left.size -
+						fixedAreaInfos.right.size,
+					height: fixedAreaInfos.top.size,
+				},
+				true,
+				false,
+				usedCellRendererNames
+			);
+		}
+
+		// Fill bottom fixed rows (if any)
+		if (fixedAreaInfos.bottom.count > 0) {
+			hasFixedAreas = true;
+			fixedCells.bottom = this._createCellRenderArea(
+				{
+					startRow: fixedAreaInfos.bottom.startIndex,
+					endRow: fixedAreaInfos.bottom.endIndex,
+					startColumn: nonFixedCellsRange.startColumn,
+					endColumn: nonFixedCellsRange.endColumn,
+				},
+				{
+					left: fixedAreaInfos.left.size,
+					top: fixedAreaInfos.bottom.startOffset,
+					width:
+						viewPort.width -
+						fixedAreaInfos.left.size -
+						fixedAreaInfos.right.size,
+					height: fixedAreaInfos.bottom.size,
+				},
+				true,
+				false,
+				usedCellRendererNames
+			);
+		}
+
+		// Fill left fixed columns (if any)
+		if (fixedAreaInfos.left.count > 0) {
+			hasFixedAreas = true;
+			fixedCells.left = this._createCellRenderArea(
+				{
+					startRow: nonFixedCellsRange.startRow,
+					endRow: nonFixedCellsRange.endRow,
+					startColumn: fixedAreaInfos.left.startIndex,
+					endColumn: fixedAreaInfos.left.endIndex,
+				},
+				{
+					left: fixedAreaInfos.left.startOffset,
 					top: fixedAreaInfos.top.size,
 					width: fixedAreaInfos.left.size,
-					height: viewPort.height - fixedAreaInfos.top.size,
+					height:
+						viewPort.height -
+						fixedAreaInfos.top.size -
+						fixedAreaInfos.bottom.size,
 				},
 				false,
 				true,
@@ -3716,41 +3807,43 @@ export class CanvasRenderer implements ITableEngineRenderer, IViewportManager {
 			);
 		}
 
-		// Fill top fixed rows (if any)
-		if (fixedAreaInfos.top.count > 0) {
-			result.fixedRowCells = this._createCellRenderArea(
+		// Fill right fixed columns (if any)
+		if (fixedAreaInfos.right.count > 0) {
+			hasFixedAreas = true;
+			fixedCells.right = this._createCellRenderArea(
 				{
-					startRow: 0,
-					endRow: fixedAreaInfos.top.index,
-					startColumn:
-						nonFixedCellsRange.startColumn -
-						fixedAreaInfos.left.count,
-					endColumn: nonFixedCellsRange.endColumn,
+					startRow: nonFixedCellsRange.startRow,
+					endRow: nonFixedCellsRange.endRow,
+					startColumn: fixedAreaInfos.right.startIndex,
+					endColumn: fixedAreaInfos.right.endIndex,
 				},
 				{
-					left: fixedAreaInfos.left.size,
-					top: 0,
-					width: viewPort.width - fixedAreaInfos.left.size,
-					height: fixedAreaInfos.top.size,
+					left: fixedAreaInfos.right.startOffset,
+					top: fixedAreaInfos.top.size,
+					width: fixedAreaInfos.right.size,
+					height:
+						viewPort.height -
+						fixedAreaInfos.top.size -
+						fixedAreaInfos.bottom.size,
 				},
-				true,
 				false,
+				true,
 				usedCellRendererNames
 			);
 		}
 
 		// Fill fixed left-top corner cells (if any)
 		if (fixedAreaInfos.left.count > 0 && fixedAreaInfos.top.count > 0) {
-			result.fixedCornerCells = this._createCellRenderArea(
+			fixedCells.leftTop = this._createCellRenderArea(
 				{
-					startRow: 0,
-					endRow: fixedAreaInfos.top.index,
-					startColumn: 0,
-					endColumn: fixedAreaInfos.left.index,
+					startRow: fixedAreaInfos.top.startIndex,
+					endRow: fixedAreaInfos.top.endIndex,
+					startColumn: fixedAreaInfos.left.startIndex,
+					endColumn: fixedAreaInfos.left.endIndex,
 				},
 				{
-					left: 0,
-					top: 0,
+					left: fixedAreaInfos.left.startOffset,
+					top: fixedAreaInfos.top.startOffset,
 					width: fixedAreaInfos.left.size,
 					height: fixedAreaInfos.top.size,
 				},
@@ -3760,11 +3853,72 @@ export class CanvasRenderer implements ITableEngineRenderer, IViewportManager {
 			);
 		}
 
-		// TODO Fill fixed right column cells (if any)
-		// TODO Fill fixed bottom row cells (if any)
-		// TODO Fill fixed right-top corner cells (if any)
-		// TODO Fill fixed left-bottom corner cells (if any)
-		// TODO Fill fixed right-bottom corner cells (if any)
+		// Fill fixed right-top corner cells (if any)
+		if (fixedAreaInfos.right.count > 0 && fixedAreaInfos.top.count > 0) {
+			fixedCells.rightTop = this._createCellRenderArea(
+				{
+					startRow: fixedAreaInfos.top.startIndex,
+					endRow: fixedAreaInfos.top.endIndex,
+					startColumn: fixedAreaInfos.right.startIndex,
+					endColumn: fixedAreaInfos.right.endIndex,
+				},
+				{
+					left: fixedAreaInfos.right.startOffset,
+					top: fixedAreaInfos.top.startOffset,
+					width: fixedAreaInfos.right.size,
+					height: fixedAreaInfos.top.size,
+				},
+				false,
+				false,
+				usedCellRendererNames
+			);
+		}
+
+		// Fill fixed left-bottom corner cells (if any)
+		if (fixedAreaInfos.left.count > 0 && fixedAreaInfos.bottom.count > 0) {
+			fixedCells.leftBottom = this._createCellRenderArea(
+				{
+					startRow: fixedAreaInfos.bottom.startIndex,
+					endRow: fixedAreaInfos.bottom.endIndex,
+					startColumn: fixedAreaInfos.left.startIndex,
+					endColumn: fixedAreaInfos.left.endIndex,
+				},
+				{
+					left: fixedAreaInfos.left.startOffset,
+					top: fixedAreaInfos.bottom.startOffset,
+					width: fixedAreaInfos.left.size,
+					height: fixedAreaInfos.bottom.size,
+				},
+				false,
+				false,
+				usedCellRendererNames
+			);
+		}
+
+		// Fill fixed right-bottom corner cells (if any)
+		if (fixedAreaInfos.right.count > 0 && fixedAreaInfos.bottom.count > 0) {
+			fixedCells.rightBottom = this._createCellRenderArea(
+				{
+					startRow: fixedAreaInfos.bottom.startIndex,
+					endRow: fixedAreaInfos.bottom.endIndex,
+					startColumn: fixedAreaInfos.right.startIndex,
+					endColumn: fixedAreaInfos.right.endIndex,
+				},
+				{
+					left: fixedAreaInfos.right.startOffset,
+					top: fixedAreaInfos.top.startOffset,
+					width: fixedAreaInfos.right.size,
+					height: fixedAreaInfos.bottom.size,
+				},
+				false,
+				false,
+				usedCellRendererNames
+			);
+		}
+
+		if (hasFixedAreas) {
+			result.fixedCells = fixedCells;
+		}
 
 		// Cleanup cell renderers that have been used in previous rendering cycles but now not anymore
 		for (const previouslyUsedCellRendererName of this
@@ -3882,23 +4036,67 @@ export class CanvasRenderer implements ITableEngineRenderer, IViewportManager {
 			oldCells.nonFixedCells.cellRange,
 			newCells.nonFixedCells.cellRange
 		);
-		if (!!oldCells.fixedRowCells && !!newCells.fixedRowCells) {
-			this._cleanupCellViewportCachesForOverlappingCellRanges(
-				oldCells.fixedRowCells.cellRange,
-				newCells.fixedRowCells.cellRange
-			);
-		}
-		if (!!oldCells.fixedColumnCells && !!newCells.fixedColumnCells) {
-			this._cleanupCellViewportCachesForOverlappingCellRanges(
-				oldCells.fixedColumnCells.cellRange,
-				newCells.fixedColumnCells.cellRange
-			);
-		}
-		if (!!oldCells.fixedCornerCells && !!newCells.fixedCornerCells) {
-			this._cleanupCellViewportCachesForOverlappingCellRanges(
-				oldCells.fixedCornerCells.cellRange,
-				newCells.fixedCornerCells.cellRange
-			);
+		if (!!oldCells.fixedCells && !!newCells.fixedCells) {
+			if (!!oldCells.fixedCells.top && !!newCells.fixedCells.top) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.top.cellRange,
+					newCells.fixedCells.top.cellRange
+				);
+			}
+			if (!!oldCells.fixedCells.left && !!newCells.fixedCells.left) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.left.cellRange,
+					newCells.fixedCells.left.cellRange
+				);
+			}
+			if (!!oldCells.fixedCells.bottom && !!newCells.fixedCells.bottom) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.bottom.cellRange,
+					newCells.fixedCells.bottom.cellRange
+				);
+			}
+			if (!!oldCells.fixedCells.right && !!newCells.fixedCells.right) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.right.cellRange,
+					newCells.fixedCells.right.cellRange
+				);
+			}
+			if (
+				!!oldCells.fixedCells.leftTop &&
+				!!newCells.fixedCells.leftTop
+			) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.leftTop.cellRange,
+					newCells.fixedCells.leftTop.cellRange
+				);
+			}
+			if (
+				!!oldCells.fixedCells.rightTop &&
+				!!newCells.fixedCells.rightTop
+			) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.rightTop.cellRange,
+					newCells.fixedCells.rightTop.cellRange
+				);
+			}
+			if (
+				!!oldCells.fixedCells.leftBottom &&
+				!!newCells.fixedCells.leftBottom
+			) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.leftBottom.cellRange,
+					newCells.fixedCells.leftBottom.cellRange
+				);
+			}
+			if (
+				!!oldCells.fixedCells.rightBottom &&
+				!!newCells.fixedCells.rightBottom
+			) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.rightBottom.cellRange,
+					newCells.fixedCells.rightBottom.cellRange
+				);
+			}
 		}
 	}
 
@@ -3911,10 +4109,37 @@ export class CanvasRenderer implements ITableEngineRenderer, IViewportManager {
 			return;
 		}
 
-		fct(this._lastRenderingContext.cells.fixedCornerCells.cellRange);
-		fct(this._lastRenderingContext.cells.fixedRowCells.cellRange);
-		fct(this._lastRenderingContext.cells.fixedColumnCells.cellRange);
-		fct(this._lastRenderingContext.cells.nonFixedCells.cellRange);
+		const cells = this._lastRenderingContext.cells;
+		if (!!cells.fixedCells) {
+			const fixedCells = cells.fixedCells;
+
+			if (!!fixedCells.rightBottom) {
+				fct(fixedCells.rightBottom.cellRange);
+			}
+			if (!!fixedCells.rightTop) {
+				fct(fixedCells.rightTop.cellRange);
+			}
+			if (!!fixedCells.leftBottom) {
+				fct(fixedCells.leftBottom.cellRange);
+			}
+			if (!!fixedCells.leftTop) {
+				fct(fixedCells.leftTop.cellRange);
+			}
+			if (!!fixedCells.bottom) {
+				fct(fixedCells.bottom.cellRange);
+			}
+			if (!!fixedCells.right) {
+				fct(fixedCells.right.cellRange);
+			}
+			if (!!fixedCells.top) {
+				fct(fixedCells.top.cellRange);
+			}
+			if (!!fixedCells.left) {
+				fct(fixedCells.left.cellRange);
+			}
+		}
+
+		fct(cells.nonFixedCells.cellRange);
 	}
 
 	/**
@@ -4031,35 +4256,89 @@ export class CanvasRenderer implements ITableEngineRenderer, IViewportManager {
 			);
 
 			// Then render fixed cells (if any).
-			if (!!renderingContext.cells.fixedColumnCells) {
-				CanvasRenderer._renderArea(
-					ctx,
-					renderingContext,
-					renderingContext.cells.fixedColumnCells,
-					renderingContext.borders.inFixedColumns,
-					renderingContext.selection?.inFixedColumns,
-					true
-				);
-			}
-			if (!!renderingContext.cells.fixedRowCells) {
-				CanvasRenderer._renderArea(
-					ctx,
-					renderingContext,
-					renderingContext.cells.fixedRowCells,
-					renderingContext.borders.inFixedRows,
-					renderingContext.selection?.inFixedRows,
-					true
-				);
-			}
-			if (!!renderingContext.cells.fixedCornerCells) {
-				CanvasRenderer._renderArea(
-					ctx,
-					renderingContext,
-					renderingContext.cells.fixedCornerCells,
-					renderingContext.borders.inFixedCorner,
-					renderingContext.selection?.inFixedCorner,
-					true
-				);
+			if (!!renderingContext.cells.fixedCells) {
+				const fixedCells = renderingContext.cells.fixedCells;
+
+				if (!!fixedCells.left) {
+					CanvasRenderer._renderArea(
+						ctx,
+						renderingContext,
+						fixedCells.left,
+						renderingContext.borders.inFixedAreas.left,
+						renderingContext.selection?.inFixedColumns, // TODO
+						true
+					);
+				}
+				if (!!fixedCells.top) {
+					CanvasRenderer._renderArea(
+						ctx,
+						renderingContext,
+						fixedCells.top,
+						renderingContext.borders.inFixedAreas.top,
+						renderingContext.selection?.inFixedRows, // TODO
+						true
+					);
+				}
+				if (!!fixedCells.right) {
+					CanvasRenderer._renderArea(
+						ctx,
+						renderingContext,
+						fixedCells.right,
+						renderingContext.borders.inFixedAreas.right,
+						renderingContext.selection?.inFixedRows, // TODO
+						true
+					);
+				}
+				if (!!fixedCells.bottom) {
+					CanvasRenderer._renderArea(
+						ctx,
+						renderingContext,
+						fixedCells.bottom,
+						renderingContext.borders.inFixedAreas.bottom,
+						renderingContext.selection?.inFixedRows, // TODO
+						true
+					);
+				}
+				if (!!fixedCells.leftTop) {
+					CanvasRenderer._renderArea(
+						ctx,
+						renderingContext,
+						fixedCells.leftTop,
+						renderingContext.borders.inFixedAreas.leftTop,
+						renderingContext.selection?.inFixedCorner, // TODO
+						true
+					);
+				}
+				if (!!fixedCells.rightTop) {
+					CanvasRenderer._renderArea(
+						ctx,
+						renderingContext,
+						fixedCells.rightTop,
+						renderingContext.borders.inFixedAreas.rightTop,
+						renderingContext.selection?.inFixedCorner, // TODO
+						true
+					);
+				}
+				if (!!fixedCells.leftBottom) {
+					CanvasRenderer._renderArea(
+						ctx,
+						renderingContext,
+						fixedCells.leftBottom,
+						renderingContext.borders.inFixedAreas.leftBottom,
+						renderingContext.selection?.inFixedCorner, // TODO
+						true
+					);
+				}
+				if (!!fixedCells.rightBottom) {
+					CanvasRenderer._renderArea(
+						ctx,
+						renderingContext,
+						fixedCells.rightBottom,
+						renderingContext.borders.inFixedAreas.rightBottom,
+						renderingContext.selection?.inFixedCorner, // TODO
+						true
+					);
+				}
 			}
 
 			// Render scrollbars
@@ -4969,19 +5248,24 @@ interface IBorderRenderContext {
 	inNonFixedArea: IBorderInfo[][];
 
 	/**
-	 * Borders completely contained in non-fixed area or fixed rows area.
+	 * Borders completely contained in the fixed areas (if any).
 	 */
-	inFixedRows: IBorderInfo[][];
+	inFixedAreas?: IFixedAreaBorderRenderContext;
+}
 
-	/**
-	 * Borders completely contained in non-fixed area or fixed columns area.
-	 */
-	inFixedColumns: IBorderInfo[][];
+/**
+ * Border rendering context in fixed areas.
+ */
+interface IFixedAreaBorderRenderContext {
+	top?: IBorderInfo[][];
+	left?: IBorderInfo[][];
+	bottom?: IBorderInfo[][];
+	right?: IBorderInfo[][];
 
-	/**
-	 * Borders to be displayed above all areas.
-	 */
-	inFixedCorner: IBorderInfo[][];
+	leftTop?: IBorderInfo[][];
+	rightTop?: IBorderInfo[][];
+	leftBottom?: IBorderInfo[][];
+	rightBottom?: IBorderInfo[][];
 }
 
 /**
@@ -5085,19 +5369,54 @@ interface ICellRenderContextCollection {
 	nonFixedCells: ICellAreaRenderContext;
 
 	/**
-	 * Fixed corner cells to render.
+	 * Collection of all fixed area cells to render.
 	 */
-	fixedCornerCells?: ICellAreaRenderContext;
+	fixedCells?: IFixedCellAreaRenderContext;
+}
+
+/**
+ * Collection of all fixed area cells to render.
+ */
+interface IFixedCellAreaRenderContext {
+	/**
+	 * Left fixed columns.
+	 */
+	left?: ICellAreaRenderContext;
 
 	/**
-	 * Fixed row cells to render.
+	 * Top fixed rows.
 	 */
-	fixedRowCells?: ICellAreaRenderContext;
+	top?: ICellAreaRenderContext;
 
 	/**
-	 * Fixed column cells to render.
+	 * Right fixed columns.
 	 */
-	fixedColumnCells?: ICellAreaRenderContext;
+	right?: ICellAreaRenderContext;
+
+	/**
+	 * Bottom fixed rows.
+	 */
+	bottom?: ICellAreaRenderContext;
+
+	/**
+	 * Fixed corner area to the left-top.
+	 */
+	leftTop?: ICellAreaRenderContext;
+
+	/**
+	 * Fixed corner area to the right-top.
+	 */
+	rightTop?: ICellAreaRenderContext;
+
+	/**
+	 * Fixed corner area to the left-bottom.
+	 */
+	leftBottom?: ICellAreaRenderContext;
+
+	/**
+	 * Fixed corner area to the right-bottom.
+	 */
+	rightBottom?: ICellAreaRenderContext;
 }
 
 /**
