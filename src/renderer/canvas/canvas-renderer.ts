@@ -44,7 +44,11 @@ import { IOverlay } from '../../overlay';
 import { ITableEngineOptions } from '../../options';
 import { IRendererOptions } from '../renderer-options';
 import { IViewportScroller, ViewportScroller } from './scroll';
-import { FixedAreaUtil, IFixedAreaInfos } from './fixed-area-util';
+import {
+	FixedAreaUtil,
+	IFixedAreaInfo,
+	IFixedAreaInfos,
+} from './fixed-area-util';
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
 type CellRendererEventListenerFunctionSupplier = (
@@ -3477,7 +3481,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const selectionContext: ISelectionRenderContext =
 			this._calculateSelectionContext(viewPort, fixedAreaInfos);
 		const borderContext: IBorderRenderContext =
-			this._calculateBorderContext(cellsInfo);
+			this._calculateBorderContext(viewPort, fixedAreaInfos, cellsInfo);
 		const resizerContext: IResizerRenderContext =
 			this._calculateResizerRenderContext();
 
@@ -3500,17 +3504,23 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 	/**
 	 * Calculate the border rendering context.
+	 * @param viewPort of the table
+	 * @param fixedAreaInfos infos about the fixed areas
 	 * @param cellsInfo to calculate borders for
 	 */
 	private _calculateBorderContext(
+		viewPort: IRectangle,
+		fixedAreaInfos: IFixedAreaInfos,
 		cellsInfo: ICellRenderContextCollection
 	): IBorderRenderContext {
+		const currentScrollOffset = this._viewportScroller.getScrollOffset();
+
 		const result: IBorderRenderContext = {
 			inNonFixedArea: this._calculateBorderInfo(
 				this._borderModel.getBorders(cellsInfo.nonFixedCells.cellRange),
 				cellsInfo.nonFixedCells.cellRange,
-				true,
-				true
+				-currentScrollOffset.x,
+				-currentScrollOffset.y
 			),
 		};
 
@@ -3522,16 +3532,18 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				fixedArea.leftTop = this._calculateBorderInfo(
 					this._borderModel.getBorders(fixedCells.leftTop.cellRange),
 					fixedCells.leftTop.cellRange,
-					false,
-					false
+					0,
+					0
 				);
 			}
 			if (!!fixedCells.rightTop) {
 				fixedArea.rightTop = this._calculateBorderInfo(
 					this._borderModel.getBorders(fixedCells.rightTop.cellRange),
 					fixedCells.rightTop.cellRange,
-					false,
-					false
+					-fixedAreaInfos.right.startOffset +
+						viewPort.width -
+						fixedAreaInfos.right.size,
+					0
 				);
 			}
 			if (!!fixedCells.leftBottom) {
@@ -3540,8 +3552,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						fixedCells.leftBottom.cellRange
 					),
 					fixedCells.leftBottom.cellRange,
-					false,
-					false
+					0,
+					-fixedAreaInfos.bottom.startOffset +
+						viewPort.height -
+						fixedAreaInfos.bottom.size
 				);
 			}
 			if (!!fixedCells.rightBottom) {
@@ -3550,40 +3564,48 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						fixedCells.rightBottom.cellRange
 					),
 					fixedCells.rightBottom.cellRange,
-					false,
-					false
+					-fixedAreaInfos.right.startOffset +
+						viewPort.width -
+						fixedAreaInfos.right.size,
+					-fixedAreaInfos.bottom.startOffset +
+						viewPort.height -
+						fixedAreaInfos.bottom.size
 				);
 			}
 			if (!!fixedCells.left) {
 				fixedArea.left = this._calculateBorderInfo(
 					this._borderModel.getBorders(fixedCells.left.cellRange),
 					fixedCells.left.cellRange,
-					false,
-					true
+					0,
+					-currentScrollOffset.y
 				);
 			}
 			if (!!fixedCells.top) {
 				fixedArea.top = this._calculateBorderInfo(
 					this._borderModel.getBorders(fixedCells.top.cellRange),
 					fixedCells.top.cellRange,
-					true,
-					false
+					-currentScrollOffset.x,
+					0
 				);
 			}
 			if (!!fixedCells.right) {
 				fixedArea.right = this._calculateBorderInfo(
 					this._borderModel.getBorders(fixedCells.right.cellRange),
 					fixedCells.right.cellRange,
-					false,
-					true
+					-fixedAreaInfos.right.startOffset +
+						viewPort.width -
+						fixedAreaInfos.right.size,
+					-currentScrollOffset.y
 				);
 			}
 			if (!!fixedCells.bottom) {
 				fixedArea.bottom = this._calculateBorderInfo(
 					this._borderModel.getBorders(fixedCells.bottom.cellRange),
 					fixedCells.bottom.cellRange,
-					true,
-					false
+					-currentScrollOffset.x,
+					-fixedAreaInfos.bottom.startOffset +
+						viewPort.height -
+						fixedAreaInfos.bottom.size
 				);
 			}
 
@@ -3620,14 +3642,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Calculate the border infos for rendering borders.
 	 * @param borders to calculate infos for
 	 * @param range of the borders
-	 * @param adjustBoundsX whether to adjust bounds due to scrolling
-	 * @param adjustBoundsY whether to adjust bounds due to scrolling
+	 * @param xBoundsAdjustment adjustment of the border x bounds
+	 * @param yBoundsAdjustment adjustment of the border y bounds
 	 */
 	private _calculateBorderInfo(
 		borders: IBorder[][],
 		range: ICellRange,
-		adjustBoundsX: boolean,
-		adjustBoundsY: boolean
+		xBoundsAdjustment: number,
+		yBoundsAdjustment: number
 	): IBorderInfo[][] {
 		const result: IBorderInfo[][] = [];
 
@@ -3653,15 +3675,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 							),
 						};
 
-						// Correct bounds for current scroll offset
-						const currentScrollOffset =
-							this._viewportScroller.getScrollOffset();
-						if (adjustBoundsY) {
-							info.bounds.top -= currentScrollOffset.y;
-						}
-						if (adjustBoundsX) {
-							info.bounds.left -= currentScrollOffset.x;
-						}
+						// Adjust bounds
+						info.bounds.top += yBoundsAdjustment;
+						info.bounds.left += xBoundsAdjustment;
 
 						borderInfos.push(info);
 					}
@@ -5047,6 +5063,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		let height: number = overlay.bounds.height;
 		const isInTopFixedRows: boolean =
 			overlay.bounds.top < fixedAreaInfos.top.size;
+		const isInBottomFixedRows: boolean =
+			overlay.bounds.top + overlay.bounds.height >
+			fixedAreaInfos.bottom.startOffset;
 		if (isInTopFixedRows) {
 			// Overlaps with fixed rows
 			const remaining: number =
