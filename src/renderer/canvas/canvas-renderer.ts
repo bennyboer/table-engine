@@ -3688,6 +3688,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		performance, as one renderer must only prepare once instead of
 		everytime.
 		 */
+		const currentScrollOffset = this._viewportScroller.getScrollOffset();
 
 		// Fetch cell range to paint for the current viewport
 		const nonFixedCellsRange: ICellRange = this._cellModel.getRangeForRect({
@@ -3720,8 +3721,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					fixedAreaInfos.top.size -
 					fixedAreaInfos.bottom.size,
 			},
-			true,
-			true,
+			-currentScrollOffset.x,
+			-currentScrollOffset.y,
 			usedCellRendererNames
 		);
 
@@ -3751,8 +3752,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						fixedAreaInfos.right.size,
 					height: fixedAreaInfos.top.size,
 				},
-				true,
-				false,
+				-currentScrollOffset.x,
+				0,
 				usedCellRendererNames
 			);
 		}
@@ -3769,15 +3770,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				},
 				{
 					left: fixedAreaInfos.left.size,
-					top: fixedAreaInfos.bottom.startOffset,
+					top: viewPort.height - fixedAreaInfos.bottom.size,
 					width:
 						viewPort.width -
 						fixedAreaInfos.left.size -
 						fixedAreaInfos.right.size,
 					height: fixedAreaInfos.bottom.size,
 				},
-				true,
-				false,
+				-currentScrollOffset.x,
+				-fixedAreaInfos.bottom.startOffset +
+					viewPort.height -
+					fixedAreaInfos.bottom.size,
 				usedCellRendererNames
 			);
 		}
@@ -3801,8 +3804,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						fixedAreaInfos.top.size -
 						fixedAreaInfos.bottom.size,
 				},
-				false,
-				true,
+				0,
+				-currentScrollOffset.y,
 				usedCellRendererNames
 			);
 		}
@@ -3818,7 +3821,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					endColumn: fixedAreaInfos.right.endIndex,
 				},
 				{
-					left: fixedAreaInfos.right.startOffset,
+					left: viewPort.width - fixedAreaInfos.right.size,
 					top: fixedAreaInfos.top.size,
 					width: fixedAreaInfos.right.size,
 					height:
@@ -3826,8 +3829,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						fixedAreaInfos.top.size -
 						fixedAreaInfos.bottom.size,
 				},
-				false,
-				true,
+				-fixedAreaInfos.right.startOffset +
+					viewPort.width -
+					fixedAreaInfos.right.size,
+				-currentScrollOffset.y,
 				usedCellRendererNames
 			);
 		}
@@ -3847,8 +3852,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					width: fixedAreaInfos.left.size,
 					height: fixedAreaInfos.top.size,
 				},
-				false,
-				false,
+				0,
+				0,
 				usedCellRendererNames
 			);
 		}
@@ -3863,13 +3868,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					endColumn: fixedAreaInfos.right.endIndex,
 				},
 				{
-					left: fixedAreaInfos.right.startOffset,
+					left: viewPort.width - fixedAreaInfos.right.size,
 					top: fixedAreaInfos.top.startOffset,
 					width: fixedAreaInfos.right.size,
 					height: fixedAreaInfos.top.size,
 				},
-				false,
-				false,
+				-fixedAreaInfos.right.startOffset +
+					viewPort.width -
+					fixedAreaInfos.right.size,
+				0,
 				usedCellRendererNames
 			);
 		}
@@ -3885,12 +3892,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				},
 				{
 					left: fixedAreaInfos.left.startOffset,
-					top: fixedAreaInfos.bottom.startOffset,
+					top: viewPort.height - fixedAreaInfos.bottom.size,
 					width: fixedAreaInfos.left.size,
 					height: fixedAreaInfos.bottom.size,
 				},
-				false,
-				false,
+				0,
+				-fixedAreaInfos.bottom.startOffset +
+					viewPort.height -
+					fixedAreaInfos.bottom.size,
 				usedCellRendererNames
 			);
 		}
@@ -3905,13 +3914,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					endColumn: fixedAreaInfos.right.endIndex,
 				},
 				{
-					left: fixedAreaInfos.right.startOffset,
-					top: fixedAreaInfos.top.startOffset,
+					left: viewPort.width - fixedAreaInfos.right.size,
+					top: viewPort.height - fixedAreaInfos.bottom.size,
 					width: fixedAreaInfos.right.size,
 					height: fixedAreaInfos.bottom.size,
 				},
-				false,
-				false,
+				-fixedAreaInfos.right.startOffset +
+					viewPort.width -
+					fixedAreaInfos.right.size,
+				-fixedAreaInfos.bottom.startOffset +
+					viewPort.height -
+					fixedAreaInfos.bottom.size,
 				usedCellRendererNames
 			);
 		}
@@ -3938,34 +3951,28 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Create cell area to render.
 	 * @param range to create rendering lookup for
 	 * @param viewPortBounds of the range
-	 * @param adjustBoundsX whether to adjust the x bounds
-	 * @param adjustBoundsY whether to adjust the y bounds
+	 * @param xBoundsAdjustment adjustment of the x bounds of every cell in the range
+	 * @param yBoundsAdjustment adjustment of the y bounds of every cell in the range
 	 * @param usedCellRendererNames set of used cell renderer names
 	 * @returns mapping of renderer names to all cells that need to be rendered with the renderer
 	 */
 	private _createCellRenderArea(
 		range: ICellRange,
 		viewPortBounds: IRectangle,
-		adjustBoundsX: boolean,
-		adjustBoundsY: boolean,
+		xBoundsAdjustment: number,
+		yBoundsAdjustment: number,
 		usedCellRendererNames: Set<string>
 	): ICellAreaRenderContext {
 		const cellsPerRenderer = new Map<string, ICellRenderInfo[]>();
 		const cells = this._cellModel.getCells(range);
 
-		const currentScrollOffset = this._viewportScroller.getScrollOffset();
-
 		for (let i = 0; i < cells.length; i++) {
 			const cell = cells[i];
 			const bounds = this._cellModel.getBounds(cells[i].range);
 
-			// Correct bounds for current scroll offsets
-			if (adjustBoundsY) {
-				bounds.top -= currentScrollOffset.y;
-			}
-			if (adjustBoundsX) {
-				bounds.left -= currentScrollOffset.x;
-			}
+			// Adjust bounds
+			bounds.top += yBoundsAdjustment;
+			bounds.left += xBoundsAdjustment;
 
 			let cellsToRender: ICellRenderInfo[] = cellsPerRenderer.get(
 				cell.rendererName
