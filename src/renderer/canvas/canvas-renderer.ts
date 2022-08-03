@@ -3873,6 +3873,24 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				fixedAreaInfos.bottom.size,
 		});
 
+		// Remove fixed areas from cell range
+		nonFixedCellsRange.startRow = Math.max(
+			nonFixedCellsRange.startRow,
+			fixedAreaInfos.top.endIndex + 1
+		);
+		nonFixedCellsRange.endRow = Math.min(
+			nonFixedCellsRange.endRow,
+			fixedAreaInfos.bottom.startIndex - 1
+		);
+		nonFixedCellsRange.startColumn = Math.max(
+			nonFixedCellsRange.startColumn,
+			fixedAreaInfos.left.endIndex + 1
+		);
+		nonFixedCellsRange.endColumn = Math.min(
+			nonFixedCellsRange.endColumn,
+			fixedAreaInfos.right.startIndex - 1
+		);
+
 		const rowCount: number = Math.max(
 			0,
 			nonFixedCellsRange.endRow - nonFixedCellsRange.startRow
