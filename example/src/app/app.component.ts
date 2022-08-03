@@ -40,11 +40,8 @@ import { environment } from '../environments/environment';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DebugCellRenderer } from './renderer/debug-cell-renderer';
 import { ProgressCellRenderer } from '../../../src/renderer/canvas/cell/progress/progress-cell-renderer';
-import { IProgressCellRendererValue } from '../../../src/renderer/canvas/cell/progress/progress-cell-renderer-value';
-import { ProgressCellRendererStyle } from '../../../src/renderer/canvas/cell/progress/progress-cell-renderer-style';
 import {
 	ButtonCellRenderer,
-	IButtonCellRendererOptions,
 	IButtonCellRendererValue,
 } from '../../../src/renderer/canvas/cell/button';
 
@@ -563,15 +560,15 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 			};
 
 			// Set row/column header selection transform
-			// this.engine.getOptions().selection.selectionTransform =
-			// 	ROW_COLUMN_HEADER_TRANSFORM;
+			this.engine.getOptions().selection.selectionTransform =
+				ROW_COLUMN_HEADER_TRANSFORM;
 
 			// Set initial state of fixed rows/columns
 			this.engine.getOptions().renderer.view.fixedAreas = {
-				top: 2,
-				left: 2,
-				bottom: 2,
-				right: 2,
+				top: 1,
+				left: 1,
+				bottom: 0,
+				right: 0,
 			};
 
 			// Set notification service
