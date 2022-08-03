@@ -490,7 +490,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 				cellModel
 			);
 
-			this.engine.getOptions().misc.debug = true; // Enable/Disable debug mode
+			this.engine.getOptions().misc.debug = false; // Enable/Disable debug mode
 
 			// Setup row/column resizing
 			this.engine.getOptions().renderer.canvas.rowColumnResizing.allowResizing =
@@ -727,7 +727,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 					} as ITextCellRendererValue,
 				},
 				{
-					range: CellRange.fromSingleRowColumn(200, 100),
+					range: CellRange.fromSingleRowColumn(10000, 100),
 					rendererName: TextCellRenderer.NAME,
 					value: 'Last cell with more text than normally',
 				},

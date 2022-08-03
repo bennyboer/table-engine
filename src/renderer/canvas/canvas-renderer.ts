@@ -1187,15 +1187,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 
 		// Check bounds of the targetRange
-		const bounds: IRectangle = this._cellModel.getBounds(targetRange);
 		const fixedAreaInfos = this.getFixedAreaInfos();
-		const currentScrollOffset = this._viewportScroller.getScrollOffset();
-		if (targetRange.startRow > fixedAreaInfos.top.count) {
-			bounds.top -= currentScrollOffset.y;
-		}
-		if (targetRange.startColumn > fixedAreaInfos.left.count) {
-			bounds.left -= currentScrollOffset.x;
-		}
+		const viewportSize = this.getViewportSize();
+		const bounds: IRectangle = this._calculateCellRangeBoundsInViewport(
+			targetRange,
+			viewportSize,
+			fixedAreaInfos
+		);
 
 		// Determine offsets from spaces between rows or columns
 		const leftXOffset: number = bounds.left;
@@ -3223,7 +3221,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	): void {
 		const bounds: IRectangle = this._calculateCellRangeBoundsInViewport(
 			selection.range,
-			viewPort,
+			{
+				width: viewPort.width,
+				height: viewPort.height,
+			},
 			fixedAreaInfos
 		);
 
@@ -3470,12 +3471,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	/**
 	 * Calculate the selection bounds from the given cell range bounds.
 	 * @param range cell range the bounds have been calculated with
-	 * @param viewPort to calculate selections for
+	 * @param viewportSize to calculate selections for
 	 * @param fixedAreaInfos infos about the fixed areas
 	 */
 	private _calculateCellRangeBoundsInViewport(
 		range: ICellRange,
-		viewPort: IRectangle,
+		viewportSize: ISize,
 		fixedAreaInfos: IFixedAreaInfos
 	): IRectangle {
 		const bounds = this._cellModel.getBounds(range);
@@ -3506,7 +3507,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		} else if (range.startRow >= fixedAreaInfos.bottom.startIndex) {
 			// Start of the range is in fixed rows at the bottom
 			const offsetFromBottom = fixedAreaInfos.bottom.endOffset - startY;
-			startY = viewPort.height - offsetFromBottom;
+			startY = viewportSize.height - offsetFromBottom;
 		} else if (range.startRow > fixedAreaInfos.top.endIndex) {
 			// Start of the range is in scrollable area
 			startY -= currentScrollOffset.y;
@@ -3515,7 +3516,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		if (range.endRow >= fixedAreaInfos.bottom.startIndex) {
 			// End of the range is in fixed rows at the bottom
 			const offsetFromBottom = fixedAreaInfos.bottom.endOffset - endY;
-			endY = viewPort.height - offsetFromBottom;
+			endY = viewportSize.height - offsetFromBottom;
 
 			sizeInFixedAreas.height += this._cellModel.getBounds({
 				startRow: Math.max(
@@ -3528,7 +3529,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			}).height;
 
 			if (range.startRow < fixedAreaInfos.bottom.startIndex) {
-				maxStart.y = viewPort.height - fixedAreaInfos.bottom.size;
+				maxStart.y = viewportSize.height - fixedAreaInfos.bottom.size;
 			}
 		} else if (range.endRow > fixedAreaInfos.top.endIndex) {
 			// End of the range is in scrollable area
@@ -3549,7 +3550,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		} else if (range.startColumn >= fixedAreaInfos.right.startIndex) {
 			// Start of the range is in the fixed columns to the right
 			const offsetFromRight = fixedAreaInfos.right.endOffset - startX;
-			startX = viewPort.width - offsetFromRight;
+			startX = viewportSize.width - offsetFromRight;
 		} else if (range.startColumn > fixedAreaInfos.left.endIndex) {
 			// Start of the range is in scrollable area
 			startX -= currentScrollOffset.x;
@@ -3558,7 +3559,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		if (range.endColumn >= fixedAreaInfos.right.startIndex) {
 			// End of the range is in the fixed columns to the right
 			const offsetFromRight = fixedAreaInfos.right.endOffset - endX;
-			endX = viewPort.width - offsetFromRight;
+			endX = viewportSize.width - offsetFromRight;
 
 			sizeInFixedAreas.width += this._cellModel.getBounds({
 				startRow: 0,
@@ -3571,7 +3572,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			}).width;
 
 			if (range.startColumn < fixedAreaInfos.right.startIndex) {
-				maxStart.x = viewPort.width - fixedAreaInfos.right.size;
+				maxStart.x = viewportSize.width - fixedAreaInfos.right.size;
 			}
 		} else if (range.endColumn > fixedAreaInfos.left.endIndex) {
 			// End of the range is in the scrollable area
