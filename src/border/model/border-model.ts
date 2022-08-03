@@ -326,7 +326,7 @@ export class BorderModel implements IBorderModel {
 						b.right = border.right;
 
 						// Check for border collision
-						if (row < this._cellModel.getColumnCount() - 1) {
+						if (column < this._cellModel.getColumnCount() - 1) {
 							const rightCell: IBorder = this._getCellBorder(
 								row,
 								column + 1,

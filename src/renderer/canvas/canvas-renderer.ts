@@ -43,6 +43,10 @@ import { BorderStyle, IBorder, IBorderModel, IBorderSide } from '../../border';
 import { IOverlay } from '../../overlay';
 import { ITableEngineOptions } from '../../options';
 import { IRendererOptions } from '../renderer-options';
+import { IViewportScroller, ViewportScroller } from './scroll';
+import { FixedAreaUtil, IFixedAreaInfos } from './fixed-area-util';
+import { IErrorOptions } from './options';
+import { IParagraph } from './cell/text/line-wrap';
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
 type CellRendererEventListenerFunctionSupplier = (
@@ -191,14 +195,6 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _blurListener: (FocusEvent) => void;
 
 	/**
-	 * Current scroll offset.
-	 */
-	private _scrollOffset: IScrollOffset = {
-		x: 0,
-		y: 0,
-	};
-
-	/**
 	 * ID of the currently requested animation frame or null.
 	 */
 	private _requestAnimationFrameID: number | null = null;
@@ -343,6 +339,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	private _cursorSetExternally: boolean = false;
 
 	/**
+	 * Component responsible for the scrolling logic of the table.
+	 */
+	private _viewportScroller: IViewportScroller;
+
+	/**
 	 * Get the renderer-specific options.
 	 */
 	private get rendererOptions(): IRendererOptions {
@@ -376,12 +377,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		engine: TableEngine,
 		options: ITableEngineOptions
 	): Promise<void> {
-		this._container = this._createTableContainer(container);
+		this._container = CanvasRenderer._createTableContainer(container);
 		this._engine = engine;
 		this._cellModel = engine.getCellModel();
 		this._selectionModel = engine.getSelectionModel();
 		this._borderModel = engine.getBorderModel();
 		this._options = options;
+
+		this._viewportScroller = new ViewportScroller(this._cellModel, this);
 
 		this._cellModel
 			.events()
@@ -398,7 +401,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Create a container Element in which the canvas and html view will later be injected.
 	 * @param parentContainer the container defined by the user
 	 */
-	private _createTableContainer(parentContainer: HTMLElement): HTMLElement {
+	private static _createTableContainer(
+		parentContainer: HTMLElement
+	): HTMLElement {
 		const div = document.createElement('div');
 		// full size in parent
 		div.style.width = '100%';
@@ -826,8 +831,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						? this._lastRenderingContext.scrollBar.vertical.y - y
 						: this._lastRenderingContext.scrollBar.horizontal.x - x,
 					startScrollOffset: {
-						x: this._scrollOffset.x,
-						y: this._scrollOffset.y,
+						...this._viewportScroller.getScrollOffset(),
 					},
 				};
 			} else if (
@@ -841,8 +845,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					startX: x,
 					startY: y,
 					startScrollOffset: {
-						x: this._scrollOffset.x,
-						y: this._scrollOffset.y,
+						...this._viewportScroller.getScrollOffset(),
 					},
 				};
 
@@ -868,8 +871,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					startX: x,
 					startY: y,
 					startScrollOffset: {
-						x: this._scrollOffset.x,
-						y: this._scrollOffset.y,
+						...this._viewportScroller.getScrollOffset(),
 					},
 				};
 			} else {
@@ -975,38 +977,41 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		y: number,
 		allowOverflow: boolean = true
 	): ICellRange | null {
-		const fixedRowsHeight: number =
-			!!this._lastRenderingContext &&
-			!!this._lastRenderingContext.cells.fixedRowCells
-				? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-						.height
-				: 0;
-		const fixedColumnWidth: number =
-			!!this._lastRenderingContext &&
-			!!this._lastRenderingContext.cells.fixedColumnCells
-				? this._lastRenderingContext.cells.fixedColumnCells
-						.viewPortBounds.width
-				: 0;
+		const fixedAreaInfos = this.getFixedAreaInfos();
+		const viewportSize = this.getViewportSize();
+		const currentScrollOffset = this._viewportScroller.getScrollOffset();
 
 		if (!allowOverflow) {
-			const viewPortWidth: number = !!this._lastRenderingContext
-				? this._lastRenderingContext.viewPort.width
-				: 0;
-			const viewPortHeight: number = !!this._lastRenderingContext
-				? this._lastRenderingContext.viewPort.height
-				: 0;
-
 			// Check if we are in viewport bounds -> if not return null
-			if (x < 0 || y < 0 || x > viewPortWidth || y > viewPortHeight) {
+			if (
+				x < 0 ||
+				y < 0 ||
+				x > viewportSize.width ||
+				y > viewportSize.height
+			) {
 				return null;
 			}
 		}
 
-		if (x > fixedColumnWidth) {
-			x += this._scrollOffset.x;
+		const isInTopFixedArea: boolean = y <= fixedAreaInfos.top.size;
+		const isInLeftFixedArea: boolean = x <= fixedAreaInfos.left.size;
+		const isInBottomFixedArea: boolean =
+			y > viewportSize.height - fixedAreaInfos.bottom.size;
+		const isInRightFixedArea: boolean =
+			x > viewportSize.width - fixedAreaInfos.right.size;
+
+		if (isInBottomFixedArea) {
+			const offsetFromBottom = viewportSize.height - y;
+			y = fixedAreaInfos.bottom.endOffset - offsetFromBottom;
+		} else if (!isInTopFixedArea) {
+			y += currentScrollOffset.y;
 		}
-		if (y > fixedRowsHeight) {
-			y += this._scrollOffset.y;
+
+		if (isInRightFixedArea) {
+			const offsetFromRight = viewportSize.width - x;
+			x = fixedAreaInfos.right.endOffset - offsetFromRight;
+		} else if (!isInLeftFixedArea) {
+			x += currentScrollOffset.x;
 		}
 
 		const cell = this._cellModel.getCellAtOffset(x, y);
@@ -1182,23 +1187,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		}
 
 		// Check bounds of the targetRange
-		const bounds: IRectangle = this._cellModel.getBounds(targetRange);
-
-		const fixedRows: number = Math.min(
-			this.rendererOptions.view.fixedRows,
-			this._cellModel.getRowCount()
+		const fixedAreaInfos = this.getFixedAreaInfos();
+		const viewportSize = this.getViewportSize();
+		const bounds: IRectangle = this._calculateCellRangeBoundsInViewport(
+			targetRange,
+			viewportSize,
+			fixedAreaInfos
 		);
-		const fixedColumns: number = Math.min(
-			this.rendererOptions.view.fixedColumns,
-			this._cellModel.getColumnCount()
-		);
-
-		if (targetRange.startRow > fixedRows) {
-			bounds.top -= this._scrollOffset.y;
-		}
-		if (targetRange.startColumn > fixedColumns) {
-			bounds.left -= this._scrollOffset.x;
-		}
 
 		// Determine offsets from spaces between rows or columns
 		const leftXOffset: number = bounds.left;
@@ -1313,21 +1308,20 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				// Determine direction to extend in (based on the current x and y coordinates and their difference to the initial selection bounds)
 				const initialSelectionBounds: IRectangle =
 					this._cellModel.getBounds(this._initialSelectionRange);
-
-				const fixedRows: number = Math.min(
-					this.rendererOptions.view.fixedRows,
-					this._cellModel.getRowCount()
-				);
-				const fixedColumns: number = Math.min(
-					this.rendererOptions.view.fixedColumns,
-					this._cellModel.getColumnCount()
-				);
-
-				if (this._initialSelectionRange.startRow > fixedRows) {
-					initialSelectionBounds.top -= this._scrollOffset.y;
+				const fixedAreaInfos = this.getFixedAreaInfos();
+				const currentScrollOffset =
+					this._viewportScroller.getScrollOffset();
+				if (
+					this._initialSelectionRange.startRow >
+					fixedAreaInfos.top.count
+				) {
+					initialSelectionBounds.top -= currentScrollOffset.y;
 				}
-				if (this._initialSelectionRange.startColumn > fixedColumns) {
-					initialSelectionBounds.left -= this._scrollOffset.x;
+				if (
+					this._initialSelectionRange.startColumn >
+					fixedAreaInfos.left.count
+				) {
+					initialSelectionBounds.left -= currentScrollOffset.x;
 				}
 
 				let xDiff: number = 0;
@@ -1682,10 +1676,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			);
 		}
 
+		const currentScrollOffset = this._viewportScroller.getScrollOffset();
 		if (
 			this._scrollTo(
-				this._scrollOffset.x + xScrollDiff,
-				this._scrollOffset.y + yScrollDiff
+				currentScrollOffset.x + xScrollDiff,
+				currentScrollOffset.y + yScrollDiff
 			)
 		) {
 			this._repaintScheduler.next();
@@ -1790,56 +1785,70 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		y: number,
 		start: IScrollBarDragContext
 	): void {
-		// Update scroll offset accordingly
-		if (start.scrollVertically) {
-			const fixedRowsHeight: number = !!this._lastRenderingContext.cells
-				.fixedRowCells
-				? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-						.height
-				: 0;
-			const viewPortHeight =
-				this._lastRenderingContext.cells.nonFixedCells.viewPortBounds
-					.height;
-			const tableHeight = this._cellModel.getHeight() - fixedRowsHeight;
+		const viewportSize = this.getViewportSize();
+		const fixedAreaInfos = this.getFixedAreaInfos();
+		const scrollableViewportSize: ISize = {
+			width:
+				viewportSize.width -
+				fixedAreaInfos.left.size -
+				fixedAreaInfos.right.size,
+			height:
+				viewportSize.height -
+				fixedAreaInfos.top.size -
+				fixedAreaInfos.bottom.size,
+		};
+		const tableSize: ISize = {
+			width:
+				this._cellModel.getWidth() -
+				fixedAreaInfos.left.size -
+				fixedAreaInfos.right.size,
+			height:
+				this._cellModel.getHeight() -
+				fixedAreaInfos.top.size -
+				fixedAreaInfos.bottom.size,
+		};
 
+		const currentScrollOffset = this._viewportScroller.getScrollOffset();
+		const updatedScrollOffset: IPoint = {
+			...currentScrollOffset,
+		};
+		if (start.scrollVertically) {
 			// Normalize x and y coordinates for fixed rows/columns
-			y -= fixedRowsHeight;
-			const startY = start.startY - fixedRowsHeight;
+			y -= fixedAreaInfos.top.size;
+			const startY = start.startY - fixedAreaInfos.top.size;
 
 			const curY = startY + (y - startY) + start.offsetFromScrollBarStart;
 			const maxY =
-				viewPortHeight -
+				scrollableViewportSize.height -
 				this._lastRenderingContext.scrollBar.vertical.length;
 
-			if (
-				this._scrollToY((curY / maxY) * (tableHeight - viewPortHeight))
-			) {
-				this._repaintScheduler.next();
-			}
+			updatedScrollOffset.y =
+				(curY / maxY) *
+				(tableSize.height - scrollableViewportSize.height);
 		}
 		if (start.scrollHorizontally) {
-			const fixedColumnWidth: number = !!this._lastRenderingContext.cells
-				.fixedColumnCells
-				? this._lastRenderingContext.cells.fixedColumnCells
-						.viewPortBounds.width
-				: 0;
-			const viewPortWidth =
-				this._lastRenderingContext.cells.nonFixedCells.viewPortBounds
-					.width;
-			const tableWidth = this._cellModel.getWidth() - fixedColumnWidth;
-
 			// Normalize x and y coordinates for fixed rows/columns
-			x -= fixedColumnWidth;
-			const startX = start.startX - fixedColumnWidth;
+			x -= fixedAreaInfos.left.size;
+			const startX = start.startX - fixedAreaInfos.left.size;
 
 			const curX = startX + (x - startX) + start.offsetFromScrollBarStart;
 			const maxX =
-				viewPortWidth -
+				scrollableViewportSize.width -
 				this._lastRenderingContext.scrollBar.horizontal.length;
 
-			if (this._scrollToX((curX / maxX) * (tableWidth - viewPortWidth))) {
-				this._repaintScheduler.next();
-			}
+			updatedScrollOffset.x =
+				(curX / maxX) *
+				(tableSize.width - scrollableViewportSize.width);
+		}
+
+		if (
+			this._viewportScroller.scrollToOffset(
+				updatedScrollOffset.x,
+				updatedScrollOffset.y
+			)
+		) {
+			this._updateOverlays();
+			this._repaintScheduler.next();
 		}
 	}
 
@@ -2218,8 +2227,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				speedY: 0,
 				lastTimestamp: window.performance.now(),
 				startScrollOffset: {
-					x: this._scrollOffset.x,
-					y: this._scrollOffset.y,
+					...this._viewportScroller.getScrollOffset(),
 				},
 				isTap: true,
 			};
@@ -2346,23 +2354,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const newBounds: DOMRect = this._container.getBoundingClientRect();
 
 		// Re-size scroll bar offsets as well
-		const fixedRowsHeight: number =
-			!!this._lastRenderingContext &&
-			!!this._lastRenderingContext.cells.fixedRowCells
-				? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-						.height
-				: 0;
-		const fixedColumnsWidth: number =
-			!!this._lastRenderingContext &&
-			!!this._lastRenderingContext.cells.fixedColumnCells
-				? this._lastRenderingContext.cells.fixedColumnCells
-						.viewPortBounds.width
-				: 0;
-
-		const tableHeight: number =
-			this._cellModel.getHeight() - fixedRowsHeight;
-		const tableWidth: number =
-			this._cellModel.getWidth() - fixedColumnsWidth;
+		const fixedAreaInfos: IFixedAreaInfos = this.getFixedAreaInfos();
+		const tableSize: ISize = {
+			width:
+				this._cellModel.getWidth() -
+				fixedAreaInfos.left.size -
+				fixedAreaInfos.right.size,
+			height:
+				this._cellModel.getHeight() -
+				fixedAreaInfos.top.size -
+				fixedAreaInfos.bottom.size,
+		};
 
 		const oldViewPort: IRectangle = !!this._lastRenderingContext
 			? this._lastRenderingContext.cells.nonFixedCells.viewPortBounds
@@ -2373,35 +2375,46 @@ export class CanvasRenderer implements ITableEngineRenderer {
 					height: 0,
 			  };
 
-		if (tableWidth > newBounds.width) {
-			const oldMaxOffset = tableWidth - oldViewPort.width;
+		// Update scroll offset
+		const currentScrollOffset = this._viewportScroller.getScrollOffset();
+		let updatedScrollOffset: IPoint = {
+			...currentScrollOffset,
+		};
+		if (tableSize.width > newBounds.width) {
+			const oldMaxOffset = tableSize.width - oldViewPort.width;
 			const newMaxOffset =
-				tableWidth - (newBounds.width - fixedColumnsWidth);
+				tableSize.width -
+				(newBounds.width -
+					fixedAreaInfos.left.size -
+					fixedAreaInfos.right.size);
 
-			this._scrollOffset.x = Math.max(
+			updatedScrollOffset.x = Math.max(
 				Math.min(
-					(this._scrollOffset.x * newMaxOffset) / oldMaxOffset,
+					(currentScrollOffset.x * newMaxOffset) / oldMaxOffset,
 					newMaxOffset
 				),
 				0
 			);
 		} else {
-			this._scrollOffset.x = 0;
+			updatedScrollOffset.x = 0;
 		}
-		if (tableHeight > newBounds.height) {
-			const oldMaxOffset = tableHeight - oldViewPort.height;
+		if (tableSize.height > newBounds.height) {
+			const oldMaxOffset = tableSize.height - oldViewPort.height;
 			const newMaxOffset =
-				tableHeight - (newBounds.height - fixedRowsHeight);
+				tableSize.height -
+				(newBounds.height -
+					fixedAreaInfos.top.size -
+					fixedAreaInfos.bottom.size);
 
-			this._scrollOffset.y = Math.max(
+			updatedScrollOffset.y = Math.max(
 				Math.min(
-					(this._scrollOffset.y * newMaxOffset) / oldMaxOffset,
+					(currentScrollOffset.y * newMaxOffset) / oldMaxOffset,
 					newMaxOffset
 				),
 				0
 			);
 		} else {
-			this._scrollOffset.y = 0;
+			updatedScrollOffset.y = 0;
 		}
 
 		// Set new size to canvas
@@ -2410,6 +2423,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			newBounds.width,
 			newBounds.height,
 			this._devicePixelRatio
+		);
+
+		this._viewportScroller.scrollToOffset(
+			updatedScrollOffset.x,
+			updatedScrollOffset.y
 		);
 
 		// Schedule a repaint
@@ -2809,10 +2827,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	}
 
 	public getScrollOffset(): IPoint {
-		return {
-			x: this._scrollOffset.x,
-			y: this._scrollOffset.y,
-		};
+		return this._viewportScroller.getScrollOffset();
 	}
 
 	public getViewport(): IRectangle {
@@ -2823,99 +2838,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		return this._getViewPort();
 	}
 
-	public getFixedRowsHeight(): number {
-		return !!this._lastRenderingContext &&
-			!!this._lastRenderingContext.cells.fixedRowCells
-			? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-					.height
-			: 0;
-	}
-
-	public getFixedColumnsWidth(): number {
-		return !!this._lastRenderingContext &&
-			!!this._lastRenderingContext.cells.fixedColumnCells
-			? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds
-					.width
-			: 0;
-	}
-
 	/**
 	 * Scroll to the cell at the given row and column (if not already in the current view).
 	 * @param row to scroll to
 	 * @param column to scroll to
 	 */
 	public scrollTo(row: number, column: number): void {
-		const cell: ICell = this._cellModel.getCell(row, column);
-		const range: ICellRange = !!cell
-			? cell.range
-			: CellRange.fromSingleRowColumn(row, column);
-		const bounds: IRectangle = this._cellModel.getBounds(range);
-
-		const fixedRows: number = Math.min(
-			this.rendererOptions.view.fixedRows,
-			this._cellModel.getRowCount()
-		);
-		const fixedColumns: number = Math.min(
-			this.rendererOptions.view.fixedColumns,
-			this._cellModel.getColumnCount()
-		);
-
-		const fixedRowsHeight: number = !!this._lastRenderingContext.cells
-			.fixedRowCells
-			? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-					.height
-			: 0;
-		const fixedColumnsWidth: number = !!this._lastRenderingContext.cells
-			.fixedColumnCells
-			? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds
-					.width
-			: 0;
-
-		bounds.left -= fixedColumnsWidth;
-		bounds.top -= fixedRowsHeight;
-
-		const viewPortWidth: number =
-			this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.width;
-		const viewPortHeight: number =
-			this._lastRenderingContext.cells.nonFixedCells.viewPortBounds
-				.height;
-
-		if (column >= fixedColumns) {
-			const startX: number = this._scrollOffset.x;
-			const endX: number = this._scrollOffset.x + viewPortWidth;
-
-			if (bounds.left < startX) {
-				// Scroll to the left
-				if (this._scrollToX(bounds.left)) {
-					this._repaintScheduler.next();
-				}
-			} else if (bounds.left + bounds.width > endX) {
-				// Scroll to the right
-				if (
-					this._scrollToX(bounds.left + bounds.width - viewPortWidth)
-				) {
-					this._repaintScheduler.next();
-				}
-			}
-		}
-
-		if (row >= fixedRows) {
-			const startY: number = this._scrollOffset.y;
-			const endY: number = this._scrollOffset.y + viewPortHeight;
-
-			if (bounds.top < startY) {
-				// Scroll to the top
-				if (this._scrollToY(bounds.top)) {
-					this._repaintScheduler.next();
-				}
-			} else if (bounds.top + bounds.height > endY) {
-				// Scroll to the bottom
-				if (
-					this._scrollToY(bounds.top + bounds.height - viewPortHeight)
-				) {
-					this._repaintScheduler.next();
-				}
-			}
+		if (this._viewportScroller.scrollTo(row, column)) {
+			this._repaintScheduler.next();
 		}
 	}
 
@@ -2974,11 +2904,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			// When shift-key is pressed, deltaY means scrolling horizontally (same for deltaX).
 			const switchScrollDirection: boolean = event.shiftKey;
 
+			const currentScrollOffset =
+				this._viewportScroller.getScrollOffset();
 			const newScrollOffsetX: number =
-				this._scrollOffset.x +
+				currentScrollOffset.x +
 				(switchScrollDirection ? scrollDeltaY : scrollDeltaX);
 			const newScrollOffsetY: number =
-				this._scrollOffset.y +
+				currentScrollOffset.y +
 				(switchScrollDirection ? scrollDeltaX : scrollDeltaY);
 
 			if (this._scrollTo(newScrollOffsetX, newScrollOffsetY)) {
@@ -2998,128 +2930,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @returns whether the offsets have been changed
 	 */
 	private _scrollTo(offsetX: number, offsetY: number): boolean {
-		const xChanged: boolean = this._scrollToXInternal(offsetX);
-		const yChanged: boolean = this._scrollToYInternal(offsetY);
-
-		const changed = xChanged || yChanged;
-		if (changed) {
+		if (this._viewportScroller.scrollToOffset(offsetX, offsetY)) {
 			this._updateOverlays(); // Update overlays (if any)
+			return true;
 		}
 
-		return changed;
-	}
-
-	/**
-	 * Scroll to the given horizontal (X) position.
-	 * @param offset to scroll to
-	 * @returns whether the offset is out of bounds and thus corrected to the max/min value
-	 */
-	private _scrollToX(offset: number): boolean {
-		const changed = this._scrollToXInternal(offset);
-		if (changed) {
-			this._updateOverlays(); // Update overlays (if any)
-		}
-		return changed;
-	}
-
-	/**
-	 * Scroll to the given horizontal (X) position - internal method.
-	 * @param offset to scroll to
-	 *@returns whether the offset is out of bounds and thus corrected to the max/min value
-	 */
-	private _scrollToXInternal(offset: number): boolean {
-		const fixedColumnsWidth: number = !!this._lastRenderingContext.cells
-			.fixedColumnCells
-			? this._lastRenderingContext.cells.fixedColumnCells.viewPortBounds
-					.width
-			: 0;
-
-		const tableWidth: number =
-			this._cellModel.getWidth() - fixedColumnsWidth;
-		const viewPortWidth: number =
-			this._lastRenderingContext.cells.nonFixedCells.viewPortBounds.width;
-
-		// Check if we're able to scroll
-		if (tableWidth <= viewPortWidth) {
-			return false;
-		}
-
-		const maxOffset: number = tableWidth - viewPortWidth;
-
-		if (offset < 0) {
-			const changed: boolean = this._scrollOffset.x !== 0;
-			this._scrollOffset.x = 0;
-			return changed;
-		} else if (offset > maxOffset) {
-			const changed: boolean = this._scrollOffset.x !== maxOffset;
-			this._scrollOffset.x = Math.round(maxOffset);
-			return changed;
-		} else {
-			const newOffset: number = offset;
-			if (newOffset !== this._scrollOffset.x) {
-				this._scrollOffset.x = newOffset;
-				return true;
-			}
-
-			return false;
-		}
-	}
-
-	/**
-	 * Scroll to the given vertical (Y) position.
-	 * @param offset to scroll to
-	 * @returns whether the offset changed
-	 */
-	private _scrollToY(offset: number): boolean {
-		const changed = this._scrollToYInternal(offset);
-		if (changed) {
-			this._updateOverlays(); // Update overlays (if any)
-		}
-		return changed;
-	}
-
-	/**
-	 * Scroll to the given vertical (Y) position - internal method.
-	 * @param offset to scroll to
-	 * @returns whether the offset changed
-	 */
-	private _scrollToYInternal(offset: number): boolean {
-		const fixedRowsHeight: number = !!this._lastRenderingContext.cells
-			.fixedRowCells
-			? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-					.height
-			: 0;
-
-		const tableHeight: number =
-			this._cellModel.getHeight() - fixedRowsHeight;
-		const viewPortHeight: number =
-			this._lastRenderingContext.cells.nonFixedCells.viewPortBounds
-				.height;
-
-		// Check if we're able to scroll
-		if (tableHeight <= viewPortHeight) {
-			return false;
-		}
-
-		const maxOffset: number = tableHeight - viewPortHeight;
-
-		if (offset < 0) {
-			const changed: boolean = this._scrollOffset.y !== 0;
-			this._scrollOffset.y = 0;
-			return changed;
-		} else if (offset > maxOffset) {
-			const changed: boolean = this._scrollOffset.y !== maxOffset;
-			this._scrollOffset.y = Math.round(maxOffset);
-			return changed;
-		} else {
-			const newOffset: number = offset;
-			if (newOffset !== this._scrollOffset.y) {
-				this._scrollOffset.y = newOffset;
-				return true;
-			}
-
-			return false;
-		}
+		return false;
 	}
 
 	/**
@@ -3177,9 +2993,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Get the current viewport.
 	 */
 	private _getViewPort(): IRectangle {
+		const viewportSize: ISize = this.getViewportSize();
+		const scrollOffset = this._viewportScroller.getScrollOffset();
+
 		return {
-			top: this._scrollOffset.y,
-			left: this._scrollOffset.x,
+			top: scrollOffset.y,
+			left: scrollOffset.x,
+			width: viewportSize.width,
+			height: viewportSize.height,
+		};
+	}
+
+	getViewportSize(): ISize {
+		return {
 			width:
 				this._canvasElement.width / this._devicePixelRatio / this._zoom,
 			height:
@@ -3189,16 +3015,25 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		};
 	}
 
+	getFixedAreaInfos(): IFixedAreaInfos {
+		if (!!this._lastRenderingContext) {
+			return this._lastRenderingContext.fixedAreaInfos;
+		}
+
+		return FixedAreaUtil.calculateFixedAreaInfos(
+			this._options.renderer.view.fixedAreas,
+			this._cellModel
+		);
+	}
+
 	/**
 	 * Calculate the scroll bar rendering context.
 	 * @param viewPort to render scroll bar in
-	 * @param fixedRowsHeight height of the fixed rows
-	 * @param fixedColumnsWidth width of the fixed columns
+	 * @param fixedAreaInfos infos about the fixed areas
 	 */
 	private _calculateScrollBarContext(
 		viewPort: IRectangle,
-		fixedRowsHeight: number,
-		fixedColumnsWidth: number
+		fixedAreaInfos: IFixedAreaInfos
 	): IScrollBarRenderContext {
 		// Derive scroll bar options
 		const scrollBarOptions: IScrollBarOptions =
@@ -3208,56 +3043,79 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const scrollBarOffset: number = scrollBarOptions.offset;
 		const cornerRadius: number = scrollBarOptions.cornerRadius;
 
-		const viewPortWidth: number = viewPort.width - fixedColumnsWidth;
-		const viewPortHeight: number = viewPort.height - fixedRowsHeight;
+		const scrollableViewportSize: ISize = {
+			width:
+				viewPort.width -
+				fixedAreaInfos.left.size -
+				fixedAreaInfos.right.size,
+			height:
+				viewPort.height -
+				fixedAreaInfos.top.size -
+				fixedAreaInfos.bottom.size,
+		};
+		const tableSize: ISize = {
+			width:
+				this._cellModel.getWidth() -
+				fixedAreaInfos.left.size -
+				fixedAreaInfos.right.size,
+			height:
+				this._cellModel.getHeight() -
+				fixedAreaInfos.top.size -
+				fixedAreaInfos.bottom.size,
+		};
 
-		const tableHeight: number =
-			this._cellModel.getHeight() - fixedRowsHeight;
-		const tableWidth: number =
-			this._cellModel.getWidth() - fixedColumnsWidth;
+		const maxVerticalOffset: number =
+			tableSize.height - scrollableViewportSize.height;
+		const maxHorizontalOffset: number =
+			tableSize.width - scrollableViewportSize.width;
 
-		const maxVerticalOffset: number = tableHeight - viewPortHeight;
-		const maxHorizontalOffset: number = tableWidth - viewPortWidth;
+		const currentScrollOffset = this._viewportScroller.getScrollOffset();
 
 		// Calculate vertical scrollbar layout
 		let vertical: IScrollBarAxisRenderContext = null;
-		if (tableHeight > viewPortHeight) {
+		if (tableSize.height > scrollableViewportSize.height) {
 			const length = Math.max(
-				(viewPortHeight / tableHeight) * viewPortHeight,
+				(scrollableViewportSize.height / tableSize.height) *
+					scrollableViewportSize.height,
 				minScrollBarLength
 			);
-			const progress = this._scrollOffset.y / maxVerticalOffset;
+			const progress = currentScrollOffset.y / maxVerticalOffset;
 
 			vertical = {
 				size: scrollBarSize,
 				length,
 				x:
-					Math.min(viewPortWidth, tableWidth) -
+					Math.min(scrollableViewportSize.width, tableSize.width) -
 					scrollBarSize -
 					scrollBarOffset +
-					fixedColumnsWidth,
-				y: (viewPortHeight - length) * progress + fixedRowsHeight,
+					fixedAreaInfos.left.size,
+				y:
+					(scrollableViewportSize.height - length) * progress +
+					fixedAreaInfos.top.size,
 			};
 		}
 
 		// Calculate horizontal scrollbar layout
 		let horizontal: IScrollBarAxisRenderContext = null;
-		if (tableWidth > viewPortWidth) {
+		if (tableSize.width > scrollableViewportSize.width) {
 			const length = Math.max(
-				(viewPortWidth / tableWidth) * viewPortWidth,
+				(scrollableViewportSize.width / tableSize.width) *
+					scrollableViewportSize.width,
 				minScrollBarLength
 			);
-			const progress = this._scrollOffset.x / maxHorizontalOffset;
+			const progress = currentScrollOffset.x / maxHorizontalOffset;
 
 			horizontal = {
 				size: scrollBarSize,
 				length,
-				x: (viewPortWidth - length) * progress + fixedColumnsWidth,
+				x:
+					(scrollableViewportSize.width - length) * progress +
+					fixedAreaInfos.left.size,
 				y:
-					Math.min(viewPortHeight, tableHeight) -
+					Math.min(scrollableViewportSize.height, tableSize.height) -
 					scrollBarSize -
 					scrollBarOffset +
-					fixedRowsHeight,
+					fixedAreaInfos.top.size,
 			};
 		}
 
@@ -3272,17 +3130,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	/**
 	 * Calculate the selection rendering context.
 	 * @param viewPort to calculate selections for
-	 * @param fixedRows to calculate with
-	 * @param fixedColumns to calculate with
-	 * @param fixedRowsHeight height of the fixed rows
-	 * @param fixedColumnsWidth width of the fixed columns
+	 * @param fixedAreaInfos infos about the fixed areas
 	 */
 	private _calculateSelectionContext(
 		viewPort: IRectangle,
-		fixedRows: number,
-		fixedColumns: number,
-		fixedRowsHeight: number,
-		fixedColumnsWidth: number
+		fixedAreaInfos: IFixedAreaInfos
 	): ISelectionRenderContext {
 		const selections: ISelection[] = this._selectionModel.getSelections();
 		const primary: ISelection = this._selectionModel.getPrimary();
@@ -3296,25 +3148,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			copyHandle: {
 				isRendered: false,
 			},
-			inFixedCorner: [],
 			inNonFixedArea: [],
-			inFixedColumns: [],
-			inFixedRows: [],
 		};
 
 		const isMultiSelection: boolean = selections.length > 1;
 
-		for (const s of selections) {
-			this._validateSelection(s);
+		for (const selection of selections) {
+			this._validateSelection(selection);
 			this._addInfosForSelection(
 				result,
-				s,
+				selection,
 				viewPort,
-				fixedRows,
-				fixedColumns,
-				fixedRowsHeight,
-				fixedColumnsWidth,
-				s === primary,
+				fixedAreaInfos,
+				selection === primary,
 				isMultiSelection
 			);
 		}
@@ -3361,10 +3207,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param toAdd the context to add the result to
 	 * @param selection to calculate bounds for
 	 * @param viewPort to calculate selections for
-	 * @param fixedRows to calculate with
-	 * @param fixedColumns to calculate with
-	 * @param fixedRowsHeight height of the fixed rows
-	 * @param fixedColumnsWidth width of the fixed columns
+	 * @param fixedAreaInfos infos about the fixed areas
 	 * @param isPrimary whether the selection is the primary selection
 	 * @param isMultiSelection whether the selection is one of many to be rendered (true) or just one (false)
 	 */
@@ -3372,27 +3215,22 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		toAdd: ISelectionRenderContext,
 		selection: ISelection,
 		viewPort: IRectangle,
-		fixedRows: number,
-		fixedColumns: number,
-		fixedRowsHeight: number,
-		fixedColumnsWidth: number,
+		fixedAreaInfos: IFixedAreaInfos,
 		isPrimary: boolean,
 		isMultiSelection: boolean
 	): void {
-		const bounds: IRectangle =
-			this._calculateSelectionBoundsFromCellRangeBounds(
-				this._cellModel.getBounds(selection.range),
-				selection.range,
-				viewPort,
-				fixedRows,
-				fixedColumns,
-				fixedRowsHeight,
-				fixedColumnsWidth
-			);
+		const bounds: IRectangle = this._calculateCellRangeBoundsInViewport(
+			selection.range,
+			{
+				width: viewPort.width,
+				height: viewPort.height,
+			},
+			fixedAreaInfos
+		);
 
 		let initialBounds: IRectangle | null = null;
+		let initialRange: ICellRange | null = null;
 		if (isPrimary) {
-			let initialRange: ICellRange;
 			const cellAtInitial = this._cellModel.getCell(
 				selection.initial.row,
 				selection.initial.column
@@ -3406,75 +3244,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				);
 			}
 
-			initialBounds = this._cellModel.getBounds(initialRange);
-		}
-
-		const isStartInFixedRows: boolean =
-			selection.range.startRow < fixedRows;
-		const isStartInFixedColumns: boolean =
-			selection.range.startColumn < fixedColumns;
-
-		// Correct initial bounds (if any) for fixed rows/columns
-		if (!!initialBounds) {
-			if (isStartInFixedRows) {
-				// Check distance of initial bounds to fixed rows
-				const distance: number = initialBounds.top - fixedRowsHeight;
-				if (distance >= 0) {
-					// Correct top offset or height based on distance to fixed rows
-					const initialUnderFixedRowsOffset: number =
-						fixedRowsHeight -
-						(initialBounds.top - this._scrollOffset.y);
-
-					initialBounds.top = Math.max(
-						initialBounds.top - this._scrollOffset.y,
-						fixedRowsHeight
-					);
-					if (initialUnderFixedRowsOffset > 0) {
-						initialBounds.height = Math.max(
-							initialBounds.height - initialUnderFixedRowsOffset,
-							0
-						);
-					}
-				}
-			} else {
-				initialBounds.top -= this._scrollOffset.y;
-			}
-
-			if (isStartInFixedColumns) {
-				// Check distance of initial bounds to fixed columns
-				const distance: number = initialBounds.left - fixedColumnsWidth;
-				if (distance >= 0) {
-					// Correct left offset or width based on distance to fixed columns
-					const initialUnderFixedColumnsOffset: number =
-						fixedColumnsWidth -
-						(initialBounds.left - this._scrollOffset.x);
-
-					initialBounds.left = Math.max(
-						initialBounds.left - this._scrollOffset.x,
-						fixedColumnsWidth
-					);
-					if (initialUnderFixedColumnsOffset > 0) {
-						initialBounds.width = Math.max(
-							initialBounds.width -
-								initialUnderFixedColumnsOffset,
-							0
-						);
-					}
-				}
-			} else {
-				initialBounds.left -= this._scrollOffset.x;
-			}
-		}
-
-		let collectionToPushTo: ISelectionRenderInfo[];
-		if (isStartInFixedRows && isStartInFixedColumns) {
-			collectionToPushTo = toAdd.inFixedCorner;
-		} else if (isStartInFixedRows) {
-			collectionToPushTo = toAdd.inFixedRows;
-		} else if (isStartInFixedColumns) {
-			collectionToPushTo = toAdd.inFixedColumns;
-		} else {
-			collectionToPushTo = toAdd.inNonFixedArea;
+			initialBounds = this._calculateCellRangeBoundsInViewport(
+				initialRange,
+				viewPort,
+				fixedAreaInfos
+			);
 		}
 
 		// Offset selection properly based on selection rendering options
@@ -3511,7 +3285,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			bounds.height -= offset * 2;
 		}
 
-		collectionToPushTo.push({
+		const renderInfo: ISelectionRenderInfo = {
 			bounds,
 			initial: initialBounds,
 			isPrimary,
@@ -3519,80 +3293,304 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				isPrimary &&
 				!isMultiSelection &&
 				this._options.selection.copyHandle.showCopyHandle,
-		});
+		};
+
+		// Add render info to every collection for every table area that contains the selection
+		const intersectingTableAreas: ITableAreaMask =
+			CanvasRenderer._checkTableAreaIntersection(
+				selection.range,
+				fixedAreaInfos
+			);
+		const initialIntersectingTableAreas: ITableAreaMask = !!initialRange
+			? CanvasRenderer._checkTableAreaIntersection(
+					initialRange,
+					fixedAreaInfos
+			  )
+			: {
+					nonFixed: false,
+					fixed: {
+						left: false,
+						right: false,
+						top: false,
+						bottom: false,
+						leftTop: false,
+						leftBottom: false,
+						rightTop: false,
+						rightBottom: false,
+					},
+			  };
+
+		if (intersectingTableAreas.nonFixed) {
+			if (initialIntersectingTableAreas.nonFixed) {
+				toAdd.inNonFixedArea.push(renderInfo);
+			} else {
+				toAdd.inNonFixedArea.push({
+					...renderInfo,
+					initial: null,
+				});
+			}
+		}
+		if (intersectingTableAreas.fixed.top) {
+			if (!toAdd.inFixedArea) {
+				toAdd.inFixedArea = {};
+			}
+			if (!toAdd.inFixedArea.top) {
+				toAdd.inFixedArea.top = [];
+			}
+
+			if (initialIntersectingTableAreas.fixed.top) {
+				toAdd.inFixedArea.top.push(renderInfo);
+			} else {
+				toAdd.inFixedArea.top.push({
+					...renderInfo,
+					initial: null,
+				});
+			}
+		}
+		if (intersectingTableAreas.fixed.left) {
+			if (!toAdd.inFixedArea) {
+				toAdd.inFixedArea = {};
+			}
+			if (!toAdd.inFixedArea.left) {
+				toAdd.inFixedArea.left = [];
+			}
+
+			if (initialIntersectingTableAreas.fixed.left) {
+				toAdd.inFixedArea.left.push(renderInfo);
+			} else {
+				toAdd.inFixedArea.left.push({
+					...renderInfo,
+					initial: null,
+				});
+			}
+		}
+		if (intersectingTableAreas.fixed.bottom) {
+			if (!toAdd.inFixedArea) {
+				toAdd.inFixedArea = {};
+			}
+			if (!toAdd.inFixedArea.bottom) {
+				toAdd.inFixedArea.bottom = [];
+			}
+
+			if (initialIntersectingTableAreas.fixed.bottom) {
+				toAdd.inFixedArea.bottom.push(renderInfo);
+			} else {
+				toAdd.inFixedArea.bottom.push({
+					...renderInfo,
+					initial: null,
+				});
+			}
+		}
+		if (intersectingTableAreas.fixed.right) {
+			if (!toAdd.inFixedArea) {
+				toAdd.inFixedArea = {};
+			}
+			if (!toAdd.inFixedArea.right) {
+				toAdd.inFixedArea.right = [];
+			}
+
+			if (initialIntersectingTableAreas.fixed.right) {
+				toAdd.inFixedArea.right.push(renderInfo);
+			} else {
+				toAdd.inFixedArea.right.push({
+					...renderInfo,
+					initial: null,
+				});
+			}
+		}
+		if (intersectingTableAreas.fixed.leftTop) {
+			if (!toAdd.inFixedArea) {
+				toAdd.inFixedArea = {};
+			}
+			if (!toAdd.inFixedArea.leftTop) {
+				toAdd.inFixedArea.leftTop = [];
+			}
+
+			if (initialIntersectingTableAreas.fixed.leftTop) {
+				toAdd.inFixedArea.leftTop.push(renderInfo);
+			} else {
+				toAdd.inFixedArea.leftTop.push({
+					...renderInfo,
+					initial: null,
+				});
+			}
+		}
+		if (intersectingTableAreas.fixed.leftBottom) {
+			if (!toAdd.inFixedArea) {
+				toAdd.inFixedArea = {};
+			}
+			if (!toAdd.inFixedArea.leftBottom) {
+				toAdd.inFixedArea.leftBottom = [];
+			}
+
+			if (initialIntersectingTableAreas.fixed.leftBottom) {
+				toAdd.inFixedArea.leftBottom.push(renderInfo);
+			} else {
+				toAdd.inFixedArea.leftBottom.push({
+					...renderInfo,
+					initial: null,
+				});
+			}
+		}
+		if (intersectingTableAreas.fixed.rightTop) {
+			if (!toAdd.inFixedArea) {
+				toAdd.inFixedArea = {};
+			}
+			if (!toAdd.inFixedArea.rightTop) {
+				toAdd.inFixedArea.rightTop = [];
+			}
+
+			if (initialIntersectingTableAreas.fixed.rightTop) {
+				toAdd.inFixedArea.rightTop.push(renderInfo);
+			} else {
+				toAdd.inFixedArea.rightTop.push({
+					...renderInfo,
+					initial: null,
+				});
+			}
+		}
+		if (intersectingTableAreas.fixed.rightBottom) {
+			if (!toAdd.inFixedArea) {
+				toAdd.inFixedArea = {};
+			}
+			if (!toAdd.inFixedArea.rightBottom) {
+				toAdd.inFixedArea.rightBottom = [];
+			}
+
+			if (initialIntersectingTableAreas.fixed.rightBottom) {
+				toAdd.inFixedArea.rightBottom.push(renderInfo);
+			} else {
+				toAdd.inFixedArea.rightBottom.push({
+					...renderInfo,
+					initial: null,
+				});
+			}
+		}
 	}
 
 	/**
 	 * Calculate the selection bounds from the given cell range bounds.
-	 * @param bounds cell bounds to calculate selection bounds with
 	 * @param range cell range the bounds have been calculated with
-	 * @param viewPort to calculate selections for
-	 * @param fixedRows to calculate with
-	 * @param fixedColumns to calculate with
-	 * @param fixedRowsHeight height of the fixed rows
-	 * @param fixedColumnsWidth width of the fixed columns
+	 * @param viewportSize to calculate selections for
+	 * @param fixedAreaInfos infos about the fixed areas
 	 */
-	private _calculateSelectionBoundsFromCellRangeBounds(
-		bounds: IRectangle,
+	private _calculateCellRangeBoundsInViewport(
 		range: ICellRange,
-		viewPort: IRectangle,
-		fixedRows: number,
-		fixedColumns: number,
-		fixedRowsHeight: number,
-		fixedColumnsWidth: number
+		viewportSize: ISize,
+		fixedAreaInfos: IFixedAreaInfos
 	): IRectangle {
+		const bounds = this._cellModel.getBounds(range);
+
 		let startY = bounds.top;
 		let endY = bounds.top + bounds.height;
 		let startX = bounds.left;
 		let endX = bounds.left + bounds.width;
 
-		if (range.startRow >= fixedRows) {
-			startY -= this._scrollOffset.y;
-		}
-		if (range.endRow >= fixedRows) {
-			endY -= this._scrollOffset.y;
-		}
-		if (range.startColumn >= fixedColumns) {
-			startX -= this._scrollOffset.x;
-		}
-		if (range.endColumn >= fixedColumns) {
-			endX -= this._scrollOffset.x;
+		const currentScrollOffset = this._viewportScroller.getScrollOffset();
+		const sizeInFixedAreas: ISize = {
+			width: 0,
+			height: 0,
+		};
+		const maxStart: IPoint = {
+			x: -1,
+			y: -1,
+		};
+
+		if (range.startRow <= fixedAreaInfos.top.endIndex) {
+			// Start of the range is in fixed rows at the top
+			sizeInFixedAreas.height += this._cellModel.getBounds({
+				startRow: range.startRow,
+				endRow: Math.min(fixedAreaInfos.top.endIndex, range.endRow),
+				startColumn: 0,
+				endColumn: 0,
+			}).height;
+		} else if (range.startRow >= fixedAreaInfos.bottom.startIndex) {
+			// Start of the range is in fixed rows at the bottom
+			const offsetFromBottom = fixedAreaInfos.bottom.endOffset - startY;
+			startY = viewportSize.height - offsetFromBottom;
+		} else if (range.startRow > fixedAreaInfos.top.endIndex) {
+			// Start of the range is in scrollable area
+			startY -= currentScrollOffset.y;
 		}
 
-		const isStartInFixedRows: boolean = range.startRow < fixedRows;
-		const isStartInFixedColumns: boolean = range.startColumn < fixedColumns;
+		if (range.endRow >= fixedAreaInfos.bottom.startIndex) {
+			// End of the range is in fixed rows at the bottom
+			const offsetFromBottom = fixedAreaInfos.bottom.endOffset - endY;
+			endY = viewportSize.height - offsetFromBottom;
 
-		const widthInFixedColumns: number = this._cellModel.getBounds({
-			startRow: 0,
-			endRow: 0,
-			startColumn: range.startColumn,
-			endColumn: Math.min(fixedColumns - 1, range.endColumn),
-		}).width;
-		const heightInFixedRows: number = this._cellModel.getBounds({
-			startRow: range.startRow,
-			endRow: Math.min(fixedRows - 1, range.endRow),
-			startColumn: 0,
-			endColumn: 0,
-		}).height;
+			sizeInFixedAreas.height += this._cellModel.getBounds({
+				startRow: Math.max(
+					fixedAreaInfos.bottom.startIndex,
+					range.startRow
+				),
+				endRow: range.endRow,
+				startColumn: 0,
+				endColumn: 0,
+			}).height;
+
+			if (range.startRow < fixedAreaInfos.bottom.startIndex) {
+				maxStart.y = viewportSize.height - fixedAreaInfos.bottom.size;
+			}
+		} else if (range.endRow > fixedAreaInfos.top.endIndex) {
+			// End of the range is in scrollable area
+			endY -= currentScrollOffset.y;
+		}
+
+		if (range.startColumn <= fixedAreaInfos.left.endIndex) {
+			// Start of the range is in fixed columns to the left
+			sizeInFixedAreas.width += this._cellModel.getBounds({
+				startRow: 0,
+				endRow: 0,
+				startColumn: range.startColumn,
+				endColumn: Math.min(
+					fixedAreaInfos.left.endIndex,
+					range.endColumn
+				),
+			}).width;
+		} else if (range.startColumn >= fixedAreaInfos.right.startIndex) {
+			// Start of the range is in the fixed columns to the right
+			const offsetFromRight = fixedAreaInfos.right.endOffset - startX;
+			startX = viewportSize.width - offsetFromRight;
+		} else if (range.startColumn > fixedAreaInfos.left.endIndex) {
+			// Start of the range is in scrollable area
+			startX -= currentScrollOffset.x;
+		}
+
+		if (range.endColumn >= fixedAreaInfos.right.startIndex) {
+			// End of the range is in the fixed columns to the right
+			const offsetFromRight = fixedAreaInfos.right.endOffset - endX;
+			endX = viewportSize.width - offsetFromRight;
+
+			sizeInFixedAreas.width += this._cellModel.getBounds({
+				startRow: 0,
+				endRow: 0,
+				startColumn: Math.max(
+					fixedAreaInfos.right.startIndex,
+					range.startColumn
+				),
+				endColumn: range.endColumn,
+			}).width;
+
+			if (range.startColumn < fixedAreaInfos.right.startIndex) {
+				maxStart.x = viewportSize.width - fixedAreaInfos.right.size;
+			}
+		} else if (range.endColumn > fixedAreaInfos.left.endIndex) {
+			// End of the range is in the scrollable area
+			endX -= currentScrollOffset.x;
+		}
 
 		return {
-			left: startX,
-			top: startY,
-			width: Math.max(
-				endX - startX,
-				isStartInFixedColumns ? widthInFixedColumns : 0
-			),
-			height: Math.max(
-				endY - startY,
-				isStartInFixedRows ? heightInFixedRows : 0
-			),
+			left: maxStart.x > -1 ? Math.min(startX, maxStart.x) : startX,
+			top: maxStart.y > -1 ? Math.min(startY, maxStart.y) : startY,
+			width: Math.max(endX - startX, sizeInFixedAreas.width),
+			height: Math.max(endY - startY, sizeInFixedAreas.height),
 		};
 	}
 
 	/**
 	 * Create the rendering context for the current state.
 	 */
-	private _createRenderingContext(): IRenderContext {
+	private _createRenderingContext(): IRenderContext | null {
 		// Check if size of the table changed compared to the last rendering cycle
 		if (!!this._lastRenderingContext) {
 			const lastSize: ISize = this._lastRenderingContext.tableSize;
@@ -3601,77 +3599,49 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				lastSize.width !== this._cellModel.getWidth();
 			const heightChanged: boolean =
 				lastSize.height !== this._cellModel.getHeight();
+			const sizeChanged: boolean = widthChanged || heightChanged;
 
-			let scrollChanged: boolean = false;
-			if (widthChanged) {
-				scrollChanged ||= this._scrollToXInternal(this._scrollOffset.x);
-			}
-			if (heightChanged) {
-				scrollChanged ||= this._scrollToYInternal(this._scrollOffset.y);
-			}
-
-			if (scrollChanged) {
-				this._updateOverlaysAfterRenderCycle = true;
+			if (sizeChanged) {
+				const currentScrollOffset =
+					this._viewportScroller.getScrollOffset();
+				if (
+					this._viewportScroller.scrollToOffset(
+						currentScrollOffset.x,
+						currentScrollOffset.y
+					)
+				) {
+					this._updateOverlaysAfterRenderCycle = true;
+				}
 			}
 		}
 
 		const viewPort: IRectangle = this._getViewPort();
 
-		const fixedRows: number = Math.min(
-			this.rendererOptions.view.fixedRows,
-			this._cellModel.getRowCount()
-		);
-		const fixedColumns: number = Math.min(
-			this.rendererOptions.view.fixedColumns,
-			this._cellModel.getColumnCount()
-		);
-
-		// Calculate width and height of the fixed rows and columns
-		const fixedRowsHeight: number =
-			fixedRows > 0
-				? this._cellModel.getRowOffset(fixedRows - 1) +
-				  (this._cellModel.isRowHidden(fixedRows - 1)
-						? 0.0
-						: this._cellModel.getRowSize(fixedRows - 1))
-				: 0;
-		const fixedColumnsWidth: number =
-			fixedColumns > 0
-				? this._cellModel.getColumnOffset(fixedColumns - 1) +
-				  (this._cellModel.isColumnHidden(fixedColumns - 1)
-						? 0.0
-						: this._cellModel.getColumnSize(fixedColumns - 1))
-				: 0;
-
-		const cellsInfo: ICellRenderContextCollection =
-			this._createCellRenderingInfo(
-				viewPort,
-				fixedRows,
-				fixedColumns,
-				fixedRowsHeight,
-				fixedColumnsWidth
+		const fixedAreaInfos: IFixedAreaInfos =
+			FixedAreaUtil.calculateFixedAreaInfos(
+				this._options.renderer.view.fixedAreas,
+				this._cellModel
 			);
+
+		const cellsInfo: ICellRenderContextCollection | null =
+			this._createCellRenderingInfo(viewPort, fixedAreaInfos);
+		if (!cellsInfo) {
+			return null; // No cells to display
+		}
+
 		const scrollBarContext: IScrollBarRenderContext =
-			this._calculateScrollBarContext(
-				viewPort,
-				fixedRowsHeight,
-				fixedColumnsWidth
-			);
+			this._calculateScrollBarContext(viewPort, fixedAreaInfos);
 		const selectionContext: ISelectionRenderContext =
-			this._calculateSelectionContext(
-				viewPort,
-				fixedRows,
-				fixedColumns,
-				fixedRowsHeight,
-				fixedColumnsWidth
-			);
+			this._calculateSelectionContext(viewPort, fixedAreaInfos);
 		const borderContext: IBorderRenderContext =
-			this._calculateBorderContext(cellsInfo);
+			this._calculateBorderContext(viewPort, fixedAreaInfos, cellsInfo);
 		const resizerContext: IResizerRenderContext =
 			this._calculateResizerRenderContext();
 
 		return {
 			focused: this.isFocused(),
 			viewPort,
+			fixedAreaInfos,
 			tableSize: {
 				width: this._cellModel.getWidth(),
 				height: this._cellModel.getHeight(),
@@ -3687,49 +3657,115 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 	/**
 	 * Calculate the border rendering context.
+	 * @param viewPort of the table
+	 * @param fixedAreaInfos infos about the fixed areas
 	 * @param cellsInfo to calculate borders for
 	 */
 	private _calculateBorderContext(
+		viewPort: IRectangle,
+		fixedAreaInfos: IFixedAreaInfos,
 		cellsInfo: ICellRenderContextCollection
 	): IBorderRenderContext {
-		return {
-			inFixedCorner: !!cellsInfo.fixedCornerCells
-				? this._calculateBorderInfo(
-						this._borderModel.getBorders(
-							cellsInfo.fixedCornerCells.cellRange
-						),
-						cellsInfo.fixedCornerCells.cellRange,
-						false,
-						false
-				  )
-				: [],
-			inFixedColumns: !!cellsInfo.fixedColumnCells
-				? this._calculateBorderInfo(
-						this._borderModel.getBorders(
-							cellsInfo.fixedColumnCells.cellRange
-						),
-						cellsInfo.fixedColumnCells.cellRange,
-						false,
-						true
-				  )
-				: [],
-			inFixedRows: !!cellsInfo.fixedRowCells
-				? this._calculateBorderInfo(
-						this._borderModel.getBorders(
-							cellsInfo.fixedRowCells.cellRange
-						),
-						cellsInfo.fixedRowCells.cellRange,
-						true,
-						false
-				  )
-				: [],
+		const currentScrollOffset = this._viewportScroller.getScrollOffset();
+
+		const result: IBorderRenderContext = {
 			inNonFixedArea: this._calculateBorderInfo(
 				this._borderModel.getBorders(cellsInfo.nonFixedCells.cellRange),
 				cellsInfo.nonFixedCells.cellRange,
-				true,
-				true
+				-currentScrollOffset.x,
+				-currentScrollOffset.y
 			),
 		};
+
+		if (!!cellsInfo.fixedCells) {
+			const fixedCells = cellsInfo.fixedCells;
+			const fixedArea: IFixedAreaBorderRenderContext = {};
+
+			if (!!fixedCells.leftTop) {
+				fixedArea.leftTop = this._calculateBorderInfo(
+					this._borderModel.getBorders(fixedCells.leftTop.cellRange),
+					fixedCells.leftTop.cellRange,
+					0,
+					0
+				);
+			}
+			if (!!fixedCells.rightTop) {
+				fixedArea.rightTop = this._calculateBorderInfo(
+					this._borderModel.getBorders(fixedCells.rightTop.cellRange),
+					fixedCells.rightTop.cellRange,
+					-fixedAreaInfos.right.startOffset +
+						viewPort.width -
+						fixedAreaInfos.right.size,
+					0
+				);
+			}
+			if (!!fixedCells.leftBottom) {
+				fixedArea.leftBottom = this._calculateBorderInfo(
+					this._borderModel.getBorders(
+						fixedCells.leftBottom.cellRange
+					),
+					fixedCells.leftBottom.cellRange,
+					0,
+					-fixedAreaInfos.bottom.startOffset +
+						viewPort.height -
+						fixedAreaInfos.bottom.size
+				);
+			}
+			if (!!fixedCells.rightBottom) {
+				fixedArea.rightBottom = this._calculateBorderInfo(
+					this._borderModel.getBorders(
+						fixedCells.rightBottom.cellRange
+					),
+					fixedCells.rightBottom.cellRange,
+					-fixedAreaInfos.right.startOffset +
+						viewPort.width -
+						fixedAreaInfos.right.size,
+					-fixedAreaInfos.bottom.startOffset +
+						viewPort.height -
+						fixedAreaInfos.bottom.size
+				);
+			}
+			if (!!fixedCells.left) {
+				fixedArea.left = this._calculateBorderInfo(
+					this._borderModel.getBorders(fixedCells.left.cellRange),
+					fixedCells.left.cellRange,
+					0,
+					-currentScrollOffset.y
+				);
+			}
+			if (!!fixedCells.top) {
+				fixedArea.top = this._calculateBorderInfo(
+					this._borderModel.getBorders(fixedCells.top.cellRange),
+					fixedCells.top.cellRange,
+					-currentScrollOffset.x,
+					0
+				);
+			}
+			if (!!fixedCells.right) {
+				fixedArea.right = this._calculateBorderInfo(
+					this._borderModel.getBorders(fixedCells.right.cellRange),
+					fixedCells.right.cellRange,
+					-fixedAreaInfos.right.startOffset +
+						viewPort.width -
+						fixedAreaInfos.right.size,
+					-currentScrollOffset.y
+				);
+			}
+			if (!!fixedCells.bottom) {
+				fixedArea.bottom = this._calculateBorderInfo(
+					this._borderModel.getBorders(fixedCells.bottom.cellRange),
+					fixedCells.bottom.cellRange,
+					-currentScrollOffset.x,
+					-fixedAreaInfos.bottom.startOffset +
+						viewPort.height -
+						fixedAreaInfos.bottom.size
+				);
+			}
+
+			result.inFixedAreas = fixedArea;
+		}
+
+		return result;
 	}
 
 	/**
@@ -3759,14 +3795,14 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Calculate the border infos for rendering borders.
 	 * @param borders to calculate infos for
 	 * @param range of the borders
-	 * @param adjustBoundsX whether to adjust bounds due to scrolling
-	 * @param adjustBoundsY whether to adjust bounds due to scrolling
+	 * @param xBoundsAdjustment adjustment of the border x bounds
+	 * @param yBoundsAdjustment adjustment of the border y bounds
 	 */
 	private _calculateBorderInfo(
 		borders: IBorder[][],
 		range: ICellRange,
-		adjustBoundsX: boolean,
-		adjustBoundsY: boolean
+		xBoundsAdjustment: number,
+		yBoundsAdjustment: number
 	): IBorderInfo[][] {
 		const result: IBorderInfo[][] = [];
 
@@ -3792,13 +3828,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 							),
 						};
 
-						// Correct bounds for current scroll offsets
-						if (adjustBoundsY) {
-							info.bounds.top -= this._scrollOffset.y;
-						}
-						if (adjustBoundsX) {
-							info.bounds.left -= this._scrollOffset.x;
-						}
+						// Adjust bounds
+						info.bounds.top += yBoundsAdjustment;
+						info.bounds.left += xBoundsAdjustment;
 
 						borderInfos.push(info);
 					}
@@ -3814,31 +3846,63 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	/**
 	 * Create information used to render cells later.
 	 * @param viewPort to get cells for
-	 * @param fixedRows amount of fixed rows
-	 * @param fixedColumns amount of fixed columns
-	 * @param fixedRowsHeight height of the fixed rows
-	 * @param fixedColumnsWidth width of the fixed columns
+	 * @param fixedAreaInfos infos about the fixed areas
 	 */
 	private _createCellRenderingInfo(
 		viewPort: IRectangle,
-		fixedRows: number,
-		fixedColumns: number,
-		fixedRowsHeight: number,
-		fixedColumnsWidth: number
-	): ICellRenderContextCollection {
+		fixedAreaInfos: IFixedAreaInfos
+	): ICellRenderContextCollection | null {
 		/*
 		We group cells to render per renderer name to improve rendering
 		performance, as one renderer must only prepare once instead of
 		everytime.
 		 */
+		const currentScrollOffset = this._viewportScroller.getScrollOffset();
 
 		// Fetch cell range to paint for the current viewport
-		const nonFixedCellsRange: ICellRange = this._cellModel.getRangeForRect({
-			left: viewPort.left + fixedColumnsWidth,
-			top: viewPort.top + fixedRowsHeight,
-			width: viewPort.width - fixedColumnsWidth,
-			height: viewPort.height - fixedRowsHeight,
+		let nonFixedCellsRange: ICellRange = this._cellModel.getRangeForRect({
+			left: viewPort.left + fixedAreaInfos.left.size,
+			top: viewPort.top + fixedAreaInfos.top.size,
+			width:
+				viewPort.width -
+				fixedAreaInfos.left.size -
+				fixedAreaInfos.right.size,
+			height:
+				viewPort.height -
+				fixedAreaInfos.top.size -
+				fixedAreaInfos.bottom.size,
 		});
+
+		// Remove fixed areas from cell range
+		nonFixedCellsRange.startRow = Math.max(
+			nonFixedCellsRange.startRow,
+			fixedAreaInfos.top.endIndex + 1
+		);
+		nonFixedCellsRange.endRow = Math.min(
+			nonFixedCellsRange.endRow,
+			fixedAreaInfos.bottom.startIndex - 1
+		);
+		nonFixedCellsRange.startColumn = Math.max(
+			nonFixedCellsRange.startColumn,
+			fixedAreaInfos.left.endIndex + 1
+		);
+		nonFixedCellsRange.endColumn = Math.min(
+			nonFixedCellsRange.endColumn,
+			fixedAreaInfos.right.startIndex - 1
+		);
+
+		const rowCount: number = Math.max(
+			0,
+			nonFixedCellsRange.endRow - nonFixedCellsRange.startRow
+		);
+		const columnCount: number = Math.max(
+			0,
+			nonFixedCellsRange.endColumn - nonFixedCellsRange.startColumn
+		);
+		const cellCount: number = rowCount * columnCount;
+		if (cellCount === 0) {
+			return null; // There are no displayable scrollable cells -> error state
+		}
 
 		const usedCellRendererNames: Set<string> = new Set<string>();
 
@@ -3846,13 +3910,19 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const nonFixedCells = this._createCellRenderArea(
 			nonFixedCellsRange,
 			{
-				left: fixedColumnsWidth,
-				top: fixedRowsHeight,
-				width: viewPort.width - fixedColumnsWidth,
-				height: viewPort.height - fixedRowsHeight,
+				left: fixedAreaInfos.left.size,
+				top: fixedAreaInfos.top.size,
+				width:
+					viewPort.width -
+					fixedAreaInfos.left.size -
+					fixedAreaInfos.right.size,
+				height:
+					viewPort.height -
+					fixedAreaInfos.top.size -
+					fixedAreaInfos.bottom.size,
 			},
-			true,
-			true,
+			-currentScrollOffset.x,
+			-currentScrollOffset.y,
 			usedCellRendererNames
 		);
 
@@ -3860,67 +3930,207 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			nonFixedCells,
 		};
 
-		// Fill fixed columns (if any)
-		if (fixedColumns > 0) {
-			result.fixedColumnCells = this._createCellRenderArea(
-				{
-					startRow: nonFixedCellsRange.startRow - fixedRows,
-					endRow: nonFixedCellsRange.endRow,
-					startColumn: 0,
-					endColumn: fixedColumns - 1,
-				},
-				{
-					left: 0,
-					top: fixedRowsHeight,
-					width: fixedColumnsWidth,
-					height: viewPort.height - fixedRowsHeight,
-				},
-				false,
-				true,
-				usedCellRendererNames
-			);
-		}
+		const fixedCells: IFixedCellAreaRenderContext = {};
+		let hasFixedAreas: boolean = false;
 
-		// Fill fixed rows (if any)
-		if (fixedRows > 0) {
-			result.fixedRowCells = this._createCellRenderArea(
+		// Fill top fixed rows (if any)
+		if (fixedAreaInfos.top.count > 0) {
+			hasFixedAreas = true;
+			fixedCells.top = this._createCellRenderArea(
 				{
-					startRow: 0,
-					endRow: fixedRows - 1,
-					startColumn: nonFixedCellsRange.startColumn - fixedColumns,
+					startRow: fixedAreaInfos.top.startIndex,
+					endRow: fixedAreaInfos.top.endIndex,
+					startColumn: nonFixedCellsRange.startColumn,
 					endColumn: nonFixedCellsRange.endColumn,
 				},
 				{
-					left: fixedColumnsWidth,
-					top: 0,
-					width: viewPort.width - fixedColumnsWidth,
-					height: fixedRowsHeight,
+					left: fixedAreaInfos.left.size,
+					top: fixedAreaInfos.top.startOffset,
+					width:
+						viewPort.width -
+						fixedAreaInfos.left.size -
+						fixedAreaInfos.right.size,
+					height: fixedAreaInfos.top.size,
 				},
-				true,
-				false,
+				-currentScrollOffset.x,
+				0,
 				usedCellRendererNames
 			);
 		}
 
-		// Fill fixed corner cells (if any)
-		if (fixedColumns > 0 && fixedRows > 0) {
-			result.fixedCornerCells = this._createCellRenderArea(
+		// Fill bottom fixed rows (if any)
+		if (fixedAreaInfos.bottom.count > 0) {
+			hasFixedAreas = true;
+			fixedCells.bottom = this._createCellRenderArea(
 				{
-					startRow: 0,
-					endRow: fixedRows - 1,
-					startColumn: 0,
-					endColumn: fixedColumns - 1,
+					startRow: fixedAreaInfos.bottom.startIndex,
+					endRow: fixedAreaInfos.bottom.endIndex,
+					startColumn: nonFixedCellsRange.startColumn,
+					endColumn: nonFixedCellsRange.endColumn,
 				},
 				{
-					left: 0,
-					top: 0,
-					width: fixedColumnsWidth,
-					height: fixedRowsHeight,
+					left: fixedAreaInfos.left.size,
+					top: viewPort.height - fixedAreaInfos.bottom.size,
+					width:
+						viewPort.width -
+						fixedAreaInfos.left.size -
+						fixedAreaInfos.right.size,
+					height: fixedAreaInfos.bottom.size,
 				},
-				false,
-				false,
+				-currentScrollOffset.x,
+				-fixedAreaInfos.bottom.startOffset +
+					viewPort.height -
+					fixedAreaInfos.bottom.size,
 				usedCellRendererNames
 			);
+		}
+
+		// Fill left fixed columns (if any)
+		if (fixedAreaInfos.left.count > 0) {
+			hasFixedAreas = true;
+			fixedCells.left = this._createCellRenderArea(
+				{
+					startRow: nonFixedCellsRange.startRow,
+					endRow: nonFixedCellsRange.endRow,
+					startColumn: fixedAreaInfos.left.startIndex,
+					endColumn: fixedAreaInfos.left.endIndex,
+				},
+				{
+					left: fixedAreaInfos.left.startOffset,
+					top: fixedAreaInfos.top.size,
+					width: fixedAreaInfos.left.size,
+					height:
+						viewPort.height -
+						fixedAreaInfos.top.size -
+						fixedAreaInfos.bottom.size,
+				},
+				0,
+				-currentScrollOffset.y,
+				usedCellRendererNames
+			);
+		}
+
+		// Fill right fixed columns (if any)
+		if (fixedAreaInfos.right.count > 0) {
+			hasFixedAreas = true;
+			fixedCells.right = this._createCellRenderArea(
+				{
+					startRow: nonFixedCellsRange.startRow,
+					endRow: nonFixedCellsRange.endRow,
+					startColumn: fixedAreaInfos.right.startIndex,
+					endColumn: fixedAreaInfos.right.endIndex,
+				},
+				{
+					left: viewPort.width - fixedAreaInfos.right.size,
+					top: fixedAreaInfos.top.size,
+					width: fixedAreaInfos.right.size,
+					height:
+						viewPort.height -
+						fixedAreaInfos.top.size -
+						fixedAreaInfos.bottom.size,
+				},
+				-fixedAreaInfos.right.startOffset +
+					viewPort.width -
+					fixedAreaInfos.right.size,
+				-currentScrollOffset.y,
+				usedCellRendererNames
+			);
+		}
+
+		// Fill fixed left-top corner cells (if any)
+		if (fixedAreaInfos.left.count > 0 && fixedAreaInfos.top.count > 0) {
+			fixedCells.leftTop = this._createCellRenderArea(
+				{
+					startRow: fixedAreaInfos.top.startIndex,
+					endRow: fixedAreaInfos.top.endIndex,
+					startColumn: fixedAreaInfos.left.startIndex,
+					endColumn: fixedAreaInfos.left.endIndex,
+				},
+				{
+					left: fixedAreaInfos.left.startOffset,
+					top: fixedAreaInfos.top.startOffset,
+					width: fixedAreaInfos.left.size,
+					height: fixedAreaInfos.top.size,
+				},
+				0,
+				0,
+				usedCellRendererNames
+			);
+		}
+
+		// Fill fixed right-top corner cells (if any)
+		if (fixedAreaInfos.right.count > 0 && fixedAreaInfos.top.count > 0) {
+			fixedCells.rightTop = this._createCellRenderArea(
+				{
+					startRow: fixedAreaInfos.top.startIndex,
+					endRow: fixedAreaInfos.top.endIndex,
+					startColumn: fixedAreaInfos.right.startIndex,
+					endColumn: fixedAreaInfos.right.endIndex,
+				},
+				{
+					left: viewPort.width - fixedAreaInfos.right.size,
+					top: fixedAreaInfos.top.startOffset,
+					width: fixedAreaInfos.right.size,
+					height: fixedAreaInfos.top.size,
+				},
+				-fixedAreaInfos.right.startOffset +
+					viewPort.width -
+					fixedAreaInfos.right.size,
+				0,
+				usedCellRendererNames
+			);
+		}
+
+		// Fill fixed left-bottom corner cells (if any)
+		if (fixedAreaInfos.left.count > 0 && fixedAreaInfos.bottom.count > 0) {
+			fixedCells.leftBottom = this._createCellRenderArea(
+				{
+					startRow: fixedAreaInfos.bottom.startIndex,
+					endRow: fixedAreaInfos.bottom.endIndex,
+					startColumn: fixedAreaInfos.left.startIndex,
+					endColumn: fixedAreaInfos.left.endIndex,
+				},
+				{
+					left: fixedAreaInfos.left.startOffset,
+					top: viewPort.height - fixedAreaInfos.bottom.size,
+					width: fixedAreaInfos.left.size,
+					height: fixedAreaInfos.bottom.size,
+				},
+				0,
+				-fixedAreaInfos.bottom.startOffset +
+					viewPort.height -
+					fixedAreaInfos.bottom.size,
+				usedCellRendererNames
+			);
+		}
+
+		// Fill fixed right-bottom corner cells (if any)
+		if (fixedAreaInfos.right.count > 0 && fixedAreaInfos.bottom.count > 0) {
+			fixedCells.rightBottom = this._createCellRenderArea(
+				{
+					startRow: fixedAreaInfos.bottom.startIndex,
+					endRow: fixedAreaInfos.bottom.endIndex,
+					startColumn: fixedAreaInfos.right.startIndex,
+					endColumn: fixedAreaInfos.right.endIndex,
+				},
+				{
+					left: viewPort.width - fixedAreaInfos.right.size,
+					top: viewPort.height - fixedAreaInfos.bottom.size,
+					width: fixedAreaInfos.right.size,
+					height: fixedAreaInfos.bottom.size,
+				},
+				-fixedAreaInfos.right.startOffset +
+					viewPort.width -
+					fixedAreaInfos.right.size,
+				-fixedAreaInfos.bottom.startOffset +
+					viewPort.height -
+					fixedAreaInfos.bottom.size,
+				usedCellRendererNames
+			);
+		}
+
+		if (hasFixedAreas) {
+			result.fixedCells = fixedCells;
 		}
 
 		// Cleanup cell renderers that have been used in previous rendering cycles but now not anymore
@@ -3941,16 +4151,16 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * Create cell area to render.
 	 * @param range to create rendering lookup for
 	 * @param viewPortBounds of the range
-	 * @param adjustBoundsX whether to adjust the x bounds
-	 * @param adjustBoundsY whether to adjust the y bounds
+	 * @param xBoundsAdjustment adjustment of the x bounds of every cell in the range
+	 * @param yBoundsAdjustment adjustment of the y bounds of every cell in the range
 	 * @param usedCellRendererNames set of used cell renderer names
 	 * @returns mapping of renderer names to all cells that need to be rendered with the renderer
 	 */
 	private _createCellRenderArea(
 		range: ICellRange,
 		viewPortBounds: IRectangle,
-		adjustBoundsX: boolean,
-		adjustBoundsY: boolean,
+		xBoundsAdjustment: number,
+		yBoundsAdjustment: number,
 		usedCellRendererNames: Set<string>
 	): ICellAreaRenderContext {
 		const cellsPerRenderer = new Map<string, ICellRenderInfo[]>();
@@ -3960,13 +4170,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			const cell = cells[i];
 			const bounds = this._cellModel.getBounds(cells[i].range);
 
-			// Correct bounds for current scroll offsets
-			if (adjustBoundsY) {
-				bounds.top -= this._scrollOffset.y;
-			}
-			if (adjustBoundsX) {
-				bounds.left -= this._scrollOffset.x;
-			}
+			// Adjust bounds
+			bounds.top += yBoundsAdjustment;
+			bounds.left += xBoundsAdjustment;
 
 			let cellsToRender: ICellRenderInfo[] = cellsPerRenderer.get(
 				cell.rendererName
@@ -4037,23 +4243,67 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			oldCells.nonFixedCells.cellRange,
 			newCells.nonFixedCells.cellRange
 		);
-		if (!!oldCells.fixedRowCells && !!newCells.fixedRowCells) {
-			this._cleanupCellViewportCachesForOverlappingCellRanges(
-				oldCells.fixedRowCells.cellRange,
-				newCells.fixedRowCells.cellRange
-			);
-		}
-		if (!!oldCells.fixedColumnCells && !!newCells.fixedColumnCells) {
-			this._cleanupCellViewportCachesForOverlappingCellRanges(
-				oldCells.fixedColumnCells.cellRange,
-				newCells.fixedColumnCells.cellRange
-			);
-		}
-		if (!!oldCells.fixedCornerCells && !!newCells.fixedCornerCells) {
-			this._cleanupCellViewportCachesForOverlappingCellRanges(
-				oldCells.fixedCornerCells.cellRange,
-				newCells.fixedCornerCells.cellRange
-			);
+		if (!!oldCells.fixedCells && !!newCells.fixedCells) {
+			if (!!oldCells.fixedCells.top && !!newCells.fixedCells.top) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.top.cellRange,
+					newCells.fixedCells.top.cellRange
+				);
+			}
+			if (!!oldCells.fixedCells.left && !!newCells.fixedCells.left) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.left.cellRange,
+					newCells.fixedCells.left.cellRange
+				);
+			}
+			if (!!oldCells.fixedCells.bottom && !!newCells.fixedCells.bottom) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.bottom.cellRange,
+					newCells.fixedCells.bottom.cellRange
+				);
+			}
+			if (!!oldCells.fixedCells.right && !!newCells.fixedCells.right) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.right.cellRange,
+					newCells.fixedCells.right.cellRange
+				);
+			}
+			if (
+				!!oldCells.fixedCells.leftTop &&
+				!!newCells.fixedCells.leftTop
+			) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.leftTop.cellRange,
+					newCells.fixedCells.leftTop.cellRange
+				);
+			}
+			if (
+				!!oldCells.fixedCells.rightTop &&
+				!!newCells.fixedCells.rightTop
+			) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.rightTop.cellRange,
+					newCells.fixedCells.rightTop.cellRange
+				);
+			}
+			if (
+				!!oldCells.fixedCells.leftBottom &&
+				!!newCells.fixedCells.leftBottom
+			) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.leftBottom.cellRange,
+					newCells.fixedCells.leftBottom.cellRange
+				);
+			}
+			if (
+				!!oldCells.fixedCells.rightBottom &&
+				!!newCells.fixedCells.rightBottom
+			) {
+				this._cleanupCellViewportCachesForOverlappingCellRanges(
+					oldCells.fixedCells.rightBottom.cellRange,
+					newCells.fixedCells.rightBottom.cellRange
+				);
+			}
 		}
 	}
 
@@ -4066,10 +4316,37 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			return;
 		}
 
-		fct(this._lastRenderingContext.cells.fixedCornerCells.cellRange);
-		fct(this._lastRenderingContext.cells.fixedRowCells.cellRange);
-		fct(this._lastRenderingContext.cells.fixedColumnCells.cellRange);
-		fct(this._lastRenderingContext.cells.nonFixedCells.cellRange);
+		const cells = this._lastRenderingContext.cells;
+		if (!!cells.fixedCells) {
+			const fixedCells = cells.fixedCells;
+
+			if (!!fixedCells.rightBottom) {
+				fct(fixedCells.rightBottom.cellRange);
+			}
+			if (!!fixedCells.rightTop) {
+				fct(fixedCells.rightTop.cellRange);
+			}
+			if (!!fixedCells.leftBottom) {
+				fct(fixedCells.leftBottom.cellRange);
+			}
+			if (!!fixedCells.leftTop) {
+				fct(fixedCells.leftTop.cellRange);
+			}
+			if (!!fixedCells.bottom) {
+				fct(fixedCells.bottom.cellRange);
+			}
+			if (!!fixedCells.right) {
+				fct(fixedCells.right.cellRange);
+			}
+			if (!!fixedCells.top) {
+				fct(fixedCells.top.cellRange);
+			}
+			if (!!fixedCells.left) {
+				fct(fixedCells.left.cellRange);
+			}
+		}
+
+		fct(cells.nonFixedCells.cellRange);
 	}
 
 	/**
@@ -4139,7 +4416,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 */
 	private _render(): void {
 		let creatingRenderingContextTime = window.performance.now();
-		const renderingContext: IRenderContext = this._createRenderingContext();
+		const renderingContext: IRenderContext | null =
+			this._createRenderingContext();
 		creatingRenderingContextTime =
 			window.performance.now() - creatingRenderingContextTime;
 
@@ -4151,7 +4429,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		this._requestAnimationFrameID = window.requestAnimationFrame(() => {
 			this._requestAnimationFrameID = null; // Mark as executed
 
-			if (!!this._lastRenderingContext) {
+			if (!!this._lastRenderingContext && !!renderingContext) {
 				this._cleanupCellViewportCaches(
 					this._lastRenderingContext.cells,
 					renderingContext.cells
@@ -4175,53 +4453,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			 */
 			ctx.translate(0.5, 0.5);
 
-			// Render "normal" (non-fixed) cells first
-			CanvasRenderer._renderArea(
-				ctx,
-				renderingContext,
-				renderingContext.cells.nonFixedCells,
-				renderingContext.borders.inNonFixedArea,
-				renderingContext.selection?.inNonFixedArea,
-				true
-			);
-
-			// Then render fixed cells (if any).
-			if (!!renderingContext.cells.fixedColumnCells) {
-				CanvasRenderer._renderArea(
+			if (!!renderingContext) {
+				CanvasRenderer._renderTable(ctx, renderingContext);
+			} else {
+				CanvasRenderer._renderError(
 					ctx,
-					renderingContext,
-					renderingContext.cells.fixedColumnCells,
-					renderingContext.borders.inFixedColumns,
-					renderingContext.selection?.inFixedColumns,
-					true
+					this.getViewportSize(),
+					this._options.renderer.canvas.error
 				);
 			}
-			if (!!renderingContext.cells.fixedRowCells) {
-				CanvasRenderer._renderArea(
-					ctx,
-					renderingContext,
-					renderingContext.cells.fixedRowCells,
-					renderingContext.borders.inFixedRows,
-					renderingContext.selection?.inFixedRows,
-					true
-				);
-			}
-			if (!!renderingContext.cells.fixedCornerCells) {
-				CanvasRenderer._renderArea(
-					ctx,
-					renderingContext,
-					renderingContext.cells.fixedCornerCells,
-					renderingContext.borders.inFixedCorner,
-					renderingContext.selection?.inFixedCorner,
-					true
-				);
-			}
-
-			// Render scrollbars
-			CanvasRenderer._renderScrollBars(ctx, renderingContext);
-
-			// Render resizing visualization (if currently resizing)
-			CanvasRenderer._renderResizerVisualization(ctx, renderingContext);
 
 			if (this._options.misc.debug) {
 				console.log(
@@ -4237,6 +4477,166 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				this._updateOverlays();
 			}
 		});
+	}
+
+	private static _renderError(
+		ctx: CanvasRenderingContext2D,
+		viewportSize: ISize,
+		errorOptions: IErrorOptions
+	): void {
+		const bounds: IRectangle = {
+			left: errorOptions.padding,
+			top: errorOptions.padding,
+			width: viewportSize.width - errorOptions.padding * 2,
+			height: viewportSize.height - errorOptions.padding * 2,
+		};
+
+		ctx.font = `${errorOptions.fontSize}px ${errorOptions.fontFamily}`;
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+
+		// Layout paragraph
+		const paragraph: IParagraph = errorOptions.lineWrapper.wrap(
+			errorOptions.tooSmallViewportMessage,
+			bounds.width,
+			errorOptions.lineHeight * errorOptions.fontSize,
+			(str) => ctx.measureText(str).width
+		);
+		const paragraphHeight: number =
+			paragraph.lines.length * paragraph.lineHeight;
+
+		// Fill background
+		ctx.fillStyle = Colors.toStyleStr(errorOptions.backgroundColor);
+		ctx.fillRect(0, 0, viewportSize.width, viewportSize.height);
+
+		// Draw error message
+		const isOverflowing: boolean = paragraphHeight > bounds.height;
+		if (isOverflowing) {
+			const clippingRegion = new Path2D();
+			clippingRegion.rect(
+				bounds.left,
+				bounds.top,
+				bounds.width,
+				bounds.height
+			);
+
+			ctx.save();
+			ctx.clip(clippingRegion);
+		}
+
+		const xOffset: number = bounds.left + bounds.width / 2;
+		let yOffset: number =
+			bounds.top + (bounds.height - paragraphHeight) / 2;
+
+		ctx.fillStyle = Colors.toStyleStr(errorOptions.textColor);
+		for (const line of paragraph.lines) {
+			ctx.fillText(line.text, xOffset, yOffset);
+
+			yOffset += paragraph.lineHeight;
+		}
+
+		if (isOverflowing) {
+			ctx.restore();
+		}
+	}
+
+	private static _renderTable(
+		ctx: CanvasRenderingContext2D,
+		renderingContext: IRenderContext
+	): void {
+		// Render "normal" (non-fixed) cells first
+		CanvasRenderer._renderArea(
+			ctx,
+			renderingContext,
+			renderingContext.cells.nonFixedCells,
+			renderingContext.borders.inNonFixedArea,
+			renderingContext.selection?.inNonFixedArea,
+			true
+		);
+
+		// Then render fixed cells (if any).
+		if (!!renderingContext.cells.fixedCells) {
+			const fixedCells = renderingContext.cells.fixedCells;
+
+			if (!!fixedCells.left) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.left,
+					renderingContext.borders.inFixedAreas.left,
+					renderingContext.selection?.inFixedArea?.left
+				);
+			}
+			if (!!fixedCells.top) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.top,
+					renderingContext.borders.inFixedAreas.top,
+					renderingContext.selection?.inFixedArea?.top
+				);
+			}
+			if (!!fixedCells.right) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.right,
+					renderingContext.borders.inFixedAreas.right,
+					renderingContext.selection?.inFixedArea?.right
+				);
+			}
+			if (!!fixedCells.bottom) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.bottom,
+					renderingContext.borders.inFixedAreas.bottom,
+					renderingContext.selection?.inFixedArea?.bottom
+				);
+			}
+			if (!!fixedCells.leftTop) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.leftTop,
+					renderingContext.borders.inFixedAreas.leftTop,
+					renderingContext.selection?.inFixedArea?.leftTop
+				);
+			}
+			if (!!fixedCells.rightTop) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.rightTop,
+					renderingContext.borders.inFixedAreas.rightTop,
+					renderingContext.selection?.inFixedArea?.rightTop
+				);
+			}
+			if (!!fixedCells.leftBottom) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.leftBottom,
+					renderingContext.borders.inFixedAreas.leftBottom,
+					renderingContext.selection?.inFixedArea?.leftBottom
+				);
+			}
+			if (!!fixedCells.rightBottom) {
+				CanvasRenderer._renderArea(
+					ctx,
+					renderingContext,
+					fixedCells.rightBottom,
+					renderingContext.borders.inFixedAreas.rightBottom,
+					renderingContext.selection?.inFixedArea?.rightBottom
+				);
+			}
+		}
+
+		// Render scrollbars
+		CanvasRenderer._renderScrollBars(ctx, renderingContext);
+
+		// Render resizing visualization (if currently resizing)
+		CanvasRenderer._renderResizerVisualization(ctx, renderingContext);
 	}
 
 	/**
@@ -4266,7 +4666,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		cellArea: ICellAreaRenderContext,
 		borders: IBorderInfo[][],
 		selectionInfos?: ISelectionRenderInfo[],
-		clipArea?: boolean
+		clipArea: boolean = true
 	): void {
 		let restoreContext = false;
 		if (clipArea) {
@@ -4286,13 +4686,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		CanvasRenderer._renderAreaCells(ctx, context, cellArea);
 		CanvasRenderer._renderBorders(ctx, context, borders);
 
-		if (restoreContext) {
-			ctx.restore();
-		}
-
 		// Render selection that may be displayed the area
 		if (!!selectionInfos) {
 			CanvasRenderer._renderSelections(ctx, context, selectionInfos);
+		}
+
+		if (restoreContext) {
+			ctx.restore();
 		}
 	}
 
@@ -4724,51 +5124,60 @@ export class CanvasRenderer implements ITableEngineRenderer {
 						: context.selection.options.primary.borderColorUnfocused
 				);
 
-				// Fill area over initial (if necessary)
-				if (info.initial.top - info.bounds.top > 0) {
+				if (!!info.initial) {
+					// Fill area over initial (if necessary)
+					if (info.initial.top - info.bounds.top > 0) {
+						ctx.fillRect(
+							info.bounds.left,
+							info.bounds.top,
+							info.bounds.width,
+							info.initial.top - info.bounds.top
+						);
+					}
+
+					// Fill area left of initial (if necessary)
+					if (info.initial.left - info.bounds.left > 0) {
+						ctx.fillRect(
+							info.bounds.left,
+							info.initial.top,
+							info.initial.left - info.bounds.left,
+							info.initial.height
+						);
+					}
+
+					// Fill area under initial (if necessary)
+					const underHeight: number =
+						info.bounds.top +
+						info.bounds.height -
+						(info.initial.top + info.initial.height);
+					if (underHeight > 0) {
+						ctx.fillRect(
+							info.bounds.left,
+							info.initial.top + info.initial.height,
+							info.bounds.width,
+							underHeight
+						);
+					}
+
+					// Fill area right of initial (if necessary)
+					const rightWidth: number =
+						info.bounds.left +
+						info.bounds.width -
+						(info.initial.left + info.initial.width);
+					if (rightWidth > 0) {
+						ctx.fillRect(
+							info.initial.left + info.initial.width,
+							info.initial.top,
+							rightWidth,
+							info.initial.height
+						);
+					}
+				} else {
 					ctx.fillRect(
 						info.bounds.left,
 						info.bounds.top,
 						info.bounds.width,
-						info.initial.top - info.bounds.top
-					);
-				}
-
-				// Fill area left of initial (if necessary)
-				if (info.initial.left - info.bounds.left > 0) {
-					ctx.fillRect(
-						info.bounds.left,
-						info.initial.top,
-						info.initial.left - info.bounds.left,
-						info.initial.height
-					);
-				}
-
-				// Fill area under initial (if necessary)
-				const underHeight: number =
-					info.bounds.top +
-					info.bounds.height -
-					(info.initial.top + info.initial.height);
-				if (underHeight > 0) {
-					ctx.fillRect(
-						info.bounds.left,
-						info.initial.top + info.initial.height,
-						info.bounds.width,
-						underHeight
-					);
-				}
-
-				// Fill area right of initial (if necessary)
-				const rightWidth: number =
-					info.bounds.left +
-					info.bounds.width -
-					(info.initial.left + info.initial.width);
-				if (rightWidth > 0) {
-					ctx.fillRect(
-						info.initial.left + info.initial.width,
-						info.initial.top,
-						rightWidth,
-						info.initial.height
+						info.bounds.height
 					);
 				}
 
@@ -4908,70 +5317,99 @@ export class CanvasRenderer implements ITableEngineRenderer {
 	 * @param overlay to layout
 	 */
 	private _layoutOverlay(overlay: IOverlay): void {
-		const viewPortHeight: number = !!this._lastRenderingContext
-			? this._lastRenderingContext.viewPort.height
-			: 0;
-		const viewPortWidth: number = !!this._lastRenderingContext
-			? this._lastRenderingContext.viewPort.width
-			: 0;
+		const viewportSize: ISize = this.getViewportSize();
+		const fixedAreaInfos: IFixedAreaInfos = this.getFixedAreaInfos();
+		const currentScrollOffset = this._viewportScroller.getScrollOffset();
 
-		const fixedRowsHeight: number =
-			!!this._lastRenderingContext &&
-			!!this._lastRenderingContext.cells.fixedRowCells
-				? this._lastRenderingContext.cells.fixedRowCells.viewPortBounds
-						.height
-				: 0;
-		const fixedColumnsWidth: number =
-			!!this._lastRenderingContext &&
-			!!this._lastRenderingContext.cells.fixedColumnCells
-				? this._lastRenderingContext.cells.fixedColumnCells
-						.viewPortBounds.width
-				: 0;
+		let startY: number = overlay.bounds.top;
+		let endY: number = overlay.bounds.top + overlay.bounds.height;
 
-		let top: number = overlay.bounds.top;
-		let height: number = overlay.bounds.height;
-		const isInFixedRows: boolean = overlay.bounds.top < fixedRowsHeight;
-		if (isInFixedRows) {
-			// Overlaps with fixed rows
-			const remaining: number = fixedRowsHeight - overlay.bounds.top;
-			if (overlay.bounds.height > remaining) {
-				// Not completely in fixed rows -> change height based on scroll state
-				height = Math.max(height - this._scrollOffset.y, remaining);
-			}
-		} else {
-			// Is only in scrollable area
-			if (top - this._scrollOffset.y < fixedRowsHeight) {
-				height -= fixedRowsHeight - (top - this._scrollOffset.y);
-			}
-
-			top = top - this._scrollOffset.y;
+		let top: number = startY;
+		let startYInScrollableArea: boolean = false;
+		if (startY >= fixedAreaInfos.bottom.startOffset) {
+			const offsetFromBottom = fixedAreaInfos.bottom.endOffset - startY;
+			startY = viewportSize.height - offsetFromBottom;
+			top = startY;
+		} else if (startY >= fixedAreaInfos.top.size) {
+			startY = Math.max(
+				Math.min(
+					startY - currentScrollOffset.y,
+					viewportSize.height - fixedAreaInfos.bottom.size
+				),
+				fixedAreaInfos.top.size
+			);
+			top -= currentScrollOffset.y;
+			startYInScrollableArea = true;
 		}
+		if (endY >= fixedAreaInfos.bottom.startOffset) {
+			const offsetFromBottom = fixedAreaInfos.bottom.endOffset - endY;
+			endY = viewportSize.height - offsetFromBottom;
+
+			if (startYInScrollableArea) {
+				startY = Math.min(
+					startY,
+					viewportSize.height - fixedAreaInfos.bottom.size
+				);
+				top = startY;
+			}
+		} else if (endY >= fixedAreaInfos.top.size) {
+			endY = Math.max(
+				Math.min(
+					endY - currentScrollOffset.y,
+					viewportSize.height - fixedAreaInfos.bottom.size
+				),
+				fixedAreaInfos.top.size
+			);
+		}
+		let height: number = endY - startY;
+
+		let startX: number = overlay.bounds.left;
+		let endX: number = overlay.bounds.left + overlay.bounds.width;
 
 		let left: number = overlay.bounds.left;
-		let width: number = overlay.bounds.width;
-		const isInFixedColumns: boolean =
-			overlay.bounds.left < fixedColumnsWidth;
-		if (isInFixedColumns) {
-			// Overlaps with fixed columns
-			const remaining: number = fixedColumnsWidth - overlay.bounds.left;
-			if (overlay.bounds.width > remaining) {
-				// Not completely in fixed columns -> change width based on scroll state
-				width = Math.max(width - this._scrollOffset.x, remaining);
-			}
-		} else {
-			// Is only in scrollable area
-			if (left - this._scrollOffset.x < fixedColumnsWidth) {
-				width -= fixedColumnsWidth - (left - this._scrollOffset.x);
-			}
-
-			left = left - this._scrollOffset.x;
+		let startXInScrollableArea: boolean = false;
+		if (startX >= fixedAreaInfos.right.startOffset) {
+			const offsetFromRight = fixedAreaInfos.right.endOffset - startX;
+			startX = viewportSize.width - offsetFromRight;
+			left = startX;
+		} else if (startX >= fixedAreaInfos.left.size) {
+			startX = Math.max(
+				Math.min(
+					startX - currentScrollOffset.x,
+					viewportSize.width - fixedAreaInfos.right.size
+				),
+				fixedAreaInfos.left.size
+			);
+			left -= currentScrollOffset.x;
+			startXInScrollableArea = true;
 		}
+		if (endX >= fixedAreaInfos.right.startOffset) {
+			const offsetFromRight = fixedAreaInfos.right.endOffset - endX;
+			endX = viewportSize.width - offsetFromRight;
+
+			if (startXInScrollableArea) {
+				startX = Math.min(
+					startX,
+					viewportSize.width - fixedAreaInfos.right.size
+				);
+				left = startX;
+			}
+		} else if (endX >= fixedAreaInfos.left.size) {
+			endX = Math.max(
+				Math.min(
+					endX - currentScrollOffset.x,
+					viewportSize.width - fixedAreaInfos.right.size
+				),
+				fixedAreaInfos.left.size
+			);
+		}
+		let width: number = endX - startX;
 
 		const isVisible: boolean =
 			height > 0 &&
-			top < viewPortHeight &&
+			top < viewportSize.height &&
 			width > 0 &&
-			left < viewPortWidth;
+			left < viewportSize.width;
 		if (isVisible) {
 			overlay.element.style.display = 'block';
 			overlay.element.style.overflow = 'hidden';
@@ -4981,15 +5419,21 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			overlay.element.style.width = `${overlay.bounds.width}px`;
 			overlay.element.style.height = `${overlay.bounds.height}px`;
 
-			if (
-				width < overlay.bounds.width ||
-				height < overlay.bounds.height
-			) {
-				// Add clipping
-				const leftClipping: number = overlay.bounds.width - width;
-				const topClipping: number = overlay.bounds.height - height;
+			const clipLeft: boolean = left < startX;
+			const clipRight: boolean = left + overlay.bounds.width > endX;
+			const clipTop: boolean = top < startY;
+			const clipBottom: boolean = top + overlay.bounds.height > endY;
+			if (clipLeft || clipRight || clipTop || clipBottom) {
+				const leftClipping: number = clipLeft ? startX - left : 0;
+				const rightClipping: number = clipRight
+					? left + overlay.bounds.width - endX
+					: 0;
+				const topClipping: number = clipTop ? startY - top : 0;
+				const bottomClipping: number = clipBottom
+					? top + overlay.bounds.height - endY
+					: 0;
 
-				overlay.element.style.clipPath = `inset(${topClipping}px 0 0 ${leftClipping}px)`;
+				overlay.element.style.clipPath = `inset(${topClipping}px ${rightClipping}px ${bottomClipping}px ${leftClipping}px)`;
 			} else if (overlay.element.style.clipPath.length > 0) {
 				overlay.element.style.clipPath = '';
 			}
@@ -5067,6 +5511,103 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			isResizerDragging
 		);
 	}
+
+	/**
+	 * Check with which areas of the table the passed range intersects.
+	 * @param range to check intersections with all table areas
+	 * @param fixedAreaInfos infos about the fixed areas of the table
+	 */
+	private static _checkTableAreaIntersection(
+		range: ICellRange,
+		fixedAreaInfos: IFixedAreaInfos
+	): ITableAreaMask {
+		return {
+			nonFixed: CellRangeUtil.overlap(range, {
+				startRow: fixedAreaInfos.top.endIndex + 1,
+				endRow: fixedAreaInfos.bottom.startIndex - 1,
+				startColumn: fixedAreaInfos.left.endIndex + 1,
+				endColumn: fixedAreaInfos.right.startIndex - 1,
+			}),
+			fixed: {
+				top:
+					fixedAreaInfos.top.count > 0
+						? CellRangeUtil.overlap(range, {
+								startRow: fixedAreaInfos.top.startIndex,
+								endRow: fixedAreaInfos.top.endIndex,
+								startColumn: fixedAreaInfos.left.endIndex + 1,
+								endColumn: fixedAreaInfos.right.startIndex - 1,
+						  })
+						: false,
+				bottom:
+					fixedAreaInfos.bottom.count > 0
+						? CellRangeUtil.overlap(range, {
+								startRow: fixedAreaInfos.bottom.startIndex,
+								endRow: fixedAreaInfos.bottom.endIndex,
+								startColumn: fixedAreaInfos.left.endIndex + 1,
+								endColumn: fixedAreaInfos.right.startIndex - 1,
+						  })
+						: false,
+				left:
+					fixedAreaInfos.left.count > 0
+						? CellRangeUtil.overlap(range, {
+								startRow: fixedAreaInfos.top.endIndex + 1,
+								endRow: fixedAreaInfos.bottom.startIndex - 1,
+								startColumn: fixedAreaInfos.left.startIndex,
+								endColumn: fixedAreaInfos.left.endIndex,
+						  })
+						: false,
+				right:
+					fixedAreaInfos.right.count > 0
+						? CellRangeUtil.overlap(range, {
+								startRow: fixedAreaInfos.top.endIndex + 1,
+								endRow: fixedAreaInfos.bottom.startIndex - 1,
+								startColumn: fixedAreaInfos.right.startIndex,
+								endColumn: fixedAreaInfos.right.endIndex,
+						  })
+						: false,
+				leftTop:
+					fixedAreaInfos.left.count > 0 &&
+					fixedAreaInfos.top.count > 0
+						? CellRangeUtil.overlap(range, {
+								startRow: fixedAreaInfos.top.startIndex,
+								endRow: fixedAreaInfos.top.endIndex,
+								startColumn: fixedAreaInfos.left.startIndex,
+								endColumn: fixedAreaInfos.left.endIndex,
+						  })
+						: false,
+				leftBottom:
+					fixedAreaInfos.left.count > 0 &&
+					fixedAreaInfos.bottom.count > 0
+						? CellRangeUtil.overlap(range, {
+								startRow: fixedAreaInfos.bottom.startIndex,
+								endRow: fixedAreaInfos.bottom.endIndex,
+								startColumn: fixedAreaInfos.left.startIndex,
+								endColumn: fixedAreaInfos.left.endIndex,
+						  })
+						: false,
+				rightTop:
+					fixedAreaInfos.right.count > 0 &&
+					fixedAreaInfos.top.count > 0
+						? CellRangeUtil.overlap(range, {
+								startRow: fixedAreaInfos.top.startIndex,
+								endRow: fixedAreaInfos.top.endIndex,
+								startColumn: fixedAreaInfos.right.startIndex,
+								endColumn: fixedAreaInfos.right.endIndex,
+						  })
+						: false,
+				rightBottom:
+					fixedAreaInfos.right.count > 0 &&
+					fixedAreaInfos.bottom.count > 0
+						? CellRangeUtil.overlap(range, {
+								startRow: fixedAreaInfos.bottom.startIndex,
+								endRow: fixedAreaInfos.bottom.endIndex,
+								startColumn: fixedAreaInfos.right.startIndex,
+								endColumn: fixedAreaInfos.right.endIndex,
+						  })
+						: false,
+			},
+		};
+	}
 }
 
 /**
@@ -5082,6 +5623,11 @@ export interface IRenderContext {
 	 * Viewport to render.
 	 */
 	viewPort: IRectangle;
+
+	/**
+	 * Infos about the fixed areas in the viewport.
+	 */
+	fixedAreaInfos: IFixedAreaInfos;
 
 	/**
 	 * Full size of the table.
@@ -5129,19 +5675,24 @@ interface IBorderRenderContext {
 	inNonFixedArea: IBorderInfo[][];
 
 	/**
-	 * Borders completely contained in non-fixed area or fixed rows area.
+	 * Borders completely contained in the fixed areas (if any).
 	 */
-	inFixedRows: IBorderInfo[][];
+	inFixedAreas?: IFixedAreaBorderRenderContext;
+}
 
-	/**
-	 * Borders completely contained in non-fixed area or fixed columns area.
-	 */
-	inFixedColumns: IBorderInfo[][];
+/**
+ * Border rendering context in fixed areas.
+ */
+interface IFixedAreaBorderRenderContext {
+	top?: IBorderInfo[][];
+	left?: IBorderInfo[][];
+	bottom?: IBorderInfo[][];
+	right?: IBorderInfo[][];
 
-	/**
-	 * Borders to be displayed above all areas.
-	 */
-	inFixedCorner: IBorderInfo[][];
+	leftTop?: IBorderInfo[][];
+	rightTop?: IBorderInfo[][];
+	leftBottom?: IBorderInfo[][];
+	rightBottom?: IBorderInfo[][];
 }
 
 /**
@@ -5179,19 +5730,24 @@ interface ISelectionRenderContext {
 	inNonFixedArea: ISelectionRenderInfo[];
 
 	/**
-	 * Selection rectangles completely contained in non-fixed area or fixed rows area.
+	 * Selection rectangles completely contained in the fixed areas.
 	 */
-	inFixedRows: ISelectionRenderInfo[];
+	inFixedArea?: IFixedAreaSelectionRenderInfo;
+}
 
-	/**
-	 * Selection rectangle completely contained in non-fixed area or fixed columns area.
-	 */
-	inFixedColumns: ISelectionRenderInfo[];
+/**
+ * Selection rectangles completely contained in the fixed areas.
+ */
+interface IFixedAreaSelectionRenderInfo {
+	top?: ISelectionRenderInfo[];
+	left?: ISelectionRenderInfo[];
+	bottom?: ISelectionRenderInfo[];
+	right?: ISelectionRenderInfo[];
 
-	/**
-	 * Selection rectangles to be displayed above all areas.
-	 */
-	inFixedCorner: ISelectionRenderInfo[];
+	leftTop?: ISelectionRenderInfo[];
+	leftBottom?: ISelectionRenderInfo[];
+	rightTop?: ISelectionRenderInfo[];
+	rightBottom?: ISelectionRenderInfo[];
 }
 
 /**
@@ -5245,19 +5801,54 @@ interface ICellRenderContextCollection {
 	nonFixedCells: ICellAreaRenderContext;
 
 	/**
-	 * Fixed corner cells to render.
+	 * Collection of all fixed area cells to render.
 	 */
-	fixedCornerCells?: ICellAreaRenderContext;
+	fixedCells?: IFixedCellAreaRenderContext;
+}
+
+/**
+ * Collection of all fixed area cells to render.
+ */
+interface IFixedCellAreaRenderContext {
+	/**
+	 * Left fixed columns.
+	 */
+	left?: ICellAreaRenderContext;
 
 	/**
-	 * Fixed row cells to render.
+	 * Top fixed rows.
 	 */
-	fixedRowCells?: ICellAreaRenderContext;
+	top?: ICellAreaRenderContext;
 
 	/**
-	 * Fixed column cells to render.
+	 * Right fixed columns.
 	 */
-	fixedColumnCells?: ICellAreaRenderContext;
+	right?: ICellAreaRenderContext;
+
+	/**
+	 * Bottom fixed rows.
+	 */
+	bottom?: ICellAreaRenderContext;
+
+	/**
+	 * Fixed corner area to the left-top.
+	 */
+	leftTop?: ICellAreaRenderContext;
+
+	/**
+	 * Fixed corner area to the right-top.
+	 */
+	rightTop?: ICellAreaRenderContext;
+
+	/**
+	 * Fixed corner area to the left-bottom.
+	 */
+	leftBottom?: ICellAreaRenderContext;
+
+	/**
+	 * Fixed corner area to the right-bottom.
+	 */
+	rightBottom?: ICellAreaRenderContext;
 }
 
 /**
@@ -5616,4 +6207,18 @@ interface IndexRange {
 interface IPreferredRowColumnSizeResult {
 	success: boolean;
 	preferredSize?: number;
+}
+
+interface ITableAreaMask {
+	nonFixed: boolean;
+	fixed: {
+		left: boolean;
+		right: boolean;
+		top: boolean;
+		bottom: boolean;
+		leftTop: boolean;
+		rightTop: boolean;
+		leftBottom: boolean;
+		rightBottom: boolean;
+	};
 }

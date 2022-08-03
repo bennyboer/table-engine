@@ -2,6 +2,7 @@ import { ICellModel } from './cell';
 import { fillOptions, ITableEngineOptions } from './options';
 import {
 	ICellRenderer,
+	IFixedAreaInfos,
 	ITableEngineRenderer,
 	RendererFactory,
 } from './renderer';
@@ -175,12 +176,8 @@ export class TableEngine {
 		return this._renderer.getViewport();
 	}
 
-	public getFixedRowsHeight(): number {
-		return this._renderer.getFixedRowsHeight();
-	}
-
-	public getFixedColumnsWidth(): number {
-		return this._renderer.getFixedColumnsWidth();
+	public getFixedAreaInfos(): IFixedAreaInfos {
+		return this._renderer.getFixedAreaInfos();
 	}
 
 	/**

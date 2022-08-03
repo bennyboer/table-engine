@@ -50,20 +50,42 @@ export interface IRendererOptions {
  */
 export interface IViewOptions {
 	/**
-	 * Number of fixed rows.
+	 * Options regarding fixed areas of a table.
+	 * A fixed area is a part of a table that is always visible and does not scroll.
 	 */
-	fixedRows?: number;
-
-	/**
-	 * Number of fixed columns.
-	 */
-	fixedColumns?: number;
+	fixedAreas?: IFixedAreasOptions;
 
 	/**
 	 * Maximum cell count to allow copying
 	 * or negative if no limit.
 	 */
 	maxCellCountToCopy?: number;
+}
+
+/**
+ * Options regarding fixed areas of a table.
+ * A fixed area is a part of a table that is always visible and does not scroll.
+ */
+export interface IFixedAreasOptions {
+	/**
+	 * Amount of rows to fix at the top of the table.
+	 */
+	top?: number;
+
+	/**
+	 * Amount of rows to fix at the bottom of the table.
+	 */
+	bottom?: number;
+
+	/**
+	 * Amount of columns to fix at the left of the table.
+	 */
+	left?: number;
+
+	/**
+	 * Amount of columns to fix at the right of the table.
+	 */
+	right?: number;
 }
 
 /**
@@ -75,31 +97,6 @@ export const fillOptions = (options?: IRendererOptions) => {
 		options = {};
 	}
 
-	if (!options.view) {
-		options.view = {};
-	}
-
-	if (
-		options.view.fixedRows === undefined ||
-		options.view.fixedRows === null
-	) {
-		options.view.fixedRows = 0;
-	}
-
-	if (
-		options.view.fixedColumns === undefined ||
-		options.view.fixedColumns === null
-	) {
-		options.view.fixedColumns = 0;
-	}
-
-	if (
-		options.view.maxCellCountToCopy === undefined ||
-		options.view.maxCellCountToCopy === null
-	) {
-		options.view.maxCellCountToCopy = DEFAULT_MAX_CELL_COUNT_TO_COPY;
-	}
-
 	if (!options.type) {
 		options.type = DEFAULT_RENDERER_TYPE;
 	}
@@ -108,6 +105,49 @@ export const fillOptions = (options?: IRendererOptions) => {
 	if (options.type === RendererType.CANVAS) {
 		options.canvas = fillCanvasRendererOptions(options.canvas);
 	}
+
+	options.view = fillViewOptions(options.view);
+
+	return options;
+};
+
+const fillFixedAreasOptions = (options?: IFixedAreasOptions) => {
+	if (!options) {
+		options = {};
+	}
+
+	if (options.top === undefined || options.top === null) {
+		options.top = 0;
+	}
+
+	if (options.bottom === undefined || options.bottom === null) {
+		options.bottom = 0;
+	}
+
+	if (options.left === undefined || options.left === null) {
+		options.left = 0;
+	}
+
+	if (options.right === undefined || options.right === null) {
+		options.right = 0;
+	}
+
+	return options;
+};
+
+const fillViewOptions = (options?: IViewOptions) => {
+	if (!options) {
+		options = {};
+	}
+
+	if (
+		options.maxCellCountToCopy === undefined ||
+		options.maxCellCountToCopy === null
+	) {
+		options.maxCellCountToCopy = DEFAULT_MAX_CELL_COUNT_TO_COPY;
+	}
+
+	options.fixedAreas = fillFixedAreasOptions(options.fixedAreas);
 
 	return options;
 };

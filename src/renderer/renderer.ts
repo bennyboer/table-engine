@@ -3,12 +3,15 @@ import { TableEngine } from '../table-engine';
 import { IOverlayManager } from '../overlay';
 import { ITableEngineOptions } from '../options';
 import { IPoint, IRectangle } from '../util';
+import { IViewportManager } from './viewport-manager';
 
 /**
  * Representation of a renderer of the table engine.
  * It is responsible for rendering the table.
  */
-export interface ITableEngineRenderer extends IOverlayManager {
+export interface ITableEngineRenderer
+	extends IOverlayManager,
+		IViewportManager {
 	/**
 	 * Initialize the renderer with the given options on the passed HTML container.
 	 * @param container to initialize renderer in
@@ -63,16 +66,6 @@ export interface ITableEngineRenderer extends IOverlayManager {
 	 * Get the current viewport rectangle.
 	 */
 	getViewport(): IRectangle;
-
-	/**
-	 * Get the height of the fixed rows or 0.
-	 */
-	getFixedRowsHeight(): number;
-
-	/**
-	 * Get the width of the fixed columns or 0.
-	 */
-	getFixedColumnsWidth(): number;
 
 	/**
 	 * Cleanup the renderer when no more needed.

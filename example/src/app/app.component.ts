@@ -40,11 +40,8 @@ import { environment } from '../environments/environment';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DebugCellRenderer } from './renderer/debug-cell-renderer';
 import { ProgressCellRenderer } from '../../../src/renderer/canvas/cell/progress/progress-cell-renderer';
-import { IProgressCellRendererValue } from '../../../src/renderer/canvas/cell/progress/progress-cell-renderer-value';
-import { ProgressCellRendererStyle } from '../../../src/renderer/canvas/cell/progress/progress-cell-renderer-style';
 import {
 	ButtonCellRenderer,
-	IButtonCellRendererOptions,
 	IButtonCellRendererValue,
 } from '../../../src/renderer/canvas/cell/button';
 
@@ -91,18 +88,18 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 	) {}
 
 	public addOneFixedRowsColumns(): void {
-		this.engine.getOptions().renderer.view.fixedRows += 1;
-		this.engine.getOptions().renderer.view.fixedColumns += 1;
+		this.engine.getOptions().renderer.view.fixedAreas.top += 1;
+		this.engine.getOptions().renderer.view.fixedAreas.left += 1;
 		this.engine.repaint();
 	}
 
 	public removeOneFixedRowsColumns(): void {
-		this.engine.getOptions().renderer.view.fixedRows = Math.max(
-			this.engine.getOptions().renderer.view.fixedRows - 1,
+		this.engine.getOptions().renderer.view.fixedAreas.top = Math.max(
+			this.engine.getOptions().renderer.view.fixedAreas.top - 1,
 			0
 		);
-		this.engine.getOptions().renderer.view.fixedColumns = Math.max(
-			this.engine.getOptions().renderer.view.fixedColumns - 1,
+		this.engine.getOptions().renderer.view.fixedAreas.left = Math.max(
+			this.engine.getOptions().renderer.view.fixedAreas.left - 1,
 			0
 		);
 		this.engine.repaint();
@@ -567,8 +564,12 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 				ROW_COLUMN_HEADER_TRANSFORM;
 
 			// Set initial state of fixed rows/columns
-			this.engine.getOptions().renderer.view.fixedRows = 1;
-			this.engine.getOptions().renderer.view.fixedColumns = 1;
+			this.engine.getOptions().renderer.view.fixedAreas = {
+				top: 1,
+				left: 1,
+				bottom: 0,
+				right: 0,
+			};
 
 			// Set notification service
 			this.engine.getOptions().renderer.view.maxCellCountToCopy = 10000;
@@ -723,7 +724,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 					} as ITextCellRendererValue,
 				},
 				{
-					range: CellRange.fromSingleRowColumn(1000, 1000),
+					range: CellRange.fromSingleRowColumn(10000, 100),
 					rendererName: TextCellRenderer.NAME,
 					value: 'Last cell with more text than normally',
 				},
