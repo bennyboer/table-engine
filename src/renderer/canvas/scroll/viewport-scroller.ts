@@ -39,7 +39,7 @@ export class ViewportScroller implements IViewportScroller {
 			scrollableViewportSize
 		);
 		const changedYScrollOffset = this._scrollToRow(
-			column,
+			row,
 			boundsToScrollTo,
 			fixedAreaInfos,
 			scrollableViewportSize
