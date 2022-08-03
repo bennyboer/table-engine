@@ -1001,15 +1001,15 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			x > viewportSize.width - fixedAreaInfos.right.size;
 
 		if (isInBottomFixedArea) {
-			y -= viewportSize.height - fixedAreaInfos.bottom.size;
-			y += fixedAreaInfos.bottom.startOffset;
+			const offsetFromBottom = viewportSize.height - y;
+			y = fixedAreaInfos.bottom.endOffset - offsetFromBottom;
 		} else if (!isInTopFixedArea) {
 			y += currentScrollOffset.y;
 		}
 
 		if (isInRightFixedArea) {
-			x -= viewportSize.width - fixedAreaInfos.right.size;
-			x += fixedAreaInfos.right.startOffset;
+			const offsetFromRight = viewportSize.width - x;
+			x = fixedAreaInfos.right.endOffset - offsetFromRight;
 		} else if (!isInLeftFixedArea) {
 			x += currentScrollOffset.x;
 		}
@@ -5306,6 +5306,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		let endY: number = overlay.bounds.top + overlay.bounds.height;
 
 		let top: number = startY;
+		let startYInScrollableArea: boolean = false;
 		if (startY >= fixedAreaInfos.bottom.startOffset) {
 			const offsetFromBottom = fixedAreaInfos.bottom.endOffset - startY;
 			startY = viewportSize.height - offsetFromBottom;
@@ -5319,12 +5320,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				fixedAreaInfos.top.size
 			);
 			top -= currentScrollOffset.y;
+			startYInScrollableArea = true;
 		}
 		if (endY >= fixedAreaInfos.bottom.startOffset) {
 			const offsetFromBottom = fixedAreaInfos.bottom.endOffset - endY;
 			endY = viewportSize.height - offsetFromBottom;
 
-			if (startY < fixedAreaInfos.bottom.startOffset) {
+			if (startYInScrollableArea) {
 				startY = Math.min(
 					startY,
 					viewportSize.height - fixedAreaInfos.bottom.size
@@ -5346,6 +5348,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		let endX: number = overlay.bounds.left + overlay.bounds.width;
 
 		let left: number = overlay.bounds.left;
+		let startXInScrollableArea: boolean = false;
 		if (startX >= fixedAreaInfos.right.startOffset) {
 			const offsetFromRight = fixedAreaInfos.right.endOffset - startX;
 			startX = viewportSize.width - offsetFromRight;
@@ -5359,12 +5362,13 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				fixedAreaInfos.left.size
 			);
 			left -= currentScrollOffset.x;
+			startXInScrollableArea = true;
 		}
 		if (endX >= fixedAreaInfos.right.startOffset) {
 			const offsetFromRight = fixedAreaInfos.right.endOffset - endX;
 			endX = viewportSize.width - offsetFromRight;
 
-			if (startX < fixedAreaInfos.right.startOffset) {
+			if (startXInScrollableArea) {
 				startX = Math.min(
 					startX,
 					viewportSize.width - fixedAreaInfos.right.size
