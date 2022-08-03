@@ -3042,6 +3042,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const minScrollBarLength: number = scrollBarOptions.minLength;
 		const scrollBarOffset: number = scrollBarOptions.offset;
 		const cornerRadius: number = scrollBarOptions.cornerRadius;
+		const drawOverFixedAreas: boolean = scrollBarOptions.drawOverFixedAreas;
 
 		const scrollableViewportSize: ISize = {
 			width:

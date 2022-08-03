@@ -30,6 +30,8 @@ const DEFAULT_SCROLLBAR_COLOR: IColor = {
 	alpha: 0.6,
 };
 
+const DEFAULT_DRAW_OVER_FIXED_AREAS: boolean = true;
+
 /**
  * Options regarding the scrollbar to display.
  */
@@ -60,6 +62,11 @@ export interface IScrollBarOptions {
 	 * Radius of the scrollbars rounded corners.
 	 */
 	cornerRadius?: number;
+
+	/**
+	 * Whether to draw the scrollbars over the fixed areas of the table.
+	 */
+	drawOverFixedAreas?: boolean;
 }
 
 /**
@@ -89,6 +96,13 @@ export const fillOptions = (options?: IScrollBarOptions) => {
 
 	if (options.cornerRadius === undefined || options.cornerRadius === null) {
 		options.cornerRadius = DEFAULT_SCROLLBAR_RADIUS;
+	}
+
+	if (
+		options.drawOverFixedAreas === undefined ||
+		options.drawOverFixedAreas === null
+	) {
+		options.drawOverFixedAreas = DEFAULT_DRAW_OVER_FIXED_AREAS;
 	}
 
 	return options;
