@@ -323,8 +323,12 @@ render(
 			cellModel
 		);
 
-		engine.getOptions().renderer.view.fixedRows = 1;
-		engine.getOptions().renderer.view.fixedColumns = 1;
+		engine.getOptions().renderer.view.fixedAreas = {
+			left: 1,
+			top: 1,
+			bottom: 0,
+			right: 0,
+		};
 
 		engine.getOptions().selection.selectionTransform =
 			ROW_COLUMN_HEADER_TRANSFORM;
