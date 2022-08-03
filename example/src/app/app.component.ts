@@ -727,7 +727,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 					} as ITextCellRendererValue,
 				},
 				{
-					range: CellRange.fromSingleRowColumn(1000, 1000),
+					range: CellRange.fromSingleRowColumn(200, 100),
 					rendererName: TextCellRenderer.NAME,
 					value: 'Last cell with more text than normally',
 				},

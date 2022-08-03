@@ -46,11 +46,7 @@ import { IRendererOptions } from '../renderer-options';
 import { IViewportScroller, ViewportScroller } from './scroll';
 import { FixedAreaUtil, IFixedAreaInfos } from './fixed-area-util';
 import { IErrorOptions } from './options';
-import {
-	ILineWrapper,
-	IParagraph,
-	TrivialLineWrapper,
-} from './cell/text/line-wrap';
+import { IParagraph } from './cell/text/line-wrap';
 
 type CellRendererEventListenerFunction = (event: ICellRendererEvent) => void;
 type CellRendererEventListenerFunctionSupplier = (
@@ -3225,13 +3221,11 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		isPrimary: boolean,
 		isMultiSelection: boolean
 	): void {
-		const bounds: IRectangle =
-			this._calculateSelectionBoundsFromCellRangeBounds(
-				this._cellModel.getBounds(selection.range),
-				selection.range,
-				viewPort,
-				fixedAreaInfos
-			);
+		const bounds: IRectangle = this._calculateCellRangeBoundsInViewport(
+			selection.range,
+			viewPort,
+			fixedAreaInfos
+		);
 
 		let initialBounds: IRectangle | null = null;
 		let initialRange: ICellRange | null = null;
@@ -3249,8 +3243,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				);
 			}
 
-			initialBounds = this._calculateSelectionBoundsFromCellRangeBounds(
-				this._cellModel.getBounds(initialRange),
+			initialBounds = this._calculateCellRangeBoundsInViewport(
 				initialRange,
 				viewPort,
 				fixedAreaInfos
@@ -3476,17 +3469,17 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 	/**
 	 * Calculate the selection bounds from the given cell range bounds.
-	 * @param bounds cell bounds to calculate selection bounds with
 	 * @param range cell range the bounds have been calculated with
 	 * @param viewPort to calculate selections for
 	 * @param fixedAreaInfos infos about the fixed areas
 	 */
-	private _calculateSelectionBoundsFromCellRangeBounds(
-		bounds: IRectangle,
+	private _calculateCellRangeBoundsInViewport(
 		range: ICellRange,
 		viewPort: IRectangle,
 		fixedAreaInfos: IFixedAreaInfos
 	): IRectangle {
+		const bounds = this._cellModel.getBounds(range);
+
 		let startY = bounds.top;
 		let endY = bounds.top + bounds.height;
 		let startX = bounds.left;
@@ -3496,6 +3489,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const sizeInFixedAreas: ISize = {
 			width: 0,
 			height: 0,
+		};
+		const maxStart: IPoint = {
+			x: -1,
+			y: -1,
 		};
 
 		if (range.startRow <= fixedAreaInfos.top.endIndex) {
@@ -3508,10 +3505,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			}).height;
 		} else if (range.startRow >= fixedAreaInfos.bottom.startIndex) {
 			// Start of the range is in fixed rows at the bottom
-			startY +=
-				-fixedAreaInfos.bottom.startOffset +
-				viewPort.height -
-				fixedAreaInfos.bottom.size;
+			const offsetFromBottom = fixedAreaInfos.bottom.endOffset - startY;
+			startY = viewPort.height - offsetFromBottom;
 		} else if (range.startRow > fixedAreaInfos.top.endIndex) {
 			// Start of the range is in scrollable area
 			startY -= currentScrollOffset.y;
@@ -3519,10 +3514,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		if (range.endRow >= fixedAreaInfos.bottom.startIndex) {
 			// End of the range is in fixed rows at the bottom
-			endY +=
-				-fixedAreaInfos.bottom.startOffset +
-				viewPort.height -
-				fixedAreaInfos.bottom.size;
+			const offsetFromBottom = fixedAreaInfos.bottom.endOffset - endY;
+			endY = viewPort.height - offsetFromBottom;
 
 			sizeInFixedAreas.height += this._cellModel.getBounds({
 				startRow: Math.max(
@@ -3533,6 +3526,10 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				startColumn: 0,
 				endColumn: 0,
 			}).height;
+
+			if (range.startRow < fixedAreaInfos.bottom.startIndex) {
+				maxStart.y = viewPort.height - fixedAreaInfos.bottom.size;
+			}
 		} else if (range.endRow > fixedAreaInfos.top.endIndex) {
 			// End of the range is in scrollable area
 			endY -= currentScrollOffset.y;
@@ -3551,10 +3548,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			}).width;
 		} else if (range.startColumn >= fixedAreaInfos.right.startIndex) {
 			// Start of the range is in the fixed columns to the right
-			startX +=
-				-fixedAreaInfos.right.startOffset +
-				viewPort.width -
-				fixedAreaInfos.right.size;
+			const offsetFromRight = fixedAreaInfos.right.endOffset - startX;
+			startX = viewPort.width - offsetFromRight;
 		} else if (range.startColumn > fixedAreaInfos.left.endIndex) {
 			// Start of the range is in scrollable area
 			startX -= currentScrollOffset.x;
@@ -3562,10 +3557,8 @@ export class CanvasRenderer implements ITableEngineRenderer {
 
 		if (range.endColumn >= fixedAreaInfos.right.startIndex) {
 			// End of the range is in the fixed columns to the right
-			endX +=
-				-fixedAreaInfos.right.startOffset +
-				viewPort.width -
-				fixedAreaInfos.right.size;
+			const offsetFromRight = fixedAreaInfos.right.endOffset - endX;
+			endX = viewPort.width - offsetFromRight;
 
 			sizeInFixedAreas.width += this._cellModel.getBounds({
 				startRow: 0,
@@ -3576,14 +3569,18 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				),
 				endColumn: range.endColumn,
 			}).width;
+
+			if (range.startColumn < fixedAreaInfos.right.startIndex) {
+				maxStart.x = viewPort.width - fixedAreaInfos.right.size;
+			}
 		} else if (range.endColumn > fixedAreaInfos.left.endIndex) {
 			// End of the range is in the scrollable area
 			endX -= currentScrollOffset.x;
 		}
 
 		return {
-			left: startX,
-			top: startY,
+			left: maxStart.x > -1 ? Math.min(startX, maxStart.x) : startX,
+			top: maxStart.y > -1 ? Math.min(startY, maxStart.y) : startY,
 			width: Math.max(endX - startX, sizeInFixedAreas.width),
 			height: Math.max(endY - startY, sizeInFixedAreas.height),
 		};
@@ -5305,53 +5302,85 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		const fixedAreaInfos: IFixedAreaInfos = this.getFixedAreaInfos();
 		const currentScrollOffset = this._viewportScroller.getScrollOffset();
 
-		let top: number = overlay.bounds.top;
-		let height: number = overlay.bounds.height;
-		const isInTopFixedRows: boolean =
-			overlay.bounds.top < fixedAreaInfos.top.size;
-		const isInBottomFixedRows: boolean =
-			overlay.bounds.top + overlay.bounds.height >
-			fixedAreaInfos.bottom.startOffset;
-		if (isInTopFixedRows) {
-			// Overlaps with fixed rows
-			const remaining: number =
-				fixedAreaInfos.top.size - overlay.bounds.top;
-			if (overlay.bounds.height > remaining) {
-				// Not completely in fixed rows -> change height based on scroll state
-				height = Math.max(height - currentScrollOffset.y, remaining);
-			}
-		} else {
-			// Is only in scrollable area
-			if (top - currentScrollOffset.y < fixedAreaInfos.top.size) {
-				height -=
-					fixedAreaInfos.top.size - (top - currentScrollOffset.y);
-			}
+		let startY: number = overlay.bounds.top;
+		let endY: number = overlay.bounds.top + overlay.bounds.height;
 
-			top = top - currentScrollOffset.y;
+		let top: number = startY;
+		if (startY >= fixedAreaInfos.bottom.startOffset) {
+			const offsetFromBottom = fixedAreaInfos.bottom.endOffset - startY;
+			startY = viewportSize.height - offsetFromBottom;
+			top = startY;
+		} else if (startY >= fixedAreaInfos.top.size) {
+			startY = Math.max(
+				Math.min(
+					startY - currentScrollOffset.y,
+					viewportSize.height - fixedAreaInfos.bottom.size
+				),
+				fixedAreaInfos.top.size
+			);
+			top -= currentScrollOffset.y;
 		}
-		// TODO Check if overlay is in bottom fixed rows
+		if (endY >= fixedAreaInfos.bottom.startOffset) {
+			const offsetFromBottom = fixedAreaInfos.bottom.endOffset - endY;
+			endY = viewportSize.height - offsetFromBottom;
+
+			if (startY < fixedAreaInfos.bottom.startOffset) {
+				startY = Math.min(
+					startY,
+					viewportSize.height - fixedAreaInfos.bottom.size
+				);
+				top = startY;
+			}
+		} else if (endY >= fixedAreaInfos.top.size) {
+			endY = Math.max(
+				Math.min(
+					endY - currentScrollOffset.y,
+					viewportSize.height - fixedAreaInfos.bottom.size
+				),
+				fixedAreaInfos.top.size
+			);
+		}
+		let height: number = endY - startY;
+
+		let startX: number = overlay.bounds.left;
+		let endX: number = overlay.bounds.left + overlay.bounds.width;
 
 		let left: number = overlay.bounds.left;
-		let width: number = overlay.bounds.width;
-		const isInFixedColumns: boolean =
-			overlay.bounds.left < fixedAreaInfos.left.size;
-		if (isInFixedColumns) {
-			// Overlaps with fixed columns
-			const remaining: number =
-				fixedAreaInfos.left.size - overlay.bounds.left;
-			if (overlay.bounds.width > remaining) {
-				// Not completely in fixed columns -> change width based on scroll state
-				width = Math.max(width - currentScrollOffset.x, remaining);
-			}
-		} else {
-			// Is only in scrollable area
-			if (left - currentScrollOffset.x < fixedAreaInfos.left.size) {
-				width -=
-					fixedAreaInfos.left.size - (left - currentScrollOffset.x);
-			}
-
-			left = left - currentScrollOffset.x;
+		if (startX >= fixedAreaInfos.right.startOffset) {
+			const offsetFromRight = fixedAreaInfos.right.endOffset - startX;
+			startX = viewportSize.width - offsetFromRight;
+			left = startX;
+		} else if (startX >= fixedAreaInfos.left.size) {
+			startX = Math.max(
+				Math.min(
+					startX - currentScrollOffset.x,
+					viewportSize.width - fixedAreaInfos.right.size
+				),
+				fixedAreaInfos.left.size
+			);
+			left -= currentScrollOffset.x;
 		}
+		if (endX >= fixedAreaInfos.right.startOffset) {
+			const offsetFromRight = fixedAreaInfos.right.endOffset - endX;
+			endX = viewportSize.width - offsetFromRight;
+
+			if (startX < fixedAreaInfos.right.startOffset) {
+				startX = Math.min(
+					startX,
+					viewportSize.width - fixedAreaInfos.right.size
+				);
+				left = startX;
+			}
+		} else if (endX >= fixedAreaInfos.left.size) {
+			endX = Math.max(
+				Math.min(
+					endX - currentScrollOffset.x,
+					viewportSize.width - fixedAreaInfos.right.size
+				),
+				fixedAreaInfos.left.size
+			);
+		}
+		let width: number = endX - startX;
 
 		const isVisible: boolean =
 			height > 0 &&
@@ -5367,15 +5396,21 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			overlay.element.style.width = `${overlay.bounds.width}px`;
 			overlay.element.style.height = `${overlay.bounds.height}px`;
 
-			if (
-				width < overlay.bounds.width ||
-				height < overlay.bounds.height
-			) {
-				// Add clipping
-				const leftClipping: number = overlay.bounds.width - width;
-				const topClipping: number = overlay.bounds.height - height;
+			const clipLeft: boolean = left < startX;
+			const clipRight: boolean = left + overlay.bounds.width > endX;
+			const clipTop: boolean = top < startY;
+			const clipBottom: boolean = top + overlay.bounds.height > endY;
+			if (clipLeft || clipRight || clipTop || clipBottom) {
+				const leftClipping: number = clipLeft ? startX - left : 0;
+				const rightClipping: number = clipRight
+					? left + overlay.bounds.width - endX
+					: 0;
+				const topClipping: number = clipTop ? startY - top : 0;
+				const bottomClipping: number = clipBottom
+					? top + overlay.bounds.height - endY
+					: 0;
 
-				overlay.element.style.clipPath = `inset(${topClipping}px 0 0 ${leftClipping}px)`;
+				overlay.element.style.clipPath = `inset(${topClipping}px ${rightClipping}px ${bottomClipping}px ${leftClipping}px)`;
 			} else if (overlay.element.style.clipPath.length > 0) {
 				overlay.element.style.clipPath = '';
 			}
