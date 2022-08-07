@@ -1785,6 +1785,9 @@ export class CanvasRenderer implements ITableEngineRenderer {
 		y: number,
 		start: IScrollBarDragContext
 	): void {
+		const options = this._options.renderer.canvas.scrollBar;
+		const drawOverFixedAreas = options.drawOverFixedAreas;
+
 		const viewportSize = this.getViewportSize();
 		const fixedAreaInfos = this.getFixedAreaInfos();
 		const scrollableViewportSize: ISize = {
@@ -1797,7 +1800,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				fixedAreaInfos.top.size -
 				fixedAreaInfos.bottom.size,
 		};
-		const tableSize: ISize = {
+		const scrollableTableSize: ISize = {
 			width:
 				this._cellModel.getWidth() -
 				fixedAreaInfos.left.size -
@@ -1807,38 +1810,64 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				fixedAreaInfos.top.size -
 				fixedAreaInfos.bottom.size,
 		};
+		const tableSize: ISize = {
+			width: this._cellModel.getWidth(),
+			height: this._cellModel.getHeight(),
+		};
+		const scrollBarTableSize: ISize = {
+			width: drawOverFixedAreas
+				? tableSize.width
+				: scrollableTableSize.width,
+			height: drawOverFixedAreas
+				? tableSize.height
+				: scrollableTableSize.height,
+		};
+		const scrollBarViewportSize: ISize = {
+			width: drawOverFixedAreas
+				? viewportSize.width
+				: scrollableViewportSize.width,
+			height: drawOverFixedAreas
+				? viewportSize.height
+				: scrollableViewportSize.height,
+		};
 
 		const currentScrollOffset = this._viewportScroller.getScrollOffset();
 		const updatedScrollOffset: IPoint = {
 			...currentScrollOffset,
 		};
 		if (start.scrollVertically) {
-			// Normalize x and y coordinates for fixed rows/columns
-			y -= fixedAreaInfos.top.size;
-			const startY = start.startY - fixedAreaInfos.top.size;
+			let startY = start.startY;
+			if (!drawOverFixedAreas) {
+				// Normalize x and y coordinates for fixed rows/columns
+				y -= fixedAreaInfos.top.size;
+				startY -= fixedAreaInfos.top.size;
+			}
 
 			const curY = startY + (y - startY) + start.offsetFromScrollBarStart;
 			const maxY =
-				scrollableViewportSize.height -
+				scrollBarViewportSize.height -
 				this._lastRenderingContext.scrollBar.vertical.length;
 
 			updatedScrollOffset.y =
 				(curY / maxY) *
-				(tableSize.height - scrollableViewportSize.height);
+				(scrollBarTableSize.height - scrollBarViewportSize.height);
 		}
 		if (start.scrollHorizontally) {
-			// Normalize x and y coordinates for fixed rows/columns
-			x -= fixedAreaInfos.left.size;
-			const startX = start.startX - fixedAreaInfos.left.size;
+			let startX = start.startX;
+			if (!drawOverFixedAreas) {
+				// Normalize x and y coordinates for fixed rows/columns
+				x -= fixedAreaInfos.left.size;
+				startX -= fixedAreaInfos.left.size;
+			}
 
 			const curX = startX + (x - startX) + start.offsetFromScrollBarStart;
 			const maxX =
-				scrollableViewportSize.width -
+				scrollBarViewportSize.width -
 				this._lastRenderingContext.scrollBar.horizontal.length;
 
 			updatedScrollOffset.x =
 				(curX / maxX) *
-				(tableSize.width - scrollableViewportSize.width);
+				(scrollBarTableSize.width - scrollBarViewportSize.width);
 		}
 
 		if (
@@ -3054,7 +3083,7 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				fixedAreaInfos.top.size -
 				fixedAreaInfos.bottom.size,
 		};
-		const tableSize: ISize = {
+		const scrollableTableSize: ISize = {
 			width:
 				this._cellModel.getWidth() -
 				fixedAreaInfos.left.size -
@@ -3064,20 +3093,31 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				fixedAreaInfos.top.size -
 				fixedAreaInfos.bottom.size,
 		};
+		const scrollBarViewportSize: ISize = {
+			width: drawOverFixedAreas
+				? viewPort.width
+				: scrollableViewportSize.width,
+			height: drawOverFixedAreas
+				? viewPort.height
+				: scrollableViewportSize.height,
+		};
 
 		const maxVerticalOffset: number =
-			tableSize.height - scrollableViewportSize.height;
+			scrollableTableSize.height - scrollableViewportSize.height;
 		const maxHorizontalOffset: number =
-			tableSize.width - scrollableViewportSize.width;
+			scrollableTableSize.width - scrollableViewportSize.width;
 
 		const currentScrollOffset = this._viewportScroller.getScrollOffset();
 
+		const xOffset = drawOverFixedAreas ? 0 : fixedAreaInfos.left.size;
+		const yOffset = drawOverFixedAreas ? 0 : fixedAreaInfos.top.size;
+
 		// Calculate vertical scrollbar layout
 		let vertical: IScrollBarAxisRenderContext = null;
-		if (tableSize.height > scrollableViewportSize.height) {
+		if (scrollableTableSize.height > scrollableViewportSize.height) {
 			const length = Math.max(
-				(scrollableViewportSize.height / tableSize.height) *
-					scrollableViewportSize.height,
+				(scrollableViewportSize.height / scrollableTableSize.height) *
+					scrollBarViewportSize.height,
 				minScrollBarLength
 			);
 			const progress = currentScrollOffset.y / maxVerticalOffset;
@@ -3086,22 +3126,20 @@ export class CanvasRenderer implements ITableEngineRenderer {
 				size: scrollBarSize,
 				length,
 				x:
-					Math.min(scrollableViewportSize.width, tableSize.width) -
+					scrollBarViewportSize.width -
 					scrollBarSize -
 					scrollBarOffset +
-					fixedAreaInfos.left.size,
-				y:
-					(scrollableViewportSize.height - length) * progress +
-					fixedAreaInfos.top.size,
+					xOffset,
+				y: (scrollBarViewportSize.height - length) * progress + yOffset,
 			};
 		}
 
 		// Calculate horizontal scrollbar layout
 		let horizontal: IScrollBarAxisRenderContext = null;
-		if (tableSize.width > scrollableViewportSize.width) {
+		if (scrollableTableSize.width > scrollableViewportSize.width) {
 			const length = Math.max(
-				(scrollableViewportSize.width / tableSize.width) *
-					scrollableViewportSize.width,
+				(scrollableViewportSize.width / scrollableTableSize.width) *
+					scrollBarViewportSize.width,
 				minScrollBarLength
 			);
 			const progress = currentScrollOffset.x / maxHorizontalOffset;
@@ -3109,14 +3147,12 @@ export class CanvasRenderer implements ITableEngineRenderer {
 			horizontal = {
 				size: scrollBarSize,
 				length,
-				x:
-					(scrollableViewportSize.width - length) * progress +
-					fixedAreaInfos.left.size,
+				x: (scrollBarViewportSize.width - length) * progress + xOffset,
 				y:
-					Math.min(scrollableViewportSize.height, tableSize.height) -
+					scrollBarViewportSize.height -
 					scrollBarSize -
 					scrollBarOffset +
-					fixedAreaInfos.top.size,
+					yOffset,
 			};
 		}
 
