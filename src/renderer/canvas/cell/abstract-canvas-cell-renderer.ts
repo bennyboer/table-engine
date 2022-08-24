@@ -9,6 +9,14 @@ import {
 } from '../../cell';
 import { TableEngine } from '../../../table-engine';
 
+/**
+ * Abstract implementation of a canvas cell renderer
+ * that you can use to easily implement a cell renderer.
+ *
+ * @type V type of the value of the cells to render
+ * @type O type of the options of the cell renderer
+ * @type C type of the viewport cache of the cell renderer
+ */
 export abstract class AbstractCanvasCellRenderer<V, O, C>
 	implements ICanvasCellRenderer
 {
@@ -44,6 +52,12 @@ export abstract class AbstractCanvasCellRenderer<V, O, C>
 		return this._defaultOptions;
 	}
 
+	/**
+	 * Register an event listener.
+	 * You don't have to unregister the event listener.
+	 * @param eventType type of the event to listen for
+	 * @param callback to process when the event happens
+	 */
 	protected registerEventListener(
 		eventType: CellRendererEventListenerType,
 		callback: (event: ICellRendererEvent) => void

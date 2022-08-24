@@ -1,66 +1,91 @@
 import {
+	AbstractCanvasCellRenderer,
 	AlignmentUtil,
+	CellRendererEventListenerType,
 	Colors,
 	HorizontalAlignment,
-	ICanvasCellRenderer,
 	ICell,
-	ICellRendererEventListener,
 	IRectangle,
 	IRenderContext,
-	TableEngine,
 	VerticalAlignment,
 } from '../../../../src';
-import { ISize } from 'table-engine/util/size';
+import { ICellRendererMouseEvent } from 'table-engine/renderer/cell/event/cell-renderer-mouse-event';
+import { ICellRendererKeyboardEvent } from 'table-engine/renderer/cell/event/cell-renderer-keyboard-event';
 
-export class DebugCellRenderer implements ICanvasCellRenderer {
+export class DebugCellRenderer extends AbstractCanvasCellRenderer<
+	any,
+	any,
+	any
+> {
 	public static readonly NAME: string = 'debug';
 
-	/**
-	 * Event listeners on cells rendered with this cell renderer.
-	 */
-	private readonly _eventListener: ICellRendererEventListener = {
-		onMouseUp: (event) => {
-			event.cell.value = `mouse up: ${event.offset.x} x ${event.offset.y}`;
-			this._engine.repaint();
-		},
-		onMouseMove: (event) => {
-			event.cell.value = `mouse move: ${event.offset.x} x ${event.offset.y}`;
-			this._engine.repaint();
-		},
-		onMouseDown: (event) => {
-			event.cell.value = `mouse down: ${event.offset.x} x ${event.offset.y}`;
-			this._engine.repaint();
-		},
-		onMouseOut: (event) => {
-			event.cell.value = 'mouse out';
-			this._engine.repaint();
-		},
-		onKeyDown: (event) => {
-			event.cell.value = `key down: ${event.originalEvent.code}`;
-			this._engine.repaint();
-		},
-		onKeyUp: (event) => {
-			event.cell.value = `key up: ${event.originalEvent.code}`;
-			this._engine.repaint();
-		},
-		onFocus: (event) => {
-			event.cell.value = 'focused';
-			this._engine.repaint();
-		},
-		onBlur: (event) => {
-			event.cell.value = 'blurred';
-			this._engine.repaint();
-		},
-	};
+	constructor() {
+		super(DebugCellRenderer.NAME, {});
 
-	private _engine: TableEngine;
+		this.registerEventListener(
+			CellRendererEventListenerType.MOUSE_UP,
+			(event) => {
+				const mouseEvent = event as ICellRendererMouseEvent;
+				event.cell.value = `mouse up: ${mouseEvent.offset.x} x ${mouseEvent.offset.y}`;
+				this.repaint();
+			}
+		);
+		this.registerEventListener(
+			CellRendererEventListenerType.MOUSE_MOVE,
+			(event) => {
+				const mouseEvent = event as ICellRendererMouseEvent;
+				event.cell.value = `mouse move: ${mouseEvent.offset.x} x ${mouseEvent.offset.y}`;
+				this.repaint();
+			}
+		);
+		this.registerEventListener(
+			CellRendererEventListenerType.MOUSE_DOWN,
+			(event) => {
+				const mouseEvent = event as ICellRendererMouseEvent;
+				event.cell.value = `mouse down: ${mouseEvent.offset.x} x ${mouseEvent.offset.y}`;
+				this.repaint();
+			}
+		);
+		this.registerEventListener(
+			CellRendererEventListenerType.MOUSE_DOWN,
+			(event) => {
+				event.cell.value = 'mouse out';
+				this.repaint();
+			}
+		);
+		this.registerEventListener(
+			CellRendererEventListenerType.KEY_DOWN,
+			(event) => {
+				const keyboardEvent = event as ICellRendererKeyboardEvent;
+				event.cell.value = `key down: ${keyboardEvent.originalEvent.code}`;
+				this.repaint();
+			}
+		);
+		this.registerEventListener(
+			CellRendererEventListenerType.KEY_UP,
+			(event) => {
+				const keyboardEvent = event as ICellRendererKeyboardEvent;
+				event.cell.value = `key up: ${keyboardEvent.originalEvent.code}`;
+				this.repaint();
+			}
+		);
+		this.registerEventListener(
+			CellRendererEventListenerType.FOCUS,
+			(event) => {
+				event.cell.value = 'focused';
+				this.repaint();
+			}
+		);
+		this.registerEventListener(
+			CellRendererEventListenerType.BLUR,
+			(event) => {
+				event.cell.value = 'blurred';
+				this.repaint();
+			}
+		);
+	}
 
-	public after(ctx: CanvasRenderingContext2D): void {}
-
-	public before(
-		ctx: CanvasRenderingContext2D,
-		context: IRenderContext
-	): void {
+	before(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
 		ctx.font = '10px sans-serif';
 		ctx.fillStyle = Colors.toStyleStr(Colors.BLACK);
 		ctx.textBaseline = AlignmentUtil.verticalAlignmentToStyleStr(
@@ -71,25 +96,11 @@ export class DebugCellRenderer implements ICanvasCellRenderer {
 		) as CanvasTextAlign;
 	}
 
-	public cleanup(): void {}
-
-	public getCopyValue(cell: ICell): string {
-		return '';
-	}
-
-	public getEventListener(): ICellRendererEventListener | null {
-		return this._eventListener;
-	}
-
-	public getName(): string {
+	getName(): string {
 		return DebugCellRenderer.NAME;
 	}
 
-	public initialize(engine: TableEngine): void {
-		this._engine = engine;
-	}
-
-	public render(
+	render(
 		ctx: CanvasRenderingContext2D,
 		cell: ICell,
 		bounds: IRectangle
@@ -101,15 +112,15 @@ export class DebugCellRenderer implements ICanvasCellRenderer {
 		);
 	}
 
-	/**
-	 * Called when the passed cell is disappearing from the visible area (viewport).
-	 * @param cell that is disappearing
-	 */
-	public onDisappearing(cell: ICell): void {
-		// Do nothing
+	getDefaultViewportCache(): any {
+		return {};
 	}
 
-	estimatePreferredSize(cell: ICell): ISize | null {
-		return null; // Renderer does not have a preferred size
+	getOptionsFromCell(cell: ICell): any {
+		return {};
+	}
+
+	mergeOptions(defaultOptions: any, cellOptions: any): any {
+		return cellOptions;
 	}
 }
