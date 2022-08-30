@@ -43,6 +43,10 @@ export abstract class AbstractCanvasCellRenderer<V, O, C>
 		return cell.value as V;
 	}
 
+	get defaultOptions(): O {
+		return this._defaultOptions;
+	}
+
 	protected options(cell: ICell): O {
 		const optionsFromCell = this.getOptionsFromCell(cell);
 		if (!!optionsFromCell) {
