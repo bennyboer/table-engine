@@ -1,16 +1,11 @@
-import { ICanvasCellRenderer } from '../canvas-cell-renderer';
 import {
 	fillOptions,
 	IComboBoxCellRendererOptions,
-	ILabelOptions,
-	IPlaceholderOptions,
-	ISelectArrowOptions,
 } from './combobox-cell-renderer-options';
-import { TableEngine } from '../../../../table-engine';
 import { IRenderContext } from '../../canvas-renderer';
 import { ICell } from '../../../../cell';
 import {
-	ICellRendererEventListener,
+	CellRendererEventListenerType,
 	ICellRendererMouseEvent,
 } from '../../../cell';
 import { Colors, IRectangle, ISize } from '../../../../util';
@@ -19,25 +14,33 @@ import {
 	IComboBoxOption,
 } from './combobox-cell-renderer-value';
 import { IOverlay } from '../../../../overlay';
+import { AbstractCanvasCellRenderer } from '../abstract-canvas-cell-renderer';
 
-export class ComboBoxCellRenderer implements ICanvasCellRenderer {
+export class ComboBoxCellRenderer extends AbstractCanvasCellRenderer<
+	IComboBoxCellRendererValue,
+	IComboBoxCellRendererOptions,
+	IViewportCache
+> {
 	static readonly NAME: string = 'combobox';
 
-	private readonly _options: IComboBoxCellRendererOptions;
-
-	private _engine: TableEngine;
-
-	private _eventListener: ICellRendererEventListener = {
-		onMouseUp: (event) => this._onClick(event),
-		onMouseMove: (event) => this._onMouseMove(event),
-		onMouseOut: (event) => this._onMouseOut(event),
-	};
-
 	constructor(options?: IComboBoxCellRendererOptions) {
-		this._options = fillOptions(options);
+		super(ComboBoxCellRenderer.NAME, fillOptions(options));
+
+		this.registerEventListener(
+			CellRendererEventListenerType.MOUSE_UP,
+			(event) => this._onClick(event as ICellRendererMouseEvent)
+		);
+		this.registerEventListener(
+			CellRendererEventListenerType.MOUSE_MOVE,
+			(event) => this._onMouseMove(event as ICellRendererMouseEvent)
+		);
+		this.registerEventListener(
+			CellRendererEventListenerType.MOUSE_OUT,
+			(event) => this._onMouseOut(event as ICellRendererMouseEvent)
+		);
 	}
 
-	private static _value(cell: ICell): IComboBoxCellRendererValue {
+	protected value(cell: ICell): IComboBoxCellRendererValue {
 		if (cell.value === undefined || cell.value === null) {
 			return {
 				select_options: {},
@@ -47,32 +50,37 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		return cell.value as IComboBoxCellRendererValue;
 	}
 
-	private static _cache(cell: ICell): IViewportCache {
-		if (!!cell.viewportCache) {
-			return cell.viewportCache as IViewportCache;
-		} else {
-			const cache: IViewportCache = {
-				hovered: false,
-			};
-			cell.viewportCache = cache;
-			return cache;
-		}
+	getDefaultViewportCache(): IViewportCache {
+		return {
+			hovered: false,
+		};
 	}
 
-	after(ctx: CanvasRenderingContext2D): void {
-		// Nothing to do after rendering all cells with this renderer
+	getOptionsFromCell(cell: ICell): IComboBoxCellRendererOptions | null {
+		return this.value(cell).options;
+	}
+
+	mergeOptions(
+		defaultOptions: IComboBoxCellRendererOptions,
+		cellOptions: IComboBoxCellRendererOptions
+	): IComboBoxCellRendererOptions {
+		return {
+			editable: cellOptions?.editable ?? defaultOptions.editable,
+			label: cellOptions?.label ?? defaultOptions.label,
+			onChanged: cellOptions?.onChanged ?? defaultOptions.onChanged,
+			padding: cellOptions?.padding ?? defaultOptions.padding,
+			dropdown: cellOptions?.dropdown ?? defaultOptions.dropdown,
+			placeholder: cellOptions?.placeholder ?? defaultOptions.placeholder,
+			selectArrow: cellOptions?.selectArrow ?? defaultOptions.selectArrow,
+		};
 	}
 
 	before(ctx: CanvasRenderingContext2D, context: IRenderContext): void {
 		ctx.textAlign = 'left';
 	}
 
-	cleanup(): void {
-		// Nothing to cleanup
-	}
-
 	getCopyValue(cell: ICell): string {
-		const value = ComboBoxCellRenderer._value(cell);
+		const value = this.value(cell);
 		if (!!value.selected_option_id) {
 			return value.select_options[value.selected_option_id].label;
 		}
@@ -80,20 +88,8 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		return '';
 	}
 
-	getEventListener(): ICellRendererEventListener | null {
-		return this._eventListener;
-	}
-
-	getName(): string {
-		return ComboBoxCellRenderer.NAME;
-	}
-
-	initialize(engine: TableEngine): void {
-		this._engine = engine;
-	}
-
-	onDisappearing(cell: ICell): void {
-		// Nothing to do when a cell disappears from the viewport
+	estimatePreferredSize(cell: ICell): ISize | null {
+		return this.cache(cell).preferredSize;
 	}
 
 	render(
@@ -101,25 +97,22 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		cell: ICell,
 		bounds: IRectangle
 	): void {
-		const value: IComboBoxCellRendererValue =
-			ComboBoxCellRenderer._value(cell);
-		const cache: IViewportCache = ComboBoxCellRenderer._cache(cell);
-
-		const style: IRenderingStyle = this._determineRenderingStyle(
-			value,
-			cache
-		);
+		const value: IComboBoxCellRendererValue = this.value(cell);
+		const options: IComboBoxCellRendererOptions = this.options(cell);
+		const cache: IViewportCache = this.cache(cell);
 
 		const selectArrowSize: ISize = ComboBoxCellRenderer._renderSelectArrow(
 			ctx,
 			bounds,
-			style
+			options,
+			cache
 		);
 		const labelSize: ISize = ComboBoxCellRenderer._renderLabel(
 			ctx,
 			bounds,
 			value,
-			style,
+			options,
+			cache,
 			selectArrowSize.width
 		);
 
@@ -129,63 +122,19 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		};
 	}
 
-	private _determineRenderingStyle(
-		value: IComboBoxCellRendererValue,
-		cache: IViewportCache
-	): IRenderingStyle {
-		let editable: boolean = this._options.editable;
-		let hovered = cache.hovered;
-		let padding: number = this._options.padding;
-		let labelOptions: ILabelOptions = this._options.label;
-		let placeholderOptions: IPlaceholderOptions = this._options.placeholder;
-		let selectArrowOptions: ISelectArrowOptions = this._options.selectArrow;
-
-		if (!!value.options) {
-			if (
-				value.options.editable !== undefined &&
-				value.options.editable !== null
-			) {
-				editable = value.options.editable;
-			}
-			if (
-				value.options.padding !== undefined &&
-				value.options.padding !== null
-			) {
-				padding = value.options.padding;
-			}
-			if (!!value.options.label) {
-				labelOptions = value.options.label;
-			}
-			if (!!value.options.placeholder) {
-				placeholderOptions = value.options.placeholder;
-			}
-			if (!!value.options.selectArrow) {
-				selectArrowOptions = value.options.selectArrow;
-			}
-		}
-
-		return {
-			editable,
-			hovered,
-			padding,
-			labelOptions,
-			placeholderOptions,
-			selectArrowOptions,
-		};
-	}
-
 	private static _renderSelectArrow(
 		ctx: CanvasRenderingContext2D,
 		bounds: IRectangle,
-		style: IRenderingStyle
+		options: IComboBoxCellRendererOptions,
+		cache: IViewportCache
 	): ISize {
 		const selectArrowPath: ISelectArrowPath =
 			ComboBoxCellRenderer._makeSelectArrowPath();
 
 		const selectArrowWidth: number =
-			selectArrowPath.width * style.selectArrowOptions.size;
+			selectArrowPath.width * options.selectArrow.size;
 		const selectArrowHeight: number =
-			selectArrowPath.height * style.selectArrowOptions.size;
+			selectArrowPath.height * options.selectArrow.size;
 
 		const transformedSelectArrowPath: Path2D = new Path2D();
 		transformedSelectArrowPath.addPath(
@@ -195,29 +144,26 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 					bounds.left +
 						bounds.width -
 						selectArrowWidth -
-						style.padding,
+						options.padding,
 					bounds.top +
 						Math.round((bounds.height - selectArrowHeight) / 2)
 				)
-				.scaleSelf(
-					style.selectArrowOptions.size,
-					style.selectArrowOptions.size
-				)
+				.scaleSelf(options.selectArrow.size, options.selectArrow.size)
 		);
 
 		ctx.strokeStyle = Colors.toStyleStr(
-			style.hovered
-				? style.selectArrowOptions.hoverColor
-				: style.selectArrowOptions.color
+			cache.hovered
+				? options.selectArrow.hoverColor
+				: options.selectArrow.color
 		);
-		ctx.lineWidth = style.selectArrowOptions.thickness;
-		ctx.lineCap = style.selectArrowOptions.lineCap;
-		ctx.lineJoin = style.selectArrowOptions.lineJoin;
+		ctx.lineWidth = options.selectArrow.thickness;
+		ctx.lineCap = options.selectArrow.lineCap;
+		ctx.lineJoin = options.selectArrow.lineJoin;
 
 		ctx.stroke(transformedSelectArrowPath);
 
 		return {
-			width: selectArrowWidth + 2 * style.padding,
+			width: selectArrowWidth + 2 * options.padding,
 			height: selectArrowHeight,
 		};
 	}
@@ -226,14 +172,15 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		ctx: CanvasRenderingContext2D,
 		bounds: IRectangle,
 		value: IComboBoxCellRendererValue,
-		style: IRenderingStyle,
+		options: IComboBoxCellRendererOptions,
+		cache: IViewportCache,
 		selectArrowWidth: number
 	): ISize {
-		const labelXOffset = bounds.left + style.padding;
+		const labelXOffset = bounds.left + options.padding;
 		const labelYOffset = bounds.top + Math.round(bounds.height / 2);
 
-		let labelText = style.placeholderOptions.text;
-		let color = style.placeholderOptions.color;
+		let labelText = options.placeholder.text;
+		let color = options.placeholder.color;
 
 		const hasLabelSelected = !!value.selected_option_id;
 		if (hasLabelSelected) {
@@ -241,21 +188,21 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 				value.select_options[value.selected_option_id];
 
 			labelText = selectedOption.label;
-			color = style.labelOptions.color;
+			color = options.label.color;
 		}
 
-		if (style.hovered) {
-			color = style.labelOptions.hoveredColor;
+		if (cache.hovered) {
+			color = options.label.hoveredColor;
 		}
 
-		const fontSize = style.labelOptions.fontSize;
-		const fontFamily = style.labelOptions.fontFamily;
+		const fontSize = options.label.fontSize;
+		const fontFamily = options.label.fontFamily;
 		ctx.font = `${fontSize}px ${fontFamily}`;
 		ctx.fillStyle = Colors.toStyleStr(color);
 
 		// Check if label fits into box
 		const maxLabelWidth: number =
-			bounds.width - style.padding - selectArrowWidth;
+			bounds.width - options.padding - selectArrowWidth;
 		const measuredWidth: number = ctx.measureText(labelText).width;
 		const overflow: boolean = measuredWidth > maxLabelWidth;
 		if (overflow) {
@@ -278,7 +225,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 		}
 
 		return {
-			width: style.padding + measuredWidth,
+			width: options.padding + measuredWidth,
 			height: fontSize,
 		};
 	}
@@ -298,41 +245,26 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 	}
 
 	private _onClick(event: ICellRendererMouseEvent): void {
-		const value: IComboBoxCellRendererValue = ComboBoxCellRenderer._value(
-			event.cell
-		);
+		const value: IComboBoxCellRendererValue = this.value(event.cell);
+		const options: IComboBoxCellRendererOptions = this.options(event.cell);
 
-		let editable: boolean = this._options.editable;
-		let onChanged: (cell: ICell) => void = this._options.onChanged;
-		if (!!value.options) {
-			if (
-				value.options.editable !== undefined &&
-				value.options.editable !== null
-			) {
-				editable = value.options.editable;
-			}
-			if (!!value.options.onChanged) {
-				onChanged = value.options.onChanged;
-			}
-		}
-
-		if (editable) {
-			this._openDropdownOverlay(value, event.cell, onChanged);
+		if (options.editable) {
+			this._openDropdownOverlay(value, event.cell, options);
 		}
 	}
 
 	private _openDropdownOverlay(
 		value: IComboBoxCellRendererValue,
 		cell: ICell,
-		onChanged: (cell: ICell) => void
+		options: IComboBoxCellRendererOptions
 	): void {
-		const cellBounds: IRectangle = this._engine
+		const cellBounds: IRectangle = this.engine
 			.getCellModel()
 			.getBounds(cell.range);
 
 		// Determine height available to the top and bottom of the given cell range
-		const viewport = this._engine.getViewport();
-		const fixedAreaInfos = this._engine.getFixedAreaInfos();
+		const viewport = this.engine.getViewport();
+		const fixedAreaInfos = this.engine.getFixedAreaInfos();
 		const availableHeightToTheTop =
 			cellBounds.top - (viewport.top + fixedAreaInfos.top.size);
 		const availableHeightToTheBottom =
@@ -343,7 +275,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 			cellBounds.top;
 
 		const overlayElement: HTMLElement = document.createElement('div');
-		overlayElement.className = this._options.dropdown.overlayClassName;
+		overlayElement.className = options.dropdown.overlayClassName;
 		overlayElement.tabIndex = -1; // Div element must be focusable to enable the blur event
 
 		const listContainerElement: HTMLElement = document.createElement('div');
@@ -367,8 +299,8 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 				event.stopPropagation(); // Stop table selection
 				value.selected_option_id = optionId;
 
-				if (!!onChanged) {
-					onChanged(cell);
+				if (!!options.onChanged) {
+					options.onChanged(cell);
 				}
 
 				blurListener();
@@ -394,7 +326,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 			renderContainer.getBoundingClientRect().height;
 		document.body.removeChild(renderContainer);
 
-		const maxDropdownHeight: number = this._options.dropdown.maxHeight;
+		const maxDropdownHeight: number = options.dropdown.maxHeight;
 		let dropdownHeight = maxDropdownHeight;
 		if (neededOverlayHeight < maxDropdownHeight) {
 			dropdownHeight = neededOverlayHeight;
@@ -432,7 +364,7 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 			element: overlayElement,
 			bounds: dropdownBounds,
 		};
-		this._engine.getOverlayManager().addOverlay(overlay);
+		this.engine.getOverlayManager().addOverlay(overlay);
 
 		const scrollListener: (MouseEvent) => void = (event: MouseEvent) => {
 			event.stopPropagation(); // Stop table scrolling
@@ -442,8 +374,8 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 			overlayElement.removeEventListener('wheel', scrollListener);
 			overlayElement.removeEventListener('blur', blurListener);
 
-			this._engine.getOverlayManager().removeOverlay(overlay); // Remove overlay
-			this._engine.requestFocus(); // Re-focus table
+			this.engine.getOverlayManager().removeOverlay(overlay); // Remove overlay
+			this.engine.requestFocus(); // Re-focus table
 		};
 		overlayElement.addEventListener('wheel', scrollListener);
 		overlayElement.addEventListener('blur', blurListener);
@@ -454,42 +386,22 @@ export class ComboBoxCellRenderer implements ICanvasCellRenderer {
 	}
 
 	private _onMouseMove(event: ICellRendererMouseEvent): void {
-		const cache: IViewportCache = ComboBoxCellRenderer._cache(event.cell);
-		const value: IComboBoxCellRendererValue = ComboBoxCellRenderer._value(
-			event.cell
-		);
+		const options: IComboBoxCellRendererOptions = this.options(event.cell);
+		const cache: IViewportCache = this.cache(event.cell);
 
-		let editable: boolean = this._options.editable;
-		if (
-			!!value.options &&
-			value.options.editable !== undefined &&
-			value.options.editable !== null
-		) {
-			editable = value.options.editable;
-		}
-
-		if (editable && !cache.hovered) {
+		if (options.editable && !cache.hovered) {
 			cache.hovered = true;
-			this._engine.setCursor('pointer');
-			this._engine.repaint();
+			this.setCursor('pointer');
+			this.repaint();
 		}
 	}
 
 	private _onMouseOut(event: ICellRendererMouseEvent): void {
-		const cache: IViewportCache = ComboBoxCellRenderer._cache(event.cell);
+		const cache: IViewportCache = this.cache(event.cell);
 		if (cache.hovered) {
 			cache.hovered = false;
-			this._engine.resetCursor();
-			this._engine.repaint();
-		}
-	}
-
-	estimatePreferredSize(cell: ICell): ISize | null {
-		const cache: IViewportCache = ComboBoxCellRenderer._cache(cell);
-		if (!!cache.preferredSize) {
-			return cache.preferredSize;
-		} else {
-			return null;
+			this.resetCursor();
+			this.repaint();
 		}
 	}
 }
@@ -498,15 +410,6 @@ interface ISelectArrowPath {
 	path: Path2D;
 	width: number;
 	height: number;
-}
-
-interface IRenderingStyle {
-	editable: boolean;
-	hovered: boolean;
-	padding: number;
-	labelOptions: ILabelOptions;
-	placeholderOptions: IPlaceholderOptions;
-	selectArrowOptions: ISelectArrowOptions;
 }
 
 interface IViewportCache {
