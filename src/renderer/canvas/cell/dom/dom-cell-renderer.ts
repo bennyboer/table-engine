@@ -1,76 +1,54 @@
-import { ICanvasCellRenderer } from '../canvas-cell-renderer';
-import { IRectangle, ISize } from '../../../../util';
+import { IRectangle } from '../../../../util';
 import { ICell } from '../../../../cell';
-import { TableEngine } from '../../../../table-engine';
-import { ICellRendererEventListener } from '../../../cell';
-import { IRenderContext } from '../../canvas-renderer';
 import { IOverlay } from '../../../../overlay';
+import { AbstractCanvasCellRenderer } from '../abstract-canvas-cell-renderer';
 
 /**
  * Cell renderer for rendering HTML/DOM inside a cell.
  */
-export class DOMCellRenderer implements ICanvasCellRenderer {
-	/**
-	 * Name of the cell renderer.
-	 */
-	public static readonly NAME: string = 'dom';
+export class DOMCellRenderer extends AbstractCanvasCellRenderer<
+	string | HTMLElement,
+	any,
+	IDOMCellRendererViewportCache
+> {
+	static readonly NAME: string = 'dom';
 
-	/**
-	 * Reference to the table engine.
-	 */
-	private _engine: TableEngine;
-
-	public after(ctx: CanvasRenderingContext2D): void {
-		// Nothing to do after rendering cells with this renderer
+	constructor() {
+		super(DOMCellRenderer.NAME, {});
 	}
 
-	public before(
-		ctx: CanvasRenderingContext2D,
-		context: IRenderContext
-	): void {
-		// Nothing to do before rendering cells with this renderer
-	}
-
-	public cleanup(): void {
-		// Nothing to cleanup
-	}
-
-	public getCopyValue(cell: ICell): string {
-		const cache: IDOMCellRendererViewportCache =
-			DOMCellRenderer._cache(cell);
-
+	getCopyValue(cell: ICell): string {
+		const cache: IDOMCellRendererViewportCache = this.cache(cell);
 		return !!cache.overlay ? cache.overlay.element.innerHTML : '';
 	}
 
-	public getEventListener(): ICellRendererEventListener | null {
-		return null;
-	}
-
-	public getName(): string {
-		return DOMCellRenderer.NAME;
-	}
-
-	public initialize(engine: TableEngine): void {
-		this._engine = engine;
-	}
-
-	public onDisappearing(cell: ICell): void {
+	onDisappearing(cell: ICell): void {
 		// Remove DOM element (overlay) again
-		const cache: IDOMCellRendererViewportCache =
-			DOMCellRenderer._cache(cell);
+		const cache: IDOMCellRendererViewportCache = this.cache(cell);
 		if (!!cache.overlay) {
-			this._engine.getOverlayManager().removeOverlay(cache.overlay);
+			this.engine.getOverlayManager().removeOverlay(cache.overlay);
 		}
 	}
 
-	public render(
+	getDefaultViewportCache(): IDOMCellRendererViewportCache {
+		return {};
+	}
+
+	getOptionsFromCell(cell: ICell): any {
+		return {};
+	}
+
+	mergeOptions(defaultOptions: any, cellOptions: any): any {
+		return defaultOptions;
+	}
+
+	render(
 		ctx: CanvasRenderingContext2D,
 		cell: ICell,
 		bounds: IRectangle
 	): void {
 		// Render nothing on the canvas, instead use an overlay to display the DOM element
-		const cache: IDOMCellRendererViewportCache =
-			DOMCellRenderer._cache(cell);
+		const cache: IDOMCellRendererViewportCache = this.cache(cell);
 		if (!cache.overlay) {
 			// Create overlay
 			let domElement: HTMLElement;
@@ -83,16 +61,16 @@ export class DOMCellRenderer implements ICanvasCellRenderer {
 
 			const overlay: IOverlay = {
 				element: domElement,
-				bounds: this._engine.getCellModel().getBounds(cell.range),
+				bounds: this.engine.getCellModel().getBounds(cell.range),
 			};
-			this._engine.getOverlayManager().addOverlay(overlay);
+			this.engine.getOverlayManager().addOverlay(overlay);
 
 			// Save overlay for later in the viewport cache
 			cache.overlay = overlay;
 		} else {
 			// Check whether cell dimensions changed -> Overlay update is needed
 			const oldBounds: IRectangle = cache.overlay.bounds;
-			const newBounds: IRectangle = this._engine
+			const newBounds: IRectangle = this.engine
 				.getCellModel()
 				.getBounds(cell.range);
 
@@ -103,28 +81,9 @@ export class DOMCellRenderer implements ICanvasCellRenderer {
 				newBounds.height !== oldBounds.height;
 			if (boundsChanged) {
 				cache.overlay.bounds = newBounds;
-				this._engine.getOverlayManager().updateOverlay(cache.overlay);
+				this.engine.getOverlayManager().updateOverlay(cache.overlay);
 			}
 		}
-	}
-
-	/**
-	 * Get the cache for the given cell.
-	 * @param cell to get cache for
-	 */
-	private static _cache(cell: ICell): IDOMCellRendererViewportCache {
-		if (!!cell.viewportCache) {
-			return cell.viewportCache as IDOMCellRendererViewportCache;
-		} else {
-			const cache: IDOMCellRendererViewportCache = {};
-			cell.viewportCache = cache;
-
-			return cache;
-		}
-	}
-
-	estimatePreferredSize(cell: ICell): ISize | null {
-		return null; // Renderer does not have a preferred size
 	}
 }
 
